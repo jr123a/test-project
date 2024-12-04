@@ -1,0 +1,70 @@
+Changing the persistence API version for an EAR application deployed on WebSphere Application Server involves adjusting the configuration of your application to specify the desired version of the Java Persistence API (JPA). Here’s a step-by-step guide:
+
+---
+
+### 1. **Determine the Target JPA Version**
+   - WebSphere supports specific JPA versions based on its Java EE version. For example:
+     - **WebSphere 8.5.5**: Supports JPA 2.0 (Java EE 6) and JPA 2.1 (Java EE 7).
+     - **WebSphere 9.0**: Supports JPA 2.1 and JPA 2.2 (Java EE 8).
+   - Ensure that your application and its dependencies are compatible with the desired JPA version.
+
+---
+
+### 2. **Update `persistence.xml`**
+   - In your EAR application, locate the `persistence.xml` file in the `META-INF` directory of the JAR or WAR module containing your persistence units.
+   - Update the `version` attribute in the `<persistence>` tag to match the desired JPA version:
+     ```xml
+     <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.1">
+         <persistence-unit name="myPersistenceUnit">
+             ...
+         </persistence-unit>
+     </persistence>
+     ```
+   - For JPA 2.2, the version should be `2.2`. For JPA 2.0, use `2.0`.
+
+---
+
+### 3. **Specify the JPA API Level in WebSphere**
+   WebSphere allows you to set the JPA API version at the server or application level.
+
+   #### Option 1: Set at the Server Level
+   1. Log in to the WebSphere Administrative Console.
+   2. Navigate to **Applications** > **Application Types** > **WebSphere enterprise applications**.
+   3. Click on your EAR application.
+   4. Go to **Classloader and JPA settings** > **JPA settings**.
+   5. Select the appropriate JPA implementation version (e.g., `2.1` or `2.2`) from the dropdown.
+   6. Save your changes and restart the application or the server.
+
+   #### Option 2: Set at the Application Level
+   1. Edit the `ibm-application-bnd.xml` or `ibm-application-ext.xml` file in your EAR application.
+   2. Add a configuration entry to specify the JPA version:
+      ```xml
+      <application xmlns="http://websphere.ibm.com/xml/ns/javaee" version="1.0">
+          <application-extension>
+              <persistence-api version="2.1"/>
+          </application-extension>
+      </application>
+      ```
+   3. Repackage and redeploy the EAR application.
+
+---
+
+### 4. **Verify the JPA Provider**
+   - Ensure that the JPA provider (e.g., Hibernate, EclipseLink) used in your application is compatible with the chosen JPA version.
+   - If you're using a custom JPA provider, include its library files in the application's `lib` folder or configure a shared library in WebSphere.
+
+---
+
+### 5. **Repackage and Redeploy the EAR**
+   - Rebuild the EAR application with the updated configurations.
+   - Deploy it to WebSphere and ensure there are no errors during deployment.
+
+---
+
+### 6. **Test the Application**
+   - Verify that the application works as expected and that the desired JPA version is being used.
+   - You can enable WebSphere server logs to confirm the JPA provider and version.
+
+---
+
+Let me know if you need assistance with a specific step!
