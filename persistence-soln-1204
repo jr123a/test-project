@@ -1,0 +1,119 @@
+The error you're encountering occurs because the JPA entity class `LookupCodesEnv` does not have a primary key defined, which is mandatory for any JPA entity. Here's how to resolve this issue:
+
+---
+
+### 1. **Define a Primary Key in the Entity**
+Ensure that the entity `com.ips.entity.LookupCodesEnv` includes a field annotated with one of the following:
+   - `@Id`: For a single-field primary key.
+   - `@EmbeddedId`: For a composite primary key using an embedded object.
+   - `@IdClass`: For a composite primary key using a separate class.
+
+#### Example for a Single-Field Primary Key
+```java
+@Entity
+public class LookupCodesEnv {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // Optional: for auto-generation
+    private Long id;
+
+    private String name;
+
+    // Getters and setters
+}
+```
+
+#### Example for a Composite Key with `@EmbeddedId`
+Create an embeddable key class:
+```java
+@Embeddable
+public class LookupCodesEnvPK {
+    private String code;
+    private String environment;
+
+    // Getters, setters, equals, and hashCode methods
+}
+```
+
+Update the entity:
+```java
+@Entity
+public class LookupCodesEnv {
+
+    @EmbeddedId
+    private LookupCodesEnvPK id;
+
+    private String description;
+
+    // Getters and setters
+}
+```
+
+---
+
+### 2. **Check for Mixed Access Types**
+Ensure that all annotations (`@Id`, `@Column`, etc.) are consistently applied to either fields or getter methods in the class. Mixing both styles can lead to validation issues.
+
+#### Consistent Field Access
+```java
+@Entity
+public class LookupCodesEnv {
+    @Id
+    private Long id; // Field access
+
+    private String name;
+}
+```
+
+#### Consistent Property Access
+```java
+@Entity
+public class LookupCodesEnv {
+    private Long id;
+    
+    @Id
+    public Long getId() { // Property access
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+}
+```
+
+---
+
+### 3. **Validate the Persistence Unit**
+Ensure the `persistence.xml` file correctly references the entity class:
+```xml
+<persistence>
+    <persistence-unit name="RemoteRestPUN">
+        <class>com.ips.entity.LookupCodesEnv</class>
+        <!-- Other configurations -->
+    </persistence-unit>
+</persistence>
+```
+
+---
+
+### 4. **Rebuild and Redeploy**
+After making the above changes:
+1. Rebuild the application.
+2. Redeploy the EAR or WAR file to the WebSphere server.
+3. Restart the application server.
+
+---
+
+### 5. **Debugging Tips**
+- If the issue persists, enable detailed logging for EclipseLink in `persistence.xml`:
+   ```xml
+   <properties>
+       <property name="eclipselink.logging.level" value="FINE"/>
+   </properties>
+   ```
+- Check WebSphere logs for additional context about the error.
+
+---
+
+By following these steps, you should resolve the error and successfully deploy your application. Let me know if further assistance is needed!
