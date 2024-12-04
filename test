@@ -1,1 +1,40 @@
-test
+Internal Exception: javax.persistence.PersistenceException: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7161] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.LookupCodesEnv] has no primary key specified. It should define either an @Id, @EmbeddedId or an @IdClass. If you have defined PK using any of these annotations then make sure that you do not have mixed access-type (both fields and properties annotated) in your entity class hierarchy.
+	at org.eclipse.persistence.exceptions.PersistenceUnitLoadingException.exceptionSearchingForPersistenceResources(PersistenceUnitLoadingException.java:127)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactoryImpl(PersistenceProvider.java:111)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactory(PersistenceProvider.java:183)
+	at javax.persistence.Persistence.createEntityManagerFactory(Persistence.java:79)
+	at org.springframework.orm.jpa.LocalEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalEntityManagerFactoryBean.java:86)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:409)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:396)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1863)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1800)
+	... 132 more
+Caused by: javax.persistence.PersistenceException: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7161] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.LookupCodesEnv] has no primary key specified. It should define either an @Id, @EmbeddedId or an @IdClass. If you have defined PK using any of these annotations then make sure that you do not have mixed access-type (both fields and properties annotated) in your entity class hierarchy.
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.createPredeployFailedPersistenceException(EntityManagerSetupImpl.java:2070)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.predeploy(EntityManagerSetupImpl.java:2061)
+	at org.eclipse.persistence.internal.jpa.deployment.JPAInitializer.callPredeploy(JPAInitializer.java:103)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactoryImpl(PersistenceProvider.java:100)
+	... 139 more
+Caused by: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7161] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.LookupCodesEnv] has no primary key specified. It should define either an @Id, @EmbeddedId or an @IdClass. If you have defined PK using any of these annotations then make sure that you do not have mixed access-type (both fields and properties annotated) in your entity class hierarchy.
+	at org.eclipse.persistence.exceptions.EntityManagerSetupException.predeployFailed(EntityManagerSetupException.java:231)
+	... 143 more
+Caused by: Exception [EclipseLink-7161] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.LookupCodesEnv] has no primary key specified. It should define either an @Id, @EmbeddedId or an @IdClass. If you have defined PK using any of these annotations then make sure that you do not have mixed access-type (both fields and properties annotated) in your entity class hierarchy.
+	at org.eclipse.persistence.exceptions.ValidationException.noPrimaryKeyAnnotationsFound(ValidationException.java:1425)
+	at org.eclipse.persistence.internal.jpa.metadata.accessors.classes.EntityAccessor.validatePrimaryKey(EntityAccessor.java:1542)
+	at org.eclipse.persistence.internal.jpa.metadata.accessors.classes.EntityAccessor.processMappingAccessors(EntityAccessor.java:1249)
+	at org.eclipse.persistence.internal.jpa.metadata.accessors.classes.EntityAccessor.process(EntityAccessor.java:699)
+	at org.eclipse.persistence.internal.jpa.metadata.MetadataProject.processStage2(MetadataProject.java:1872)
+	at org.eclipse.persistence.internal.jpa.metadata.MetadataProcessor.processORMMetadata(MetadataProcessor.java:573)
+	at org.eclipse.persistence.internal.jpa.deployment.PersistenceUnitProcessor.processORMetadata(PersistenceUnitProcessor.java:605)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.predeploy(EntityManagerSetupImpl.java:1982)
+	... 141 more
