@@ -1,0 +1,85 @@
+The errors in the log are related to **EclipseLink persistence mappings**, specifically multiple writable mappings for the same database field. In JPA (Java Persistence API), a database column can only have **one writable mapping** across the entire entity model, and additional mappings must be explicitly set as **read-only**.
+
+### Key Issues and Solutions
+
+#### 1. **"Multiple Writable Mappings Exist for the Field"**
+   - This error occurs when multiple entity attributes are mapped to the same database column, and more than one of these mappings is marked as writable.
+   - For example:
+     ```java
+     @Column(name = "REASON_CODE")
+     private String reasonCode;
+
+     @ManyToOne
+     @JoinColumn(name = "REASON_CODE")
+     private Reason reason;
+     ```
+     Here, both mappings reference the same column (`REASON_CODE`), but neither is marked as read-only.
+
+   - **Solution**:
+     - Set one mapping as writable and all others as read-only using `@ReadOnly`.
+     - Example fix:
+       ```java
+       @Column(name = "REASON_CODE")
+       private String reasonCode;
+
+       @ManyToOne
+       @JoinColumn(name = "REASON_CODE")
+       @ReadOnly
+       private Reason reason;
+       ```
+
+---
+
+#### 2. **Identify Conflicting Mappings**
+   - From the logs, the problematic fields are clearly listed, such as:
+     - `rp_equifax_final_reason_codes.REASON_CODE`
+     - `rp_lexisnexis_result.EVENT_ID`
+     - `person_data.PERSON_ID`
+     - And others.
+
+   - **Steps to Resolve**:
+     1. Locate the entities associated with these fields (e.g., `RpEquifaxFinalReasonCode`, `RpLexisNexisResult`).
+     2. Review all mappings to the listed columns in your entities.
+     3. For columns with multiple mappings, decide which should be writable and set all others as read-only.
+
+---
+
+#### 3. **EclipseLink-Specific Annotations**
+   - Use EclipseLink-specific annotations like `@ReadOnly` or modify the descriptor programmatically in the session configuration if necessary.
+
+---
+
+#### 4. **Example Debugging Process**
+   - For `rp_equifax_final_reason_codes.REASON_CODE`:
+     - Check the `RpEquifaxFinalReasonCode` entity:
+       ```java
+       @Entity
+       @Table(name = "rp_equifax_final_reason_codes")
+       public class RpEquifaxFinalReasonCode {
+           @Column(name = "REASON_CODE")
+           private String reasonCode;
+
+           @ManyToOne
+           @JoinColumn(name = "REASON_CODE")
+           private Reason reason;
+       }
+       ```
+     - Fix the mapping:
+       ```java
+       @ManyToOne
+       @JoinColumn(name = "REASON_CODE")
+       @ReadOnly
+       private Reason reason;
+       ```
+
+---
+
+#### 5. **Test and Validate**
+   - After making changes:
+     1. Redeploy the application.
+     2. Ensure that data retrieval and persistence operations work as expected.
+     3. Monitor the logs to confirm the issue is resolved.
+
+---
+
+If you share more details about the specific entity classes or configurations, I can provide tailored guidance.
