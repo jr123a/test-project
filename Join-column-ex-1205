@@ -1,0 +1,40 @@
+Internal Exception: javax.persistence.PersistenceException: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7157] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.IdVerifyServiceRequest] must use a @JoinColumn instead of @Column to map its relationship attribute [statusId].
+	at org.eclipse.persistence.exceptions.PersistenceUnitLoadingException.exceptionSearchingForPersistenceResources(PersistenceUnitLoadingException.java:127)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactoryImpl(PersistenceProvider.java:111)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactory(PersistenceProvider.java:183)
+	at javax.persistence.Persistence.createEntityManagerFactory(Persistence.java:79)
+	at org.springframework.orm.jpa.LocalEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalEntityManagerFactoryBean.java:86)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:409)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:396)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1863)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1800)
+	... 106 more
+Caused by: javax.persistence.PersistenceException: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7157] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.IdVerifyServiceRequest] must use a @JoinColumn instead of @Column to map its relationship attribute [statusId].
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.createPredeployFailedPersistenceException(EntityManagerSetupImpl.java:2070)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.predeploy(EntityManagerSetupImpl.java:2061)
+	at org.eclipse.persistence.internal.jpa.deployment.JPAInitializer.callPredeploy(JPAInitializer.java:103)
+	at org.eclipse.persistence.jpa.PersistenceProvider.createEntityManagerFactoryImpl(PersistenceProvider.java:100)
+	... 113 more
+Caused by: Exception [EclipseLink-28018] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.EntityManagerSetupException
+Exception Description: Predeployment of PersistenceUnit [RemoteRestPUN] failed.
+Internal Exception: Exception [EclipseLink-7157] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.IdVerifyServiceRequest] must use a @JoinColumn instead of @Column to map its relationship attribute [statusId].
+	at org.eclipse.persistence.exceptions.EntityManagerSetupException.predeployFailed(EntityManagerSetupException.java:231)
+	... 117 more
+Caused by: Exception [EclipseLink-7157] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Entity class [class com.ips.entity.IdVerifyServiceRequest] must use a @JoinColumn instead of @Column to map its relationship attribute [statusId].
+	at org.eclipse.persistence.exceptions.ValidationException.invalidColumnAnnotationOnRelationship(ValidationException.java:1172)
+	at org.eclipse.persistence.internal.jpa.metadata.accessors.mappings.RelationshipAccessor.process(RelationshipAccessor.java:680)
+	at org.eclipse.persistence.internal.jpa.metadata.accessors.mappings.ManyToOneAccessor.process(ManyToOneAccessor.java:116)
+	at org.eclipse.persistence.internal.jpa.metadata.MetadataProject.processOwningRelationshipAccessors(MetadataProject.java:1659)
+	at org.eclipse.persistence.internal.jpa.metadata.MetadataProject.processStage3(MetadataProject.java:1912)
+	at org.eclipse.persistence.internal.jpa.metadata.MetadataProcessor.processORMMetadata(MetadataProcessor.java:577)
+	at org.eclipse.persistence.internal.jpa.deployment.PersistenceUnitProcessor.processORMetadata(PersistenceUnitProcessor.java:605)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl.predeploy(EntityManagerSetupImpl.java:1982)
+
