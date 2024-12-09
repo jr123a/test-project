@@ -1,0 +1,72 @@
+To remove **EclipseLink** as the persistence provider in your application or environment, you need to adjust configuration settings and dependencies accordingly. Here’s a step-by-step guide:
+
+---
+
+### **1. Update `persistence.xml`**
+The `persistence.xml` file determines the JPA provider for your application. Locate and edit this file to remove EclipseLink as the provider.
+
+- **Current configuration (with EclipseLink):**
+  ```xml
+  <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+  ```
+
+- **Updated configuration (replace with your desired provider):**
+  For example, to use Hibernate:
+  ```xml
+  <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+  ```
+
+If no `provider` tag is specified, the application server may use its default provider.
+
+---
+
+### **2. Remove EclipseLink Dependencies**
+Ensure that the EclipseLink libraries are no longer included in your application:
+
+- **Maven Projects**: Remove EclipseLink from the `pom.xml`.
+  ```xml
+  <dependency>
+      <groupId>org.eclipse.persistence</groupId>
+      <artifactId>eclipselink</artifactId>
+      <version>2.x.x</version>
+  </dependency>
+  ```
+
+- **Non-Maven Projects**: Delete the `eclipselink.jar` and any related JARs from the classpath (`WEB-INF/lib` or server-specific library folders).
+
+---
+
+### **3. Replace the JPA Provider Library**
+If you’re switching to a new provider like Hibernate:
+
+- Add the necessary library dependencies (e.g., `hibernate-core.jar` or its Maven equivalent).
+- Ensure the new provider's library is correctly placed in the classpath or application package.
+
+---
+
+### **4. Check Application Server Settings**
+In **WebSphere Application Server (WAS)**, EclipseLink might be registered globally or for a specific application. You need to update these settings:
+
+1. **Log into the WAS Administrative Console**.
+2. Navigate to **Resources > JPA Providers**.
+3. Look for an entry associated with EclipseLink. If it exists:
+   - Remove it or ensure it's no longer referenced by your application.
+   - Register a new provider, if necessary.
+4. Check your application's specific configuration under **Applications > [Your Application] > Class loader and JPA settings**.
+
+---
+
+### **5. Validate and Test**
+After making the changes:
+- Redeploy the application to ensure that EclipseLink is no longer being used.
+- Monitor server logs for any indication that EclipseLink is loaded.
+- Test database operations to verify the new provider works as expected.
+
+---
+
+### **6. Optional: Verify Server Default Provider**
+If you do not specify a provider in the `persistence.xml`, the application server may default to its built-in provider. In WebSphere:
+- Check the global settings to ensure the server's default provider is not EclipseLink.
+- Update the default JPA provider in the administrative console if needed.
+
+By following these steps, you can successfully remove EclipseLink as the persistence provider and transition to another JPA implementation.
