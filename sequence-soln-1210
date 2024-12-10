@@ -1,0 +1,60 @@
+If you need to create a sequence that continues from the last value in a specific column or table, follow these steps:
+
+---
+
+### 1. **Find the Last Value**
+   Run a query to find the maximum value from the relevant column or table:
+   ```sql
+   SELECT MAX(your_column) AS last_value FROM your_table;
+   ```
+   - Replace `your_column` with the name of the column where the sequence values are stored.
+   - Replace `your_table` with the table name.
+
+   Example result:
+   ```
+   LAST_VALUE
+   ----------
+   125
+   ```
+
+---
+
+### 2. **Create the Sequence Starting from the Last Value**
+   Use the retrieved `LAST_VALUE` as the starting point for the sequence. For example, if the last value is `125`, create the sequence like this:
+   ```sql
+   CREATE SEQUENCE SEQ_GEN_IDENTITY
+       START WITH 126  -- Start from the next value
+       INCREMENT BY 1  -- Increment by 1 for each call
+       NOCACHE  -- Optional: Avoid caching sequence values
+       NOCYCLE;  -- Optional: Prevent the sequence from restarting
+   ```
+
+---
+
+### 3. **Verify the Sequence**
+   After creating the sequence, test it to ensure it generates the correct values:
+   ```sql
+   SELECT SEQ_GEN_IDENTITY.NEXTVAL FROM DUAL;
+   ```
+
+   - The result should be `126`, `127`, and so on.
+
+---
+
+### 4. **Reassign Existing Records (Optional)**
+   If there are records with missing or invalid IDs in your table, you may need to update them using the sequence:
+   ```sql
+   UPDATE your_table
+   SET your_column = SEQ_GEN_IDENTITY.NEXTVAL
+   WHERE your_column IS NULL;
+   ```
+
+---
+
+### 5. **Grant Permissions (If Required)**
+   If your application uses a different database user, ensure it has access to the sequence:
+   ```sql
+   GRANT SELECT ON SEQ_GEN_IDENTITY TO APPLICATION_USER;
+   ```
+
+Would you like help with the exact SQL based on your table and column names?
