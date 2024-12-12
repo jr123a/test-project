@@ -1,0 +1,146 @@
+To verify if the correct `MessageBodyReader` is being loaded during a WebSphere server startup, you can follow these steps:
+
+---
+
+### 1. **Enable Debug Logging for JAX-RS**
+
+WebSphere supports enabling detailed logging for JAX-RS and related components. Use this to see which providers (including `MessageBodyReader` instances) are registered during startup.
+
+#### Steps:
+1. Log in to the WebSphere Administrative Console.
+2. Go to **Troubleshooting > Logs and Trace**.
+3. Select your server and click **Diagnostic Trace**.
+4. Add the following logging components to enable detailed tracing for JAX-RS:
+   - `com.ibm.ws.jaxrs.*=all`
+   - `javax.ws.rs.*=all`
+
+5. Save and restart the server.
+
+After enabling tracing, examine the logs for messages related to provider discovery and registration. Look for entries like:
+```
+Registered MessageBodyReader: <your.custom.MessageBodyReader>
+```
+
+---
+
+### 2. **Test with a Simple Endpoint**
+
+Create a test endpoint in your JAX-RS application to confirm that the `MessageBodyReader` is being used. For example:
+
+```java
+@Path("/test")
+public class TestResource {
+
+    @POST
+    @Consumes("application/json")
+    public Response testEndpoint(JSONObject input) {
+        return Response.ok("Received: " + input).build();
+    }
+}
+```
+
+Deploy the application and send a POST request with a JSON payload to `/test`. If the custom `MessageBodyReader` is loaded and invoked, you should see relevant log entries.
+
+---
+
+### 3. **Add Debugging Logs in the MessageBodyReader**
+
+Add logging statements in your custom `MessageBodyReader` implementation to confirm it is being loaded and used. For example:
+
+```java
+@Provider
+@Consumes("application/json")
+public class JSONObjectMessageBodyReader implements MessageBodyReader<JSONObject> {
+
+    @Override
+    public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, javax.ws.rs.core.MediaType mediaType) {
+        System.out.println("Checking if JSONObjectMessageBodyReader can read type: " + type);
+        return JSONObject.class.isAssignableFrom(type) && mediaType.toString().equalsIgnoreCase("application/json");
+    }
+
+    @Override
+    public JSONObject readFrom(Class<JSONObject> type,
+                               Type genericType,
+                               Annotation[] annotations,
+                               javax.ws.rs.core.MediaType mediaType,
+                               javax.ws.rs.core.MultivaluedMap<String, String> httpHeaders,
+                               InputStream entityStream) throws IOException {
+        System.out.println("Invoking JSONObjectMessageBodyReader.readFrom...");
+        try (Reader reader = new BufferedReader(new InputStreamReader(entityStream))) {
+            return JSONObject.parse(reader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON to JSONObject", e);
+        }
+    }
+}
+```
+
+Check the server logs for the above messages when a request is processed.
+
+---
+
+### 4. **Use the JAX-RS Application Configurator**
+
+Ensure your `MessageBodyReader` is registered explicitly if automatic scanning does not work:
+
+```java
+@ApplicationPath("/api")
+public class MyApplication extends Application {
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> classes = new HashSet<>();
+        classes.add(JSONObjectMessageBodyReader.class);
+        return classes;
+    }
+}
+```
+
+---
+
+### 5. **Verify Through WebSphere Admin Console**
+
+In WebSphere, you can check if JAX-RS providers are loaded by inspecting the runtime configuration:
+
+1. Navigate to **Applications > Application Types > WebSphere Enterprise Applications**.
+2. Locate your deployed application and view its properties.
+3. Under **JAX-RS Provider Configuration**, you can see the registered providers.
+
+---
+
+### 6. **Analyze Classloader Behavior**
+
+If the custom `MessageBodyReader` is not being registered, it might be due to a classloader issue. Ensure:
+- The custom provider class is included in the application’s `WEB-INF/classes` or `WEB-INF/lib`.
+- The correct classloader policy is set for your application. Go to **Classloading and Update Detection** in the WebSphere Admin Console and set the policy to **Parent Last**.
+
+---
+
+### 7. **Use IBM Support Tools**
+
+WebSphere provides tools like **IBM Class Loader Viewer** or **Classloader Trace** to troubleshoot classloader issues, which might affect provider registration.
+
+- Enable class loader trace:
+  ```
+  com.ibm.ws.classloader=all
+  ```
+
+- Use the Class Loader Viewer to verify that the correct `MessageBodyReader` is being loaded.
+
+---
+
+### Expected Logs
+
+Look for logs indicating the registration of your custom `MessageBodyReader`:
+
+```
+Registered MessageBodyReader: com.example.providers.JSONObjectMessageBodyReader
+```
+
+And during runtime, confirm it is being invoked:
+
+```
+Checking if JSONObjectMessageBodyReader can read type: class com.ibm.json.java.JSONObject
+Invoking JSONObjectMessageBodyReader.readFrom...
+```
+
+These logs confirm the provider is properly registered and functioning.
