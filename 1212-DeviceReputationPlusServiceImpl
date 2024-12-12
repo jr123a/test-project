@@ -1,0 +1,887 @@
+package com.ips.service;
+
+import java.io.InputStream;
+import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Properties;
+import java.util.UUID;
+
+import javax.faces.context.FacesContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import javax.ws.rs.core.MediaType;
+import javax.xml.bind.DatatypeConverter;
+
+//import com.google.gson.JsonObject;
+//import org.apache.wink.json4j.JSONObject;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.wink.client.ClientConfig;
+import org.apache.wink.client.Resource;
+import org.apache.wink.client.RestClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.google.gson.Gson;
+import com.ibm.json.java.JSONObject;
+import com.ips.common.common.AliasVo;
+import com.ips.common.common.ApplicationConstants;
+import com.ips.common.common.CustomLogger;
+import com.ips.common.common.DeviceReviewStatusEnum;
+import com.ips.common.common.Utils;
+import com.ips.dao.RefDeviceConfidenceDao;
+import com.ips.entity.Person;
+import com.ips.entity.RefApp;
+import com.ips.entity.RefDeviceConfidence;
+import com.ips.entity.RefRpStatus;
+import com.ips.entity.RefRpStatus.RpStatus;
+import com.ips.entity.RefSponsor;
+import com.ips.entity.RefSponsorConfiguration;
+import com.ips.entity.RpDeviceReputation;
+import com.ips.entity.RpFeatureAttempt;
+import com.ips.entity.RpProofingSession;
+import com.ips.exception.IPSException;
+import com.ips.persistence.common.CountryCode;
+import com.ips.persistence.common.DeviceAssessmentParamVo;
+import com.ips.persistence.common.DeviceReputationVo;
+import com.ips.persistence.common.IPSConstants;
+import com.ips.persistence.common.PersonVo;
+import com.ips.proofing.CommonRestServiceImpl;
+import com.ips.proofing.ProofingService;
+import com.lexisnexis.ns.identity_proofing._1.RdpAddressModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpBusinessModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpCustomDataModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpDeviceAssessmentModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpDeviceAssessmentRequestModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpDeviceAssessmentResponseModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpPassThroughModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpPassThroughResponseSummaryModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpPersonModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpPersonNameModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpPhoneModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpReasonCodeModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpSettingsModel;
+import com.lexisnexis.ns.identity_proofing._1.RdpStatusModel;
+import com.usps.net2x.entreg.data.EntRegUserLOAAssertion;
+import com.usps.net2x.entreg.data.EntRegUserLOADeviceReputationResults;
+
+@Service("deviceReputationPlusService")
+public class DeviceReputationPlusServiceImpl implements Serializable, DeviceReputationPlusService {
+
+
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 1L;
+
+    @Autowired
+    private RefDeviceConfidenceDao confidenceDao;
+    @Autowired
+    private CustRegService custRegService;
+    @Autowired
+    private DeviceReputationService deviceReputationService;
+    @Autowired
+    private PersonDataService personService;
+    @Autowired
+    private RefAppService refAppService;
+    @Autowired
+    private RefSponsorConfigurationService refSponsorConfigService;    
+    @Autowired
+    private RpDeviceReputationService rpDeviceReputationService;
+    @Autowired
+    private RpFeatureAttemptService rpFeatureAttemptService;
+    @Autowired
+    private RpProofingSessionDataService rpProofingSessionService;
+    @Autowired
+    private ProofingService proofingService;
+     
+    private static String propHost;
+    private static String propPort;
+    private static String resourceUrl;
+
+    private static final String JSON_HEADER = "Authorization";
+    private static final String PROXY_HOST_PROP_NAME = "com.ipsweb.ln.proxyHost";
+    private static final String PROXY_PORT_PROP_NAME = "com.ipsweb.proxyPort";
+    private static final String URL_PROP_NAME_BCG = "com.ipsweb.LexisNexisDevice.BusinessCustomerGateway";
+    private static final String ORG_ID_PROP_NAME = "com.ipsweb.TmxUspsOrgId";
+    private static final String ERROR_MSG_READING_PROP = "Error occured reading from properties file.";
+    
+    private static final String RESOURCE_STREAM_PATH = "/ips.properties";
+    private static final String SESSION_ID_FORMAT = "%s-%s";
+    private static final String AUTH_ENCODE_FORMAT = "Basic %s";
+    private static final String DATA_TYPE_CONVERTER_FORMAT = "%s:%s";
+    private static final String SPONSOR_CONFIG_VALUE_TRUE = "True";
+    private static final String PASS_THROUGH_TYPE = "device.assessment";
+    private static final String REQUEST_TRANSACTION_TYPE = "Initiate";
+    private static final String DEVICE_ASSESSMENT_PROVIDER = "threat.metrix";
+    private static final String SETTING_MODE = "live";
+    private static final String SETTING_REFERENCE = "REST_Transaction";
+    private static final String SETTING_LOCALE = "en_US";
+    private static final String SETTING_VENUE = "online";
+    private static final String ADDRESS_COUNTRY_US = "US";
+    private static final String SETTING_CONTEXT = "primary";
+    private static final String PHONE_CONTEXT_MOBILE = "mobile";
+    private static final String PHONE_CONTEXT_BUSINESS = "business";
+    private static final String CUSTOM_DATA_TYPE = "device_assessment";
+    private static final String CUSTOM_DATA2 = "CustomData2";
+    private static final String CUSTOM_DATA3 = "CustomData3";
+    private static final String CUSTOM_DATA4 = "CustomData4";
+    private static final String SESSION_ID_KEY = "SessionID";
+    private static final String FEATURE_DEVICE_REPUTATION = "Device Reputation";
+    private static final String STATUS_FAILED = "failed";
+    private static final String STATUS_ERROR = "error";
+    public static final String PROD_TYPE_VELOCITY = "Velocity";
+    public static final String PROD_TYPE_DISCOVERY = "Discovery";
+    public static final String PROD_TYPE_DEVICE_ASSESSMENT = "DeviceAssessment";
+    public static final String PROD_TYPE_DEVICE_ASSESSMENT_DECISION = "DeviceAssessment_Decision";
+    public static final String PROD_TYPE_EMAIL_RISK = "EmailRisk";
+    public static final String PROD_TYPE_EMAIL_RISK_DECISION = "EmailRisk_Decision";
+    private static final String REQUEST_JSON_FMT = "Request Json: %s";
+    private static final String RESPONSE_JSON_FMT = "Response Json: %s";
+    private static final String SEND_REQUEST_URL_FMT = "SendRequest URL: %s";
+    private static final String RESOURCE_URL_URL_FMT = " Resource URL: %s"; 
+
+    private static final int MAX_ATTEMPTS_COUNT = 100;
+    
+    /******* Initialization Methods *******/
+    
+    @Override
+    public String getProfilingSessionId(String sponsorUserId){
+        CustomLogger.enter(this.getClass());
+        
+        HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest();
+        HttpSession session = request.getSession();
+        String sessionId = "";
+        
+        if (sponsorUserId != null) {
+	        sessionId = (String) request.getSession().getAttribute(sponsorUserId + SESSION_ID_KEY);
+	
+	        if (sessionId != null) {
+	            CustomLogger.info(this.getClass(), "Device reputation: retrieving previous profiling session id=" + sessionId + " for sponsorUserId=" + sponsorUserId);
+	            return sessionId;
+	        }
+	        else {    
+	        	sessionId = generateSessionId();
+	            session.setAttribute(sponsorUserId + SESSION_ID_KEY, sessionId);
+	
+	            CustomLogger.info(this.getClass(), "Device reputation: generating and storing new profiling session id=" + sessionId + " for sponsorUserId=" + sponsorUserId);
+	        }
+        }
+        else {
+        	sessionId = generateSessionId();
+        }
+
+        return sessionId;
+    }
+    
+    private String generateSessionId(){
+        CustomLogger.enter(this.getClass());
+  
+        String randomId = UUID.randomUUID().toString();
+        String[] uuidParts = randomId.split("-");
+        String upperCasePart = uuidParts[uuidParts.length - 1].toUpperCase();
+        
+        return String.format(SESSION_ID_FORMAT,  upperCasePart, randomId.substring(0, randomId.lastIndexOf('-')));
+     }
+    
+    @Override
+    public String retrieveOrgId(String sponsorUserId){
+        CustomLogger.enter(this.getClass());
+        
+        String orgId = "";
+        try {
+            Properties prop = getProperties();
+            String environment = Utils.getEnvironment();
+
+            String propName = environment.concat(ORG_ID_PROP_NAME);        
+            orgId = prop.getProperty(propName);
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on retrieving org id for user: " + sponsorUserId, e);
+        }
+
+        return orgId;
+    }
+    
+    /******* Methods for Getting Device Review Status *******/
+       
+    @Override
+    public DeviceAssessmentParamVo createDeviceReputationResult(Person person, PersonVo personVo, DeviceAssessmentParamVo deviceAssessmentPlusVo, RdpDeviceAssessmentRequestModel rdpRequest) {
+ 
+        DeviceReviewStatusEnum deviceReviewStatus = DeviceReviewStatusEnum.REVIEW;
+        deviceAssessmentPlusVo.setDeviceReviewStatus(deviceReviewStatus);
+         
+       	proofingService.updateProofingStatus(RpStatus.Device_email_assessment_initiated.getValue(), person, personVo.getProofingLevelSought());
+       
+        try {        
+            RdpDeviceAssessmentResponseModel queryResponseModel = getRdpDeviceAssessmentResponseModel(personVo, deviceAssessmentPlusVo, rdpRequest);
+            RdpStatusModel statusModel = null;
+            boolean transactionStatusFailed = true;
+            
+            if (queryResponseModel != null) {
+                statusModel  = queryResponseModel.getStatus();
+ 
+                if (statusModel != null) { 
+                  	String transactionStatus = statusModel.getTransactionStatus();
+                  	transactionStatusFailed = STATUS_FAILED.equalsIgnoreCase(transactionStatus) || STATUS_ERROR.equalsIgnoreCase(transactionStatus);
+                    deviceAssessmentPlusVo.setTransactionStatus(transactionStatus);
+                    deviceAssessmentPlusVo.setConversationId(statusModel.getConversationId());
+                    deviceAssessmentPlusVo.setRequestId(statusModel.getRequestId());
+                    deviceAssessmentPlusVo.setTransactionStatusFailed(transactionStatusFailed);
+
+                    RdpReasonCodeModel reasonCode = statusModel.getTransactionReasonCode();
+                    if (reasonCode != null) {
+                    	deviceAssessmentPlusVo.setStatusDecisionReason(reasonCode);
+                    }
+                }
+                else {
+                    CustomLogger.error(this.getClass(), "DeviceReputation error: Response status block missing from TMX device assessment response.");
+                }
+       
+                Long statusCode = transactionStatusFailed? RpStatus.Device_email_assessment_failed.getValue() : RpStatus.Device_email_assessment_passed.getValue();
+                proofingService.updateProofingStatus(statusCode, person, personVo.getProofingLevelSought());
+
+                deviceReputationService.saveDeviceReputationAssessmentResponse(person, personVo, deviceAssessmentPlusVo);
+            }
+            else {
+               	//Create RpDeviceReputation if RdpDeviceAssessmentResponseModel is null
+               	recordDeviceAssessmentAttempt(person, DeviceReviewStatusEnum.REVIEW, deviceAssessmentPlusVo);
+
+                CustomLogger.error(this.getClass(), "DeviceReputation error: RdpDeviceAssessmentResponse block missing from TMX device assessment response.");
+            }
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on assessing device reputation score for user: " + personVo.getSponsorUserId(), e);
+        }
+        
+        return deviceAssessmentPlusVo;
+    }
+    
+    private List<String> getIncludedParameterNames() {
+    	String paramNames = "Email,RiskReason,RiskAttributeLevel,RiskActivityLevel,NumberIdentitiesLinked,EmailStatus,SMFriends,"
+    			+ "Totalhits,UniqueHits,EmailExists,Company,DomainName,DomainCompany,DomainCountryName,DomainCategory,DomainCorporate,DomainRiskLevel,"
+    			+ "DomainRelevantInfo,DomainCountryRiskIndicator,DomainCreationDays,SocialMediaAssociation,RiskAttributeLevelID";
+    	String[] paramNamesArray = paramNames.split(",");
+    			
+    	List<String> paramNamesList = Arrays.asList(paramNamesArray);
+    	return paramNamesList;
+    }
+    
+    @Override
+    public RpDeviceReputation getExistingRpDeviceReputationBySessionId(String sessionId) {
+        CustomLogger.enter(this.getClass());
+
+        RpDeviceReputation deviceReputation = null;
+        
+        try {        
+            deviceReputation = rpDeviceReputationService.getBySessionId(sessionId);    
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on checking existing device reputation record by session id.", e);
+        }    
+        return deviceReputation;
+    }
+    
+    @Override
+    public DeviceReviewStatusEnum getDeviceReviewStatus(RpDeviceReputation deviceReputation) {
+        CustomLogger.enter(this.getClass());
+        DeviceReviewStatusEnum reviewStatus = null;
+        
+        try {        
+            if (deviceReputation != null) {
+                RefDeviceConfidence deviceConfidence = deviceReputation.getRefDeviceConfidence();
+                if (deviceConfidence!= null) {
+                    String reputationAssessment = deviceConfidence.getReputationAssessment();                        
+                    reviewStatus = DeviceReviewStatusEnum.lookupByReputationAssessment(reputationAssessment);
+                }
+            }            
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on checking existing device reputation status.", e);
+        }
+        return reviewStatus;
+    }
+    
+    @Override
+    public RdpPassThroughResponseSummaryModel getPassThroughResponseSummary(RdpDeviceAssessmentResponseModel queryResponseModel, 
+            RdpStatusModel statusModel, PersonVo personVo, DeviceAssessmentParamVo deviceAssessmentPlusVo) {
+        CustomLogger.enter(this.getClass());
+
+        RdpPassThroughResponseSummaryModel  ptSummary = null;
+        
+        try {        
+            if (queryResponseModel != null) {
+                String conversationId = statusModel.getConversationId();            
+
+                ptSummary = getPassThroughResponseDeviceAssessmentSummary(queryResponseModel, deviceAssessmentPlusVo);    
+                
+                if (ptSummary != null) {
+                    ptSummary.setConversationId(conversationId);
+                }
+             }
+            
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on getting PassThroughResponseSummary for user: " + personVo.getSponsorUserId(), e);
+        }
+        
+        return ptSummary;
+    }
+    
+    @Override
+    public void recordDeviceAssessmentAttempt(Person person, DeviceReviewStatusEnum reviewStatus, DeviceAssessmentParamVo assessmentVo) {
+        CustomLogger.enter(this.getClass());        
+
+        try {
+            RpDeviceReputation deviceReputation =  new RpDeviceReputation();
+
+            RefDeviceConfidence deviceConfidence = confidenceDao.getByReputationAssessment(reviewStatus.getReputationAssessment());
+            RefApp refApp = refAppService.findByAppName(assessmentVo.getCallingAppName());
+            Timestamp currentDateTime = new Timestamp(new Date().getTime());
+
+            deviceReputation.setPerson(person);
+            deviceReputation.setRefDeviceConfidence(deviceConfidence);
+            deviceReputation.setRefApp(refApp);    
+            deviceReputation.setMobilePhoneNumber(assessmentVo.getMobilePhoneNumber());
+            deviceReputation.setConversationId(assessmentVo.getConversationId());
+            deviceReputation.setRequestId(assessmentVo.getRequestId());
+            deviceReputation.setRepeatAssessmentAttempts(1);
+            deviceReputation.setReceivedResponseDate(currentDateTime);
+            deviceReputation.setCreateDate(currentDateTime);    
+            
+            deviceReputation = rpDeviceReputationService.create(deviceReputation);
+
+            CustomLogger.debug(this.getClass(), "Saved Device Reputation Assessment attempt with ID:" + deviceReputation.getDeviceReputationId() + " and " + reviewStatus.getReviewStatus() + " review status.");
+        } catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Error in saving Device Reputation Assessment attempt for sponsorUserId: " + person.getSponsorUserId() + " and " + reviewStatus.getReviewStatus() + " review status.", e);
+        }
+    }
+    
+    @Override
+    public DeviceReviewStatusEnum processReviewStatusData(RdpPassThroughResponseSummaryModel ptSummary, RdpStatusModel statusModel, 
+            Person person, DeviceAssessmentParamVo assessmentVo, String loaSought) {
+ 
+        String reviewStatusStr = ptSummary.getReviewStatus();
+        DeviceReviewStatusEnum reviewStatus = DeviceReviewStatusEnum.lookupByReviewStatus(reviewStatusStr);
+
+        try {   
+            recordDeviceAssessmentAttempt(person, reviewStatus, assessmentVo);
+            RpStatus rpStatus = null;
+            String proofingStatusDesc = IPSConstants.PROOFING_STATUS_IN_PROGRESS;
+                        
+            if (reviewStatus == DeviceReviewStatusEnum.PASS) {
+                rpStatus = RefRpStatus.RpStatus.LOA_level_achieved;
+                proofingStatusDesc = IPSConstants.PROOFING_STATUS_COMPLETE;
+            }
+            else if  (reviewStatus == DeviceReviewStatusEnum.REJECT) {        
+                rpStatus = RefRpStatus.RpStatus.Attempt_with_Low_Confidence_device_reputation; 
+            }
+            
+            if (rpStatus != null) {
+            	proofingService.updateProofingStatus(rpStatus.getValue(), person, loaSought);
+            }    
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on getting DeviceReviewStatusEnum in processReviewStatusData for personId:" + person.getPersonId(), e);
+        } 
+        
+        return reviewStatus;
+    }
+    
+    @Override
+    public RdpDeviceAssessmentResponseModel getRdpDeviceAssessmentResponseModel(PersonVo personVo, DeviceAssessmentParamVo deviceAssessmentPlusVo, RdpDeviceAssessmentRequestModel rdpRequest) {
+        CustomLogger.enter(this.getClass());
+        RdpDeviceAssessmentResponseModel queryResponseModel = null;    
+                
+        try {    
+           queryResponseModel = requestDeviceAssessmentQuery(personVo, deviceAssessmentPlusVo, rdpRequest);    
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on getting RdpDeviceAssessmentResponseModel for user: " + personVo.getSponsorUserId(), e);
+        }
+        
+        return queryResponseModel;
+    }
+     
+    private RpDeviceReputation getExistingRpDeviceReputationByPersonId(long personId) {
+        CustomLogger.enter(this.getClass());
+
+        RpDeviceReputation deviceReputation = null;
+
+        try {        
+            deviceReputation = rpDeviceReputationService.findByPersonId(personId);    
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on checking existing device reputation record by person id.", e);
+        }    
+        return deviceReputation;
+    }
+    
+    private RdpPassThroughResponseSummaryModel getPassThroughResponseDeviceAssessmentSummary(RdpDeviceAssessmentResponseModel queryResponseModel, DeviceAssessmentParamVo deviceAssessmentPlusVo) {
+        CustomLogger.enter(this.getClass());
+
+        RdpPassThroughResponseSummaryModel ptSummary = null;
+        List<RdpPassThroughModel>  passThroughs = queryResponseModel.getPassThroughs();
+
+        RdpPassThroughModel passThroughItem = passThroughs.stream().filter(passThrough -> PASS_THROUGH_TYPE.equalsIgnoreCase(passThrough.getType()))
+                .findFirst().orElse(null);
+
+        return ptSummary;
+    }
+ 
+    // Assert RP Device Assessment data to CustReg
+    private void assertDeviceAssessmentData(RdpPassThroughResponseSummaryModel ptSummary, RdpStatusModel statusModel, Person person, 
+    		DeviceAssessmentParamVo assessmentVo, String proofingStatusDesc, String loaSought) {
+        CustomLogger.enter(this.getClass());
+        String callingAppName = "";
+
+        if (assessmentVo.isWebServiceCall()) {
+        	callingAppName = assessmentVo.getCallingAppName();
+        }
+        else {
+	        HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest();
+	        callingAppName = (String) request.getSession().getAttribute(IPSConstants.CALLING_APP_NAME_KEY);
+        }
+
+        try {
+            String loaName = FEATURE_DEVICE_REPUTATION;
+                
+            EntRegUserLOAAssertion loaAssertion =  createLoaAssertion(ptSummary, statusModel, person, loaSought, loaName, proofingStatusDesc);                
+            custRegService.assertDeviceReputationData(loaAssertion, callingAppName);
+        } catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Error in retrieving data for assertion for sponsorUserId: " + person.getSponsorUserId(), e);
+        }
+    }
+    
+    public EntRegUserLOAAssertion createLoaAssertion(RdpPassThroughResponseSummaryModel ptSummary, RdpStatusModel statusModel,  Person person, 
+    		String loaSought, String loaName, String proofingStatusDesc) {
+        CustomLogger.enter(this.getClass());
+        
+        RpProofingSession proofingSession = rpProofingSessionService.findRpSessionByPerson(person);
+        
+        if (proofingSession == null) {
+	        proofingSession = new RpProofingSession();
+	        proofingSession.setPerson(person);
+	        proofingSession.setCreateDate(new Timestamp(new Date().getTime()));
+	        proofingSession.setTotalAttempts(0);
+	        rpProofingSessionService.create(proofingSession);
+        }
+        
+        String loaFlag = ApplicationConstants.LOA_FLAG_NOT_ACHIEVED;
+        String proofingId = Long.toString(proofingSession.getProofingSessionId());
+        String sponsorUserId = person.getSponsorUserId();
+        String loaId = ApplicationConstants.LOA_RP_ID;
+ 
+        if (ApplicationConstants.LOA_15.equalsIgnoreCase(loaSought)) {
+            loaId = ApplicationConstants.LOA_ID_530;
+            if (ApplicationConstants.PROOFING_STATUS_COMPLETE.equalsIgnoreCase(proofingStatusDesc))    {
+                loaFlag = ApplicationConstants.LOA_FLAG_ACHIEVED;
+            }
+        }
+        
+        EntRegUserLOADeviceReputationResults loaDeviceReputationResults = getLoaDeviceReputationResults(ptSummary, statusModel, sponsorUserId);
+        
+        // EntRegUserLOAAssertion entRegUserLOAAssertion = new EntRegUserLOAAssertion(sponsorUserId, loaId, loaName, loaFlag, proofingId, 
+        // proofingStatusDesc, loaDeviceReputationResults);
+        // 2/11/2022 Refactored for new 7.0.1 Cust Reg Standalone jar
+        EntRegUserLOAAssertion entRegUserLOAAssertion = new EntRegUserLOAAssertion(sponsorUserId, loaId, loaName, loaFlag, proofingId, 
+                proofingStatusDesc);
+        entRegUserLOAAssertion.setProofingStatus(proofingStatusDesc);
+        entRegUserLOAAssertion.setUserLOADeviceReputationResults(loaDeviceReputationResults);
+        
+		return entRegUserLOAAssertion;    
+    }
+    
+    private EntRegUserLOADeviceReputationResults getLoaDeviceReputationResults(RdpPassThroughResponseSummaryModel ptSummary, 
+            RdpStatusModel statusModel, String sponsorUserId) {
+        CustomLogger.enter(this.getClass());
+        
+        EntRegUserLOADeviceReputationResults loaDeviceReputationResults = new EntRegUserLOADeviceReputationResults();
+        loaDeviceReputationResults.setReviewStatus(ptSummary.getReviewStatus().toUpperCase());
+        loaDeviceReputationResults.setRiskAssessment(ptSummary.getRiskRating());
+        loaDeviceReputationResults.setRiskAssessmentDate(new Timestamp(new Date().getTime()));
+        loaDeviceReputationResults.setRiskScore(Long.valueOf(ptSummary.getSummaryRiskScore()));
+        loaDeviceReputationResults.setUserId(sponsorUserId);
+        loaDeviceReputationResults.setUserLOAAssertionId(statusModel.getLexID());
+        loaDeviceReputationResults.setUserLOADeviceReputationResultsId(statusModel.getConversationId());
+        
+        return loaDeviceReputationResults;
+    }
+
+    private RdpDeviceAssessmentResponseModel requestDeviceAssessmentQuery(PersonVo personVo, DeviceAssessmentParamVo deviceAssessmentPlusVo, RdpDeviceAssessmentRequestModel rdpRequest) {
+        CustomLogger.enter(this.getClass());
+        loadIpsProperties();
+        setRequestModel(personVo, deviceAssessmentPlusVo, rdpRequest);
+        
+        return sendRequest(rdpRequest, deviceAssessmentPlusVo, resourceUrl);
+    }
+    
+    /******* Methods for Volume Throttling Operation *******/
+    private boolean isDeviceProfilingMode(long personId, long sponsorId, String callingApp) {
+        CustomLogger.enter(this.getClass());
+ 
+        List<RpFeatureAttempt> attemptList = null;
+
+        try {
+             attemptList = rpFeatureAttemptService.getListBySponsorId(sponsorId);
+        } catch (Exception e) {
+             CustomLogger.error(this.getClass(), "Error in retrieving rp_features_attempts list for callingApp:" + callingApp, e);
+        }
+ 
+        if (attemptList == null) {
+              return false;
+        }
+
+        RpFeatureAttempt devRepAttempt = rpFeatureAttemptService.findBySponsorIdAndFeatureName(sponsorId, FEATURE_DEVICE_REPUTATION);
+        long enabledFeatureId = devRepAttempt.getFeatureId();
+
+        if (devRepAttempt.getTotalAttempts() == MAX_ATTEMPTS_COUNT) {
+            return true;
+        }
+        else if (devRepAttempt.getTotalAttempts() == 0L) {
+            return false;
+        }
+        
+        RpFeatureAttempt chosen = null;
+        for (RpFeatureAttempt att : attemptList) {
+            if (att.getAttempts() < att.getTotalAttempts()) {
+                chosen = att;
+                break;
+            }
+        }
+
+        if (chosen == null) {
+            resetAttemptList(attemptList, enabledFeatureId);
+
+            return true;
+        }
+
+        chosen.setAttempts(chosen.getAttempts() + 1);
+        updateFeatureAttempt(chosen);        
+        boolean isDeviceProfilingMode = chosen.getFeatureId() == enabledFeatureId;
+
+        if (!isDeviceProfilingMode) {
+        	RpDeviceReputation deviceReputation = getExistingRpDeviceReputationByPersonId(personId);
+        	if (deviceReputation != null) {
+         	     return true;
+        	}
+        }
+  
+        return isDeviceProfilingMode;
+    }
+    
+    private void resetAttemptList(List<RpFeatureAttempt> attemptList, long enabledFeatureId) {
+        CustomLogger.enter(this.getClass());
+        
+        for (RpFeatureAttempt att : attemptList) {
+            if (att.getFeatureId() == enabledFeatureId) {
+                att.setAttempts(1);
+            }
+            else {
+                att.setAttempts(0);
+            }
+        }
+
+        try {
+            rpFeatureAttemptService.updateAttempts(attemptList);
+        } catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Error in resetting rp_features_attempts attempts column.", e);
+        }
+    }
+    
+    private void updateFeatureAttempt(RpFeatureAttempt chosen) {
+        CustomLogger.enter(this.getClass());
+
+        boolean updateCheck = true;
+        int updateAttempts = 0;
+
+        while (updateCheck) {
+            try {
+                rpFeatureAttemptService.update(chosen);
+                updateCheck = false;
+            } catch (Exception e) {
+                int tries = updateAttempts + 1;
+                CustomLogger.error(this.getClass(), "Error trying to update rp_features_attempts attempts column. "
+                        + " Number of times tried to update: " + tries, e);
+                updateAttempts += 1;
+
+                if (updateAttempts >= 3) {
+                    throw e;
+                }
+            }
+        }
+    }
+    
+    /******* Methods for LexixNexis Webservice Call *******/
+
+    private void loadIpsProperties() {
+        CustomLogger.enter(this.getClass());
+        
+        try {
+            Properties prop = getProperties();
+            String environment = Utils.getEnvironment();
+         
+            List<String> propNames = new ArrayList<>();
+            propNames.add(PROXY_HOST_PROP_NAME);
+            propNames.add(PROXY_PORT_PROP_NAME);
+            propNames.add(URL_PROP_NAME_BCG);        
+                
+            List<String> propValues = new ArrayList<>();
+            
+            for(String item : propNames) {
+                String propName = environment.concat(item);
+                String propValue = prop.getProperty(propName);
+                
+                if(propValue == null) {
+                    CustomLogger.error(DeviceReputationPlusServiceImpl.class.getClass(), ERROR_MSG_READING_PROP);
+                }
+                
+                propValues.add(propValue);
+            }
+                
+            if (!propValues.isEmpty()) {
+                propHost   = propValues.get(0);
+                propPort   = propValues.get(1);
+                resourceUrl  = propValues.get(2);
+            }
+            CustomLogger.info(this.getClass(), String.format(RESOURCE_URL_URL_FMT, resourceUrl));
+        } 
+        catch (Exception ex) {        
+            CustomLogger.error(this.getClass(), "Could not load ips.properties",ex);        
+        } 
+    }
+    
+    private Properties getProperties() {
+        CustomLogger.enter(this.getClass());
+        
+        InputStream input = null;
+        Properties prop = new Properties();
+    
+        try {
+            input = DeviceReputationPlusServiceImpl.class.getClassLoader().getResourceAsStream(RESOURCE_STREAM_PATH);
+            // load a properties file
+            prop.load(input); 
+        } 
+        catch (Exception ex) {    
+            CustomLogger.error(this.getClass(), "Could not load ips.properties",ex);        
+        } 
+        
+        return prop;
+    }
+    
+    private RdpDeviceAssessmentResponseModel sendRequest(RdpDeviceAssessmentRequestModel request, DeviceAssessmentParamVo deviceAssessmentPlusVo, String resourceUrl) {
+        CustomLogger.enter(this.getClass());
+        
+        RdpDeviceAssessmentResponseModel responseObj = null;
+        Gson g = new Gson();
+
+        Resource resource = getClientResource(resourceUrl);
+        CustomLogger.debug(this.getClass(), String.format(SEND_REQUEST_URL_FMT, resourceUrl));
+
+        String requestJsonStr = g.toJson(request);
+        JSONObject responseJson = null;
+        
+        try {
+            String authStringEnc = getAuthorization();
+            CustomLogger.debug(this.getClass(), String.format(REQUEST_JSON_FMT, requestJsonStr));
+            responseJson = resource.contentType(MediaType.APPLICATION_JSON).header(JSON_HEADER, authStringEnc)
+                .post(JSONObject.class, requestJsonStr);
+ 			
+            String requestJsonToSave = getDeviceAssessmentRequestToSave(request);
+			String responseJsonStr = g.toJson(responseJson);
+
+			deviceAssessmentPlusVo.setRequestJson(requestJsonToSave);
+			deviceAssessmentPlusVo.setResponseJson(responseJsonStr);
+			CustomLogger.debug(this.getClass(), String.format(RESPONSE_JSON_FMT, responseJsonStr));
+     
+            if (responseJson != null) {
+                responseObj = g.fromJson(responseJson.toString(), RdpDeviceAssessmentResponseModel.class);
+            }
+        } catch (Exception e) {
+            // Include the exception in the call so that the stacktrace will be included
+            CustomLogger.error(this.getClass(), "Error occurred in sending request.", e);
+            
+            return null;
+        }
+        
+        return responseObj;
+    }
+    
+    private void setRequestModel(PersonVo personVo, DeviceAssessmentParamVo deviceAssessmentPlusVo, RdpDeviceAssessmentRequestModel rdpRequest) {
+        CustomLogger.enter(this.getClass(), String.format("First_name:%s,  Last_name:%s, SessionId:%s, CallingAppName:%s", 
+                personVo.getFirstName(), personVo.getLastName(), deviceAssessmentPlusVo.getSessionId(), deviceAssessmentPlusVo.getCallingAppName()));
+
+        rdpRequest.setType(REQUEST_TRANSACTION_TYPE);
+        RdpDeviceAssessmentModel deviceAssessment = new RdpDeviceAssessmentModel();
+        deviceAssessment.setProvider(DEVICE_ASSESSMENT_PROVIDER);
+        deviceAssessment.setSessionId(deviceAssessmentPlusVo.getSessionId());
+        rdpRequest.setDeviceAssessment(deviceAssessment);
+        
+        RdpSettingsModel setting = new RdpSettingsModel();
+        setting.setMode(SETTING_MODE); 
+        setting.setReference(deviceAssessmentPlusVo.getCallingAppName());
+        setting.setLocale(SETTING_LOCALE);
+        setting.setVenue(SETTING_VENUE);
+        rdpRequest.setSettings(setting);
+        
+        RdpPersonModel person = new RdpPersonModel();
+        
+        RdpPersonNameModel personName = new RdpPersonNameModel();
+        personName.setFirstName(personVo.getFirstName());
+        personName.setMiddleName(personVo.getMiddleName());
+        personName.setLastName(personVo.getLastName());
+        personName.setPrefix(personVo.getNameTitle());
+        personName.setSuffix(personVo.getNameSuffix());
+        person.setName(personName);
+        
+        List<RdpAddressModel> addresses = new ArrayList<>();
+        RdpAddressModel address = new RdpAddressModel();
+        address.setStreetAddress1(personVo.getAddressLine1());
+        address.setCity(personVo.getCity());
+        
+        if (!Utils.isEmptyString(personVo.getStateProvince())) {
+        	address.setState(personVo.getStateProvince());
+        }
+
+        String zipCode = CommonRestServiceImpl.ADDRESS_COUNTRY_US.equalsIgnoreCase(personVo.getCountry()) ? personVo.getZip5() : personVo.getPostalCode();
+
+        address.setZip5(zipCode);
+        address.setCountry(personVo.getCountry());
+        address.setContext(SETTING_CONTEXT);
+        
+        if (!Utils.isEmptyString(personVo.getAddressLine2())) {
+        	String streetAddress2 = personVo.getAddressLine2();
+            if (!Utils.isEmptyString(personVo.getAddressLine3())) {
+            	streetAddress2 = String.format("%s, %s",streetAddress2, personVo.getAddressLine3());
+            }     
+            
+            address.setStreetAddress2(streetAddress2);
+        }
+        
+        addresses.add(address);
+        person.setAddresses(addresses);
+        
+        List<RdpPhoneModel> phones = new ArrayList<>();
+        RdpPhoneModel phone = new RdpPhoneModel();
+        phone.setNumber(personVo.getMobileNumber());
+        phone.setContext(PHONE_CONTEXT_BUSINESS);
+        phones.add(phone);
+        person.setPhones(phones);
+        
+        List<String> emails = new ArrayList<>();
+        String email = personVo.getEmailAddress();
+        emails.add(email);
+        person.setEmails(emails);
+        
+        person.setContext(SETTING_CONTEXT);      
+        
+        List<RdpPersonModel> persons = new ArrayList<>();
+        persons.add(person);
+        rdpRequest.setPersons(persons);
+        
+        List<RdpBusinessModel> businesses = new ArrayList<>();
+        RdpBusinessModel business = new RdpBusinessModel();
+        business.setCompanyName(personVo.getCompanyName());
+        business.setFein(!StringUtils.isEmpty(personVo.getCompanyFEIN())? personVo.getCompanyFEIN() : "");
+        business.setAddresses(addresses);
+        business.setPhones(phones);
+        businesses.add(business);
+        
+        rdpRequest.setBusinesses(businesses);
+        
+        List<RdpCustomDataModel> customData = new ArrayList<>();
+        
+        RdpCustomDataModel custData2 = new RdpCustomDataModel();
+        custData2.setType(CUSTOM_DATA_TYPE);
+        custData2.setName(CUSTOM_DATA2);
+        custData2.setValue(personVo.getSponsorUserId());
+        customData.add(custData2); 
+        
+        String webSessionId = "";
+       
+        if (personVo.isWebServiceCall()) {
+        	webSessionId = deviceAssessmentPlusVo.getWebSessionId();
+        }
+        else {
+            HttpServletRequest httpRequest = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext().getRequest();
+            webSessionId = httpRequest.getSession().getId();
+        }
+        
+        RdpCustomDataModel custData3 = new RdpCustomDataModel();
+        custData3.setType(CUSTOM_DATA_TYPE);
+        custData3.setName(CUSTOM_DATA3);
+        custData3.setValue(webSessionId);
+        customData.add(custData3); 
+
+        RdpCustomDataModel custData4 = new RdpCustomDataModel();
+        custData4.setType(CUSTOM_DATA_TYPE);
+        custData4.setName(CUSTOM_DATA4);
+        custData4.setValue(deviceAssessmentPlusVo.getCallingAppName());
+        customData.add(custData4); 
+        
+        rdpRequest.setCustomData(customData);    
+        rdpRequest.setCustomerIpAddress(personVo.getTrueIPAddress());
+
+        CustomLogger.debug(this.getClass(), String.format("DeviceReputationServiceImpl > getRequestModel > getSessionId:%s, webSessionId:%s, CallingAppName:%s, TrueIPAddress():%s", 
+        		deviceAssessmentPlusVo.getSessionId(), webSessionId, personVo.getTrueIPAddress(), deviceAssessmentPlusVo.getCallingAppName()));
+    }
+
+    private Resource getClientResource(String inputUrl) {
+        CustomLogger.enter(this.getClass());
+        
+        try {    
+            ClientConfig config = new ClientConfig();
+            config.proxyHost(propHost);
+            config.proxyPort(Integer.parseInt(propPort));
+            RestClient client = new RestClient(config);
+            
+            return client.resource(inputUrl);        
+        }
+        catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Exception occurred on getting ClientResource. ", e);
+            throw e;
+        }
+    }
+    
+    private String getAuthorization()  {
+        CustomLogger.enter(this.getClass());
+        
+        String authorization = "";
+        try {
+            AliasVo j2c = Utils.getAppCredentials(IPSConstants.LEXIS_NEXIS_RDP_J2C_ALIAS);
+            authorization = String.format(AUTH_ENCODE_FORMAT, DatatypeConverter.printBase64Binary(
+                    String.format(DATA_TYPE_CONVERTER_FORMAT, j2c.getUserName(), j2c.getPassword()).getBytes(StandardCharsets.UTF_8)));
+        } catch (IPSException e) {
+            CustomLogger.error(this.getClass(), "Error occurred in getting authorization: ", e);
+        }
+        
+        return authorization;
+    }
+
+    /******* Methods for Diagnostics/Testing Tool *******/
+
+    @Override
+    public List<DeviceReputationVo> getDeviceReputationReport(Date runDate) throws Exception  {
+        CustomLogger.enter(this.getClass());
+        
+        List<DeviceReputationVo> reportItemList = Collections.emptyList();
+        try {
+            reportItemList = rpDeviceReputationService.getDeviceReputationReport(runDate);
+        } catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Error occurred in getting DeviceReputationReport item list: ", e);
+        }
+        
+        return reportItemList; 
+    }
+    
+    private String getDeviceAssessmentRequestToSave(RdpDeviceAssessmentRequestModel request) {
+      	Gson g = new Gson();
+    	return g.toJson(request);
+    }
+     		
+}
