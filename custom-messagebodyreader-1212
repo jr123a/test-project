@@ -1,0 +1,86 @@
+To resolve the error:
+
+```
+java.lang.RuntimeException: A javax.ws.rs.ext.MessageBodyReader implementation was not found for class com.ibm.json.java.JSONObject type and application/json media type.
+```
+
+This error occurs because the JAX-RS framework doesn't have a registered `MessageBodyReader` capable of handling the combination of `com.ibm.json.java.JSONObject` and `application/json`. To resolve it, you can create a custom `MessageBodyReader` implementation.
+
+Here’s how to write a custom `MessageBodyReader`:
+
+### Custom MessageBodyReader Implementation
+
+```java
+package com.example.providers;
+
+import com.ibm.json.java.JSONObject;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.ext.MessageBodyReader;
+import javax.ws.rs.ext.Provider;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
+
+@Provider
+@Consumes("application/json")
+public class JSONObjectMessageBodyReader implements MessageBodyReader<JSONObject> {
+
+    @Override
+    public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, javax.ws.rs.core.MediaType mediaType) {
+        // Check if the type is JSONObject and media type is application/json
+        return type == JSONObject.class && mediaType.toString().equals("application/json");
+    }
+
+    @Override
+    public JSONObject readFrom(Class<JSONObject> type, 
+                               Type genericType, 
+                               Annotation[] annotations, 
+                               javax.ws.rs.core.MediaType mediaType, 
+                               javax.ws.rs.core.MultivaluedMap<String, String> httpHeaders, 
+                               InputStream entityStream) throws java.io.IOException {
+        // Convert InputStream to JSONObject
+        try (Reader reader = new BufferedReader(new InputStreamReader(entityStream))) {
+            return JSONObject.parse(reader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON to JSONObject", e);
+        }
+    }
+}
+```
+
+### Steps to Use
+
+1. **Register the Provider**  
+   Ensure the provider is registered with your JAX-RS application. If you're using a `javax.ws.rs.core.Application` subclass, add it to the classes or singletons set:
+   ```java
+   @ApplicationPath("/api")
+   public class MyApplication extends Application {
+       @Override
+       public Set<Class<?>> getClasses() {
+           Set<Class<?>> classes = new HashSet<>();
+           classes.add(JSONObjectMessageBodyReader.class);
+           return classes;
+       }
+   }
+   ```
+
+   If you're using a framework like Jersey or RESTEasy, it may automatically detect the `@Provider` annotation.
+
+2. **Dependencies**  
+   Ensure that `com.ibm.json.java` is in your classpath. If using Maven, include:
+   ```xml
+   <dependency>
+       <groupId>com.ibm</groupId>
+       <artifactId>json4j</artifactId>
+       <version>your-version</version>
+   </dependency>
+   ```
+
+3. **Test the Integration**  
+   Test an endpoint that consumes `application/json` to confirm that your `MessageBodyReader` processes the incoming JSON as expected.
+
+This should resolve the error and allow JAX-RS to process requests with `com.ibm.json.java.JSONObject` as the entity type.
