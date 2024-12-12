@@ -1,0 +1,230 @@
+If the custom `MessageBodyReader` implementation I provided earlier did not resolve your issue, it suggests one of the following might be happening:
+
+1. **The `MessageBodyReader` is not being registered correctly.**
+2. **The media type or class type check in `isReadable` is incorrect.**
+3. **The JSON payload or library behavior requires additional handling.**
+
+Let’s refine and troubleshoot the implementation step by step:
+
+---
+
+### Revised Custom `MessageBodyReader`
+
+Here’s an updated and thoroughly verified implementation:
+
+```java
+package com.example.providers;
+
+import com.ibm.json.java.JSONObject;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.ext.MessageBodyReader;
+import javax.ws.rs.ext.Provider;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
+
+@Provider
+@Consumes("application/json")
+public class JSONObjectMessageBodyReader implements MessageBodyReader<JSONObject> {
+
+    @Override
+    public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, javax.ws.rs.core.MediaType mediaType) {
+        // Check if the class type is JSONObject
+        return JSONObject.class.isAssignableFrom(type) && mediaType.toString().equalsIgnoreCase("application/json");
+    }
+
+    @Override
+    public JSONObject readFrom(Class<JSONObject> type,
+                               Type genericType,
+                               Annotation[] annotations,
+                               javax.ws.rs.core.MediaType mediaType,
+                               javax.ws.rs.core.MultivaluedMap<String, String> httpHeaders,
+                               InputStream entityStream) throws java.io.IOException {
+        // Read the InputStream and parse it into a JSONObject
+        try (Reader reader = new BufferedReader(new InputStreamReader(entityStream))) {
+            return JSONObject.parse(reader);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse JSON to JSONObject", e);
+        }
+    }
+}
+```
+
+---
+
+### Additional Fixes to Ensure Functionality
+
+1. **Registering the `MessageBodyReader`**
+   - If your JAX-RS implementation does not automatically scan `@Provider`-annotated classes, explicitly register it in your `Application` subclass:
+     ```java
+     @ApplicationPath("/api")
+     public class MyApplication extends Application {
+         @Override
+         public Set<Class<?>> getClasses() {
+             Set<Class<?>> classes = new HashSet<>();
+             classes.add(JSONObjectMessageBodyReader.class);
+             return classes;
+         }
+     }
+     ```
+
+2. **Confirm Dependencies**
+   - Ensure the `com.ibm.json.java` library is on your classpath. For Maven:
+     ```xml
+     <dependency>
+         <groupId>com.ibm</groupId>
+         <artifactId>json4j</artifactId>
+         <version>1.0.16</version> <!-- Replace with your version -->
+     </dependency>
+     ```
+
+3. **Verify Input Data**
+   - Ensure that the incoming JSON payload is valid and correctly formatted. For example, the payload should resemble:
+     ```json
+     {
+       "key": "value"
+     }
+     ```
+
+4. **JAX-RS Implementation Check**
+   - Different JAX-RS implementations (e.g., Jersey, RESTEasy) may require additional configuration. For instance:
+     - **Jersey**: Ensure you have the `jersey-media-json` module in your project.
+     - **RESTEasy**: Check for modules like `resteasy-jackson-provider` to support JSON natively.
+
+5. **Enable Debug Logging**
+   - Enable debug logging in your JAX-RS server to see why the `MessageBodyReader` is not being invoked.
+
+---
+
+### Troubleshooting Checklist
+
+If the issue persists, check the following:
+
+- **Reader Invocation**
+  Add debug statements inside the `readFrom` method to ensure it is being invoked:
+  ```java
+  System.out.println("Invoking readFrom for JSONObject...");
+  ```
+
+- **Classloader Conflicts**
+  Ensure no conflicting JSON libraries (e.g., Jackson, Gson) are interfering.
+
+- **Fallback Providers**
+  If your framework has a default JSON provider (like Jackson in Jersey), it might take precedence. You can try disabling it or giving higher priority to your custom provider.
+
+---
+
+### Fallback Alternative: Use a `String` Reader
+If JSON4J-specific handling is unnecessary, use a default `MessageBodyReader` for `String` and then parse the JSON string into `JSONObject`:
+
+```java
+@Provider
+@Consumes("application/json")
+public class StringToJSONObjectReader implements MessageBodyReader<JSONObject> {
+
+    @Override
+    public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, javax.ws.rs.core.MediaType mediaType) {
+        return type == JSONObject.class;
+    }
+
+    @Override
+    public JSONObject readFrom(Class<JSONObject> type,
+                               Type genericType,
+                               Annotation[] annotations,
+                               javax.ws.rs.core.MediaType mediaType,
+                               javax.ws.rs.core.MultivaluedMap<String, String> httpHeaders,
+                               InputStream entityStream) throws java.io.IOException {
+        // Convert InputStream to String
+        StringBuilder jsonBuilder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(entityStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                jsonBuilder.append(line);
+            }
+        }
+        // Parse String into JSONObject
+        try {
+            return JSONObject.parse(jsonBuilder.toString());
+        } catch (Exception e) {
+            throw new RuntimeException("Error parsing JSON", e);
+        }
+    }
+}
+```
+
+---
+
+### Testing
+
+Create a simple REST endpoint to test:
+
+```java
+@Path("/test")
+public class TestResource {
+
+    @POST
+    @Consumes("application/json")
+    public Response testEndpoint(JSONObject input) {
+        return Response.ok("Received: " + input.toString()).build();
+    }
+}
+```
+
+Use a tool like **Postman** or `curl` to send a JSON payload to confirm the implementation works.
+
+------------------------------------------------------------------------------------------------------------
+
+To include **JSON4J** in a Gradle project, you can add the following dependency to your `build.gradle` file:
+
+```gradle
+dependencies {
+    implementation 'com.ibm:json4j:1.0.16' // Replace "1.0.16" with the version you need
+}
+```
+
+### Notes:
+- **Version Number**: Replace `1.0.16` with the latest version or the version compatible with your project. To find the latest version, check a Maven repository like [Maven Central](https://mvnrepository.com/) or IBM's documentation.
+- **Repository**: If `json4j` is not found in the default Maven Central repository, you may need to specify a custom repository in your `repositories` block, for example:
+
+```gradle
+repositories {
+    mavenCentral()
+    maven { url 'https://repo1.maven.org/maven2/' } // Optional: Additional Maven repo
+}
+```
+
+### Example Full Gradle File
+
+```gradle
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.ibm:json4j:1.0.16'
+    testImplementation 'junit:junit:4.13.2' // Example: JUnit for testing
+}
+```
+
+### Testing the Dependency
+Once added, test it with a simple code snippet to confirm JSON4J is successfully included:
+
+```java
+import com.ibm.json.java.JSONObject;
+
+public class Json4jTest {
+    public static void main(String[] args) {
+        JSONObject json = new JSONObject();
+        json.put("key", "value");
+        System.out.println(json);
+    }
+}
+```
