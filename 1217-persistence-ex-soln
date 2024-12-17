@@ -1,0 +1,74 @@
+The error message indicates a configuration issue with a JPA entity class. Specifically, the `@JoinColumns` annotation on the field `refLoaLevel` in the `DataConsent` class is incomplete. This occurs when the source entity uses a composite primary key, and the mapping of the relationship is not fully defined.
+
+Here's how to address the issue:
+
+### Root Cause
+When using a composite primary key in JPA, each part of the composite key must be mapped to a corresponding column in the `@JoinColumns` annotation. Both `name` (column in the current table) and `referencedColumnName` (column in the referenced table) must be specified for each key.
+
+### Solution
+1. **Verify the Composite Key Mapping**:
+   Ensure that the referenced entity has a composite key properly annotated with `@IdClass` or `@EmbeddedId`. For example:
+   ```java
+   @Embeddable
+   public class CompositeKey {
+       private Long keyPart1;
+       private Long keyPart2;
+
+       // Getters, Setters, hashCode, and equals
+   }
+   ```
+
+2. **Update the `DataConsent` Entity**:
+   Correct the `refLoaLevel` field by specifying all join columns. For example:
+   ```java
+   @ManyToOne
+   @JoinColumns({
+       @JoinColumn(name = "local_column1", referencedColumnName = "referenced_column1"),
+       @JoinColumn(name = "local_column2", referencedColumnName = "referenced_column2")
+   })
+   private ReferencedEntity refLoaLevel;
+   ```
+
+   Replace `local_column1` and `local_column2` with the columns in the `DataConsent` table, and `referenced_column1` and `referenced_column2` with the corresponding columns in the referenced table.
+
+3. **Validate the Database Schema**:
+   Ensure that the database schema matches the mappings in the entity classes. The columns specified in `@JoinColumn` must exist in both the source and referenced tables.
+
+4. **Rebuild and Test**:
+   - Rebuild the application.
+   - Ensure that the persistence.xml or equivalent configuration is correct.
+   - Test the application to verify the issue is resolved.
+
+### Example
+Here’s an example of a correctly configured `DataConsent` class:
+
+```java
+@Entity
+public class DataConsent {
+    @Id
+    private Long id;
+
+    @ManyToOne
+    @JoinColumns({
+        @JoinColumn(name = "data_consent_key_part1", referencedColumnName = "key_part1"),
+        @JoinColumn(name = "data_consent_key_part2", referencedColumnName = "key_part2")
+    })
+    private ReferencedEntity refLoaLevel;
+
+    // Getters and Setters
+}
+```
+
+And the `ReferencedEntity` class:
+
+```java
+@Entity
+public class ReferencedEntity {
+    @EmbeddedId
+    private CompositeKey id;
+
+    // Other fields and methods
+}
+```
+
+Let me know if you need further clarification or assistance!
