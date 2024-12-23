@@ -1,0 +1,57 @@
+2024-12-23 11:11:10.447 [WebContainer : 4] DEBUG  - com.ips.jaxrs.RemoteRestResource->  assessDevicePlusEmailRisk method is called.
+2024-12-23 11:11:10.447 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.447 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=false
+2024-12-23 11:11:10.456 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  assessDevicePlusEmailRisk method is called.
+2024-12-23 11:11:10.465 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  buildCheckDevicePlusValidationResponse method is called.
+2024-12-23 11:11:10.465 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.465 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.465 [WebContainer : 4] DEBUG org.springframework.orm.jpa.EntityManagerFactoryUtils - Opening JPA EntityManager
+2024-12-23 11:11:10.465 [WebContainer : 4] DEBUG org.springframework.orm.jpa.ExtendedEntityManagerCreator$ExtendedEntityManagerInvocationHandler - Cannot access EntityTransaction handle - assuming we're in a JTA environment
+2024-12-23 11:11:10.468 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.477 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  buildCheckDevicePlusValidationResponse method is called.
+2024-12-23 11:11:10.478 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.478 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.480 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.480 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.480 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.481 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.481 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.481 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.483 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.483 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.483 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.485 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.485 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.485 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.486 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.487 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.487 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.489 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.489 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.489 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.491 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.491 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.491 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.493 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.500 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  mergeParamObjects method is called.
+2024-12-23 11:11:10.500 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.501 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.501 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.501 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.501 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.502 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.502 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.502 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.504 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.513 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  assessDevicePlusEmailRisk method is called.
+2024-12-23 11:11:10.513 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.513 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.525 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  getAssessDevicePlusEmailRiskResponse method is called.
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  getAssessDevicePlusEmailRiskResponse method is called.
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Returned from WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Creating new transaction with name [null]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2024-12-23 11:11:10.536 [WebContainer : 4] DEBUG org.springframework.transaction.jta.WebSphereUowTransactionManager - Invoking WebSphere UOW action: type=1, join=true
+2024-12-23 11:11:10.554 [WebContainer : 4] DEBUG  - com.ips.service.RemoteProofingServiceImpl->  getAssessDevicePlusEmailRiskResponse method is called.
+
