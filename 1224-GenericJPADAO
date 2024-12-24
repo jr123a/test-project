@@ -1,0 +1,65 @@
+package com.ips.dao.impl;
+
+import java.io.Serializable;
+import java.lang.reflect.ParameterizedType;
+
+import javax.persistence.EntityExistsException;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+
+import com.ips.common.common.CustomLogger;
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional
+public abstract class GenericJPADAO<T, ID extends Serializable> {
+    
+    private Class<T> persistentClass;
+    
+    protected EntityManager em;
+
+    @PersistenceContext
+    public void setEntityManager(EntityManager em) {
+        this.em = em;
+    }
+
+    public EntityManager getEntityManager() {
+        return em;
+    }
+    
+    public void save(T entity) {
+        try{
+            if (!getEntityManager().contains(entity)){
+                persist(entity);
+            }
+            else {
+                merge(entity);
+            }
+        } catch (EntityExistsException e){
+            CustomLogger.error(this.getClass(), "Entity exists", e);
+            merge(entity);
+        }
+    }
+
+
+    public void persist(T entity) {
+        getEntityManager().persist(entity);
+    }
+
+
+    public T merge(T entity){
+    return getEntityManager().merge(entity);
+    }
+    
+    public void delete(T entity) {
+        getEntityManager().remove(getEntityManager().contains(entity) ? entity : getEntityManager().merge(entity));
+    }
+    
+    @SuppressWarnings("unchecked")
+    public T getById(Object id) {
+        ParameterizedType genericSuperclass = (ParameterizedType) getClass().getGenericSuperclass();
+        this.persistentClass = (Class<T>) genericSuperclass.getActualTypeArguments()[0];
+           
+        return getEntityManager().find(persistentClass, id);
+    }
+    
+}
