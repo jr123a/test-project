@@ -1,0 +1,130 @@
+Yes, you can configure SQL logging and related settings directly in the `EntityManager` or its associated `EntityManagerFactory`. Here’s how you can do it:
+
+---
+
+### **1. Configure Hibernate Properties in EntityManagerFactory**
+
+When creating or customizing the `EntityManagerFactory`, you can set Hibernate properties such as `hibernate.show_sql`, `hibernate.format_sql`, and logging options.
+
+#### Example:
+```java
+import org.hibernate.cfg.Environment;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import java.util.HashMap;
+import java.util.Map;
+
+public class EntityManagerConfig {
+
+    public EntityManager createEntityManager() {
+        // Add custom Hibernate properties
+        Map<String, Object> properties = new HashMap<>();
+        properties.put(Environment.SHOW_SQL, "true");       // Show SQL statements
+        properties.put(Environment.FORMAT_SQL, "true");    // Format SQL output
+        properties.put(Environment.USE_SQL_COMMENTS, "true"); // Include SQL comments
+
+        // Create EntityManagerFactory with properties
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("persistence-unit-name", properties);
+        return emf.createEntityManager();
+    }
+}
+```
+
+In this example:
+- `Environment.SHOW_SQL` enables SQL statement logging.
+- `Environment.FORMAT_SQL` formats SQL for readability.
+- `Environment.USE_SQL_COMMENTS` adds comments to the generated SQL.
+
+---
+
+### **2. Add Properties via Spring EntityManager Configuration**
+
+If you're using Spring, you can customize the `EntityManagerFactory` bean. For instance:
+
+#### Example with Java Config:
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.orm.jpa.JpaVendorAdapter;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+
+import javax.persistence.EntityManagerFactory;
+import java.util.Properties;
+
+@Configuration
+public class JpaConfig {
+
+    @Bean
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setPackagesToScan("com.example.entities");
+
+        JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        // Configure Hibernate properties
+        Properties properties = new Properties();
+        properties.put("hibernate.show_sql", "true");
+        properties.put("hibernate.format_sql", "true");
+        properties.put("hibernate.use_sql_comments", "true");
+
+        em.setJpaProperties(properties);
+
+        return em;
+    }
+}
+```
+
+---
+
+### **3. Set Properties Programmatically in the `GenericJPADAO` Class**
+
+You can modify your `GenericJPADAO` class to configure the SQL logging for the `EntityManagerFactory` it uses.
+
+#### Example:
+```java
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import java.util.HashMap;
+import java.util.Map;
+
+public abstract class GenericJPADAO<T, ID extends Serializable> {
+
+    private EntityManager em;
+
+    public GenericJPADAO() {
+        // Configure EntityManagerFactory with custom properties
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("hibernate.show_sql", "true");
+        properties.put("hibernate.format_sql", "true");
+        properties.put("hibernate.use_sql_comments", "true");
+
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("persistence-unit-name", properties);
+        this.em = emf.createEntityManager();
+    }
+
+    public EntityManager getEntityManager() {
+        return em;
+    }
+
+    public void setEntityManager(EntityManager em) {
+        this.em = em;
+    }
+}
+```
+
+---
+
+### **4. Enable Logging at Runtime (Without Rebuilding)**
+If you cannot modify the code but still want to see the SQL, use external logging configurations as described in earlier solutions (e.g., via `logback.xml` or `log4j.properties`).
+
+---
+
+### **Key Considerations**
+- **Performance**: Logging SQL at runtime can slow down your application in production. Enable it selectively or only in non-production environments.
+- **Integration**: Use external logging configurations (`logback`, `log4j`) for cleaner separation of concerns when working with multiple modules or teams.
+- **Debugging**: Use `hibernate.type` logging for parameters if SQL queries lack sufficient detail.
