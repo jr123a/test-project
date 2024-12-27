@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd
+           http://www.springframework.org/schema/tx https://www.springframework.org/schema/tx/spring-tx.xsd
+           http://www.springframework.org/schema/util https://www.springframework.org/schema/util/spring-util.xsd
+           http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop.xsd">
+
+    <!-- Enable Spring Annotations -->
+    <context:annotation-config/>
+    <context:component-scan base-package="com.ips"/>
+
+    <!-- EntityManagerFactory -->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalEntityManagerFactoryBean">
+        <property name="persistenceUnitName" value="RemoteRestPUN"/>
+    </bean>
+
+    <!-- Enable Transaction Management -->
+    <tx:annotation-driven/>
+
+    <!-- Transaction Manager for WebSphere -->
+    <bean id="transactionManager" class="org.springframework.transaction.jta.WebSphereUowTransactionManager"/>
+</beans>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+                                 http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd"
+             version="2.1">
+
+    <persistence-unit name="RemoteRestPUN" transaction-type="JTA">
+        <jta-data-source>ipsWebDS</jta-data-source>
+        <class>com.ips.entity.ApplicationWorkflows</class>
+        <class>com.ips.entity.DataConsent</class>
+        <class>com.ips.entity.EquifaxIdVerificationDetails</class>
+        <class>com.ips.entity.HighRiskAddress</class>
+        <class>com.ips.entity.HighRiskAddressAttempt</class>
+        <class>com.ips.entity.IdDocumentDetails</class>
+        <class>com.ips.entity.IdImages</class>
+        <class>com.ips.entity.IdPersonDetails</class>
+        <class>com.ips.entity.IdVerifyServiceRequest</class>
+        <class>com.ips.entity.IppAppointment</class>
+        <class>com.ips.entity.IppBarcodeScans</class>
+        <class>com.ips.entity.IppEvent</class>
+        <class>com.ips.entity.IppEventIDValidation</class>
+        <class>com.ips.entity.IppEventSecondaryID</class>
+        <class>com.ips.entity.IvsAdminUser</class>
+        <class>com.ips.entity.LookupCodesEnv</class>
+        <class>com.ips.entity.OtpLockoutInfo</class>
+        <class>com.ips.entity.OtpLockoutInfoPK</class>
+        <class>com.ips.entity.Person</class>
+        <class>com.ips.entity.PersonData</class>
+        <class>com.ips.entity.PersonProofingStatus</class>
+        <class>com.ips.entity.PersonProofingStatusPK</class>
+        <class>com.ips.entity.PhysicalLetterData</class>
+        <class>com.ips.entity.ProgramOnlineStats</class>
+        <!-- Additional Entity Classes -->
+    </persistence-unit>
+</persistence>
