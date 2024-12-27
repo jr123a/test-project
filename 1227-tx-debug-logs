@@ -1,0 +1,79 @@
+You can specify `logging.level.org.springframework.transaction=DEBUG` in your application's logging configuration file. Here are the common options based on your application setup:
+
+---
+
+### **1. Spring Boot Application**
+   - Add the logging level in the `application.properties` or `application.yml` file.
+
+   **In `application.properties`:**
+   ```properties
+   logging.level.org.springframework.transaction=DEBUG
+   ```
+
+   **In `application.yml`:**
+   ```yaml
+   logging:
+     level:
+       org.springframework.transaction: DEBUG
+   ```
+
+   - Spring Boot automatically picks up these settings for logging configuration.
+
+---
+
+### **2. Traditional Spring Application**
+   If you are using a traditional Spring application (not Spring Boot), configure logging in the appropriate logging framework file:
+
+   - **Logback (`logback.xml`):**
+     ```xml
+     <configuration>
+         <logger name="org.springframework.transaction" level="DEBUG"/>
+         <root level="INFO">
+             <appender-ref ref="CONSOLE"/>
+         </root>
+     </configuration>
+     ```
+
+   - **Log4j (`log4j.properties`):**
+     ```properties
+     log4j.logger.org.springframework.transaction=DEBUG
+     ```
+
+   - **Log4j2 (`log4j2.xml`):**
+     ```xml
+     <Configuration>
+         <Loggers>
+             <Logger name="org.springframework.transaction" level="DEBUG"/>
+             <Root level="INFO">
+                 <AppenderRef ref="Console"/>
+             </Root>
+         </Loggers>
+     </Configuration>
+     ```
+
+---
+
+### **3. Programmatic Configuration**
+   If you prefer setting logging levels programmatically (e.g., during application startup), you can do it in your Java code:
+
+   ```java
+   import org.slf4j.LoggerFactory;
+   import ch.qos.logback.classic.Level;
+   import ch.qos.logback.classic.Logger;
+
+   public class LoggingConfig {
+       public static void setTransactionDebugLogging() {
+           Logger transactionLogger = (Logger) LoggerFactory.getLogger("org.springframework.transaction");
+           transactionLogger.setLevel(Level.DEBUG);
+       }
+   }
+   ```
+
+   Call this method during application initialization.
+
+---
+
+### **Verify Logging Output**
+After adding this configuration, restart your application and look for debug logs related to Spring transaction management in the console or log file.
+
+Let me know if you need further assistance with setting up logging!
