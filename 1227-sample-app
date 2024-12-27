@@ -1,0 +1,362 @@
+Here is a sample Spring application that meets your requirements:
+
+1. **WebSphere 9.0.5**  
+2. **Spring Framework 5.3.33**  
+3. **JPA 2.1**  
+4. **Java 1.8**  
+5. **Oracle Database with J2C alias in WebSphere**  
+
+This application exposes a REST API and persists data into an Oracle database using JPA.
+
+---
+
+### **1. Project Structure**
+```
+src/main/java
+    ├── com.example
+         ├── config
+         │     ├── WebConfig.java
+         │     ├── PersistenceConfig.java
+         ├── controller
+         │     ├── PersonController.java
+         ├── entity
+         │     ├── Person.java
+         ├── repository
+         │     ├── PersonRepository.java
+```
+
+---
+
+### **2. Maven Dependencies**
+```xml
+<dependencies>
+    <!-- Spring Core and Web -->
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-web</artifactId>
+        <version>5.3.33</version>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-webmvc</artifactId>
+        <version>5.3.33</version>
+    </dependency>
+
+    <!-- Spring Data JPA -->
+    <dependency>
+        <groupId>org.springframework.data</groupId>
+        <artifactId>spring-data-jpa</artifactId>
+        <version>2.7.12</version>
+    </dependency>
+
+    <!-- Oracle JDBC Driver -->
+    <dependency>
+        <groupId>com.oracle.database.jdbc</groupId>
+        <artifactId>ojdbc8</artifactId>
+        <version>19.19</version>
+    </dependency>
+
+    <!-- Jackson for JSON Parsing -->
+    <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.14.0</version>
+    </dependency>
+
+    <!-- Java EE API for JPA 2.1 -->
+    <dependency>
+        <groupId>javax.persistence</groupId>
+        <artifactId>javax.persistence-api</artifactId>
+        <version>2.1</version>
+    </dependency>
+
+    <!-- WebSphere JTA Support -->
+    <dependency>
+        <groupId>com.ibm.websphere.appserver.api</groupId>
+        <artifactId>com.ibm.websphere.appserver.api.transaction</artifactId>
+        <version>1.1.20</version>
+        <scope>provided</scope>
+    </dependency>
+
+    <!-- Servlet API -->
+    <dependency>
+        <groupId>javax.servlet</groupId>
+        <artifactId>javax.servlet-api</artifactId>
+        <version>4.0.1</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+```
+
+---
+
+### **3. Entity**
+```java
+package com.example.entity;
+
+import javax.persistence.*;
+
+@Entity
+public class Person {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private int age;
+
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+```
+
+---
+
+### **4. Repository**
+```java
+package com.example.repository;
+
+import com.example.entity.Person;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PersonRepository extends JpaRepository<Person, Long> {
+}
+```
+
+---
+
+### **5. Controller**
+```java
+package com.example.controller;
+
+import com.example.entity.Person;
+import com.example.repository.PersonRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/persons")
+public class PersonController {
+
+    @Autowired
+    private PersonRepository personRepository;
+
+    @PostMapping
+    public Person createPerson(@RequestBody Person person) {
+        return personRepository.save(person);
+    }
+}
+```
+
+---
+
+### **6. Configuration**
+#### **Persistence Configuration**
+```java
+package com.example.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.sql.DataSource;
+
+@Configuration
+@EnableJpaRepositories(basePackages = "com.example.repository")
+@EnableTransactionManagement
+public class PersistenceConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        return new com.ibm.websphere.rsadapter.WSDataSource(); // WebSphere-provided J2C alias
+    }
+
+    @Bean
+    public EntityManagerFactory entityManagerFactory() {
+        return Persistence.createEntityManagerFactory("examplePU");
+    }
+}
+```
+
+#### **Web Configuration**
+```java
+package com.example.config;
+
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+@Configuration
+@EnableWebMvc
+@ComponentScan(basePackages = "com.example")
+public class WebConfig {
+}
+```
+
+---
+
+### **7. `persistence.xml`**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence
+                                 http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd"
+             version="2.1">
+
+    <persistence-unit name="examplePU" transaction-type="JTA">
+        <jta-data-source>jdbc/yourJ2CAlias</jta-data-source>
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.Oracle12cDialect"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+```
+
+---
+
+### **8. Deploy on WebSphere**
+1. Package the application as a `.war` file using Maven.
+   ```bash
+   mvn clean package
+   ```
+2. Deploy the `.war` file on WebSphere 9.0.5.
+3. Create a JNDI alias in WebSphere (e.g., `jdbc/yourJ2CAlias`) pointing to the Oracle database.
+4. Ensure the Oracle JDBC driver is available in the WebSphere classpath.
+
+---
+
+### **9. Testing the Application**
+Use tools like `curl` or Postman to test the REST endpoint:
+- **Endpoint**: `POST http://<host>:<port>/api/persons`
+- **Payload**:
+  ```json
+  {
+      "name": "John Doe",
+      "age": 30
+  }
+  ```
+
+This will persist the data to the Oracle database.
+
+
+Gradle configs
+----------------------
+Here’s the modified setup using **Gradle** as the build tool:
+
+---
+
+### **1. Gradle Build File (`build.gradle`)**
+```gradle
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.12' apply false
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+sourceCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Core and Web
+    implementation 'org.springframework:spring-web:5.3.33'
+    implementation 'org.springframework:spring-webmvc:5.3.33'
+
+    // Spring Data JPA
+    implementation 'org.springframework.data:spring-data-jpa:2.7.12'
+
+    // Oracle JDBC Driver
+    implementation 'com.oracle.database.jdbc:ojdbc8:19.19'
+
+    // Jackson for JSON Parsing
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.0'
+
+    // JPA API
+    implementation 'javax.persistence:javax.persistence-api:2.1'
+
+    // WebSphere JTA Support
+    providedCompile 'com.ibm.websphere.appserver.api:com.ibm.websphere.appserver.api.transaction:1.1.20'
+
+    // Servlet API
+    providedCompile 'javax.servlet:javax.servlet-api:4.0.1'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+```
+
+---
+
+### **2. Gradle Wrapper Configuration**
+Ensure that the Gradle wrapper is set up to make the project portable. Run the following command in your project directory to initialize Gradle if not already done:
+
+```bash
+gradle wrapper
+```
+
+This will generate the necessary wrapper files.
+
+---
+
+### **3. Running and Building**
+1. To build the project:
+   ```bash
+   ./gradlew build
+   ```
+2. To create the WAR file for deployment:
+   Add the `war` plugin:
+   ```gradle
+   plugins {
+       id 'java'
+       id 'war'
+   }
+   ```
+   Then build the WAR:
+   ```bash
+   ./gradlew war
+   ```
+
+3. The WAR file will be located in the `build/libs` directory.
+
+---
+
+### **4. Deployment and Testing**
+Deploy the WAR file in WebSphere, ensure the Oracle JNDI (e.g., `jdbc/yourJ2CAlias`) is configured, and use a tool like Postman or `curl` to test the REST API.
+
+This Gradle-based setup is functionally equivalent to the Maven setup but aligns with Gradle's build system.
