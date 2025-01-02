@@ -1,0 +1,68 @@
+To adjust the configuration for enabling SQL and parameter logging with JPA 2.0 provided by WebSphere, you need to use WebSphere’s JPA provider (such as EclipseLink or OpenJPA) instead of Hibernate-specific configurations. These configurations would typically involve enabling the provider's logging mechanism through properties or configuration files.
+
+### For EclipseLink (default JPA provider in WebSphere):
+EclipseLink provides specific logging properties to enable SQL and parameter logging. Here's how you can configure it:
+
+#### Example Configuration for SQL and Parameter Logging
+Add the following properties to your `persistence.xml` file:
+
+```xml
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_0.xsd"
+             version="2.0">
+    <persistence-unit name="persistence-unit-name" transaction-type="JTA">
+        <jta-data-source>jdbc/myDataSource</jta-data-source>
+        <properties>
+            <!-- Enable SQL Logging -->
+            <property name="eclipselink.logging.level" value="FINE" />
+            <property name="eclipselink.logging.level.sql" value="FINE" />
+
+            <!-- Enable Parameter Logging -->
+            <property name="eclipselink.logging.parameters" value="true" />
+        </properties>
+    </persistence-unit>
+</persistence>
+```
+
+---
+
+### For OpenJPA:
+If your WebSphere installation uses OpenJPA as the JPA provider, configure logging as follows:
+
+1. Add logging properties to your `persistence.xml`:
+   ```xml
+   <properties>
+       <!-- Enable SQL Logging -->
+       <property name="openjpa.Log" value="SQL=TRACE" />
+
+       <!-- Enable Parameter Logging -->
+       <property name="openjpa.RuntimeUnenhancedClasses" value="supported" />
+   </properties>
+   ```
+
+2. Ensure the WebSphere server logs are configured to capture the SQL logs:
+   - Go to the WebSphere administrative console.
+   - Navigate to **Troubleshooting > Logs and Trace > [Your Server Name] > Change Log Detail Levels**.
+   - Add the OpenJPA-specific logging level:
+     ```
+     openjpa.jdbc.SQL=all
+     ```
+
+---
+
+### WebSphere Application Logging Configuration
+If you want to route SQL logs to WebSphere's logging system, configure the logging levels appropriately in the server’s log configuration.
+
+1. Open the WebSphere Administrative Console.
+2. Navigate to **Troubleshooting > Logs and Trace > [Your Server Name] > Diagnostic Trace > Change Log Detail Levels**.
+3. Add a trace level for JPA or EclipseLink:
+   ```
+   *=info:eclipselink.sql=finest:eclipselink.logging.parameters=finest
+   ```
+
+4. Save and restart the server for changes to take effect.
+
+---
+
+By making these adjustments, you’ll see SQL statements and their parameters logged during runtime, tailored for JPA 2.0 under WebSphere.
