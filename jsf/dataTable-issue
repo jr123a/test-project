@@ -1,0 +1,29 @@
+<h:outputLabel for="availableWorkflowAPIs" value="Available Workflow APIs" />
+
+				<h:dataTable  class="footable toggle-arrow-small" id="availableWorkflowAPIs">
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">blank</f:facet>
+						<!--<h:selectBooleanCheckbox value="#{dataRow.selected }"
+												 id="chkboxInput" disabled="false"
+												 onchange="enableDisablePageSelector();"
+												 styleClass="checkbox"/>-->
+						<h:selectBooleanCheckbox id="chkboxInputWFApi" disabled="false" />
+					</h:column>
+
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">API Type ID</f:facet>
+						<!--<h:outputText value="#{dataRow.activationDateStr}"  escape="false"/><br/><br/><br/>-->
+						<!--<h:outputText value="1"  escape="false"/><br/><br/><br/>-->
+						<p>1</p>
+					</h:column>
+
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Code</f:facet>
+						<!--<h:outputText value="DA"  escape="false"/><br/><br/><br/>-->
+					</h:column>
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Description</f:facet>
+						<!--<h:outputText value="ThreatMatrix/LexisNexis Device Assessment (DA) for individual transaction"  escape="false"/><br/><br/><br/>-->
+						<p>ThreatMatrix/LexisNexis Device Assessment (DA) for individual transaction</p>
+					</h:column>
+				</h:dataTable>
