@@ -1,0 +1,131 @@
+Based on the **`SponsorAppConfigAdminBean.java`** and **`sponsor_app_config.xhtml`**, I'll modify the implementation so that:
+1. When a user selects a workflow API from the **availableWorkflowAPIs** table and clicks **Include**, the selected APIs are added to **selectedWorkflowAPIs**.
+2. The **selectedWorkflowAPIs** table updates dynamically.
+3. The implementation matches the structure and data model used in your managed bean.
+
+---
+
+### **1. Updated Managed Bean (`SponsorAppConfigAdminBean.java`)**
+Modify the existing `includeWorkFlow` method so that it correctly adds selected workflows from `availableWorkflowAPIs` to `selectedWorkflowAPIs`.
+
+#### **Updated Managed Bean Code**
+```java
+@ManagedBean(name = "sponsorAppConfigAdminBean")
+@ViewScoped
+public class SponsorAppConfigAdminBean extends IPSAdminController {
+    private static final long serialVersionUID = 1L;
+
+    private List<WorkflowAPI> availableWorkflowAPIs = new ArrayList<>();
+    private List<WorkflowAPI> selectedWorkflowAPIs = new ArrayList<>();
+    private List<WorkflowAPI> selectedForInclusion = new ArrayList<>(); // Holds selected checkboxes
+
+    public SponsorAppConfigAdminBean() {
+        // Initialize available workflow APIs (simulated)
+        availableWorkflowAPIs.add(new WorkflowAPI(1, "DA", "ThreatMetrix/LexisNexis Device Assessment (DA)"));
+        availableWorkflowAPIs.add(new WorkflowAPI(2, "PVDIT", "LexisNexis/Experian Phone Verification (PV/DIT)"));
+        availableWorkflowAPIs.add(new WorkflowAPI(3, "OTP/MFA", "Equifax Multi-Factor Authentication (OTP/MFA)"));
+        availableWorkflowAPIs.add(new WorkflowAPI(4, "DERA", "ThreatMetrix/LexisNexis Device and Email Risk Assessment"));
+        availableWorkflowAPIs.add(new WorkflowAPI(5, "BIID", "ThreatMetrix/LexisNexis Business Instant ID (BIID)"));
+        availableWorkflowAPIs.add(new WorkflowAPI(6, "AMS", "Address Management System (AMS) verification"));
+    }
+
+    // Method to include selected APIs
+    public void includeSelectedApis() {
+        for (WorkflowAPI api : selectedForInclusion) {
+            if (!selectedWorkflowAPIs.contains(api)) { // Avoid duplicates
+                selectedWorkflowAPIs.add(api);
+            }
+        }
+        selectedForInclusion.clear(); // Reset selection
+    }
+
+    // Getters and Setters
+    public List<WorkflowAPI> getAvailableWorkflowAPIs() {
+        return availableWorkflowAPIs;
+    }
+
+    public List<WorkflowAPI> getSelectedWorkflowAPIs() {
+        return selectedWorkflowAPIs;
+    }
+
+    public List<WorkflowAPI> getSelectedForInclusion() {
+        return selectedForInclusion;
+    }
+
+    public void setSelectedForInclusion(List<WorkflowAPI> selectedForInclusion) {
+        this.selectedForInclusion = selectedForInclusion;
+    }
+}
+```
+
+---
+
+### **2. Updated XHTML (`sponsor_app_config.xhtml`)**
+Modify the UI to:
+- Allow selecting APIs via checkboxes.
+- Call the `includeSelectedApis` method when clicking the **Include** button.
+- Refresh only the selected APIs table to reflect changes.
+
+#### **Updated XHTML Code**
+```xml
+<h:form id="workflowForm">
+    <!-- Available APIs -->
+    <h:dataTable value="#{sponsorAppConfigAdminBean.availableWorkflowAPIs}" var="api" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{sponsorAppConfigAdminBean.selectedForInclusion}">
+                <f:selectItem itemValue="#{api}" />
+            </h:selectBooleanCheckbox>
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{api.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Description</f:facet>
+            #{api.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- Include Button -->
+    <h:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" update="selectedApisTable" />
+
+    <!-- Selected APIs -->
+    <h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="selectedApi" border="1">
+        <h:column>
+            <f:facet name="header">API Type ID</f:facet>
+            #{selectedApi.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{selectedApi.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Description</f:facet>
+            #{selectedApi.description}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **Changes and Fixes Applied**
+1. **Fixed the selection logic**: 
+   - The checkbox now correctly selects multiple APIs and stores them in `selectedForInclusion`.
+   - These APIs are then added to `selectedWorkflowAPIs` upon clicking **Include**.
+
+2. **Ensured that duplicate APIs are not added**:
+   - The method checks for existing APIs before adding.
+
+3. **Updated the UI to dynamically refresh only the selected APIs table**:
+   - `update="selectedApisTable"` ensures that only the bottom table refreshes after clicking **Include**.
+
+---
+
+## **Final Steps**
+- Deploy these changes to your **WebSphere server**.
+- **Clear WebSphere cache** if changes are not reflecting.
+- Test selecting and including workflow APIs.
+
+Let me know if you need further modifications! 🚀
