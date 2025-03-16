@@ -1,0 +1,81 @@
+From your **server logs**, the error is:
+```
+java.lang.IllegalArgumentException: Expected value of type Boolean for component
+```
+This means that **JSF is expecting a Boolean value** for a UI component but is receiving something else.
+
+---
+
+### **Issue: Boolean Binding in `h:selectBooleanCheckbox`**
+In your XHTML:
+```xml
+<h:selectBooleanCheckbox value="#{sponsorAppConfigAdminBean.selectedForInclusion[api.id]}" />
+```
+#### **Potential Problems**
+1. **`selectedForInclusion` is a `Map<Integer, Boolean>`**, but JSF might be treating it as an Object.
+2. The `Map` might not have an entry for `api.id`, causing a `null` value.
+3. JSF **expects a Boolean wrapper**, not `null` or `Integer`.
+
+---
+
+### **Solution: Ensure `Boolean` Defaults**
+Modify the **getter method** in `SponsorAppConfigAdminBean`:
+```java
+public Map<Integer, Boolean> getSelectedForInclusion() {
+    if (selectedForInclusion == null) {
+        selectedForInclusion = new HashMap<>();
+    }
+    return selectedForInclusion;
+}
+```
+
+Modify the **checkbox binding in XHTML**:
+```xml
+<h:selectBooleanCheckbox value="#{sponsorAppConfigAdminBean.selectedForInclusion[api.id] != null ? 
+                                sponsorAppConfigAdminBean.selectedForInclusion[api.id] : false}" />
+```
+OR, modify `includeSelectedApis` method to initialize values:
+```java
+public void includeSelectedApis() {
+    for (WorkflowAPI api : availableWorkflowAPIs) {
+        boolean isSelected = selectedForInclusion.getOrDefault(api.getId(), false);
+        if (isSelected && !selectedWorkflowAPIs.contains(api)) {
+            selectedWorkflowAPIs.add(api);
+        }
+    }
+    selectedForInclusion.clear(); // Reset selection
+}
+```
+
+---
+
+### **Alternative: Use a `List<WorkflowAPI>` Instead of a `Map`**
+Instead of tracking selections using a `Map<Integer, Boolean>`, use a **List**:
+```java
+private List<WorkflowAPI> selectedForInclusion = new ArrayList<>();
+```
+Modify **XHTML**:
+```xml
+<h:selectBooleanCheckbox value="#{sponsorAppConfigAdminBean.selectedForInclusion.contains(api)}" />
+```
+Modify **include method**:
+```java
+public void includeSelectedApis() {
+    for (WorkflowAPI api : availableWorkflowAPIs) {
+        if (selectedForInclusion.contains(api) && !selectedWorkflowAPIs.contains(api)) {
+            selectedWorkflowAPIs.add(api);
+        }
+    }
+    selectedForInclusion.clear();
+}
+```
+
+---
+
+### **Final Steps**
+1. **Deploy the fixes**.
+2. **Clear WebSphere cache**.
+3. **Restart the server**.
+4. **Test checkboxes and ensure selections work**.
+
+This should resolve the issue! 🚀 Let me know if you need more help.
