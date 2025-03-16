@@ -1,0 +1,3278 @@
+package com.ips.bean;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import javax.faces.context.FacesContext;
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+
+import com.ips.common.WorkflowAPI;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
+import com.ips.common.common.CustomLogger;
+import com.ips.entity.ApplicationWorkflows;
+import com.ips.entity.IdVerifyServiceRequest;
+import com.ips.entity.PhysicalLetterData;
+import com.ips.entity.RefAdminEvent;
+import com.ips.entity.RefApp;
+import com.ips.entity.RefLoaLevel;
+import com.ips.entity.RefReports;
+import com.ips.entity.RefSponsor;
+import com.ips.entity.RefSponsorConfiguration;
+import com.ips.entity.RpAdmin;
+import com.ips.entity.RpFeatureAttempt;
+import com.ips.entity.RpInfPvAttemptConfig;
+import com.ips.entity.RpOtpAttemptConfig;
+import com.ips.entity.SponsorApplicationMap;
+import com.ips.entity.SponsorApplicationMapPK;
+import com.ips.entity.SponsorEmailValues;
+import com.ips.entity.SponsorEndpoints;
+import com.ips.entity.SponsorFacilities;
+import com.ips.entity.SponsorFairId;
+import com.ips.entity.SponsorIncomingRequests;
+import com.ips.entity.SponsorReportHistory;
+import com.ips.entity.SponsorReports;
+import com.ips.entity.SponsorStrongId;
+import com.ips.entity.SponsorTokens;
+import com.ips.entity.SponsorWebServiceHistory;
+import com.ips.entity.SponsorWebServicePending;
+import com.ips.entity.SponsorWebServiceQueue;
+import com.ips.entity.SponsorWebServiceRequests;
+import com.ips.exception.IPSException;
+import com.ips.proofing.VerificationProviderService;
+import com.ips.service.AdminEventService;
+import com.ips.service.AdminService;
+import com.ips.service.ApplicationWorkflowsService;
+import com.ips.service.IdVerifyServiceRequestService;
+import com.ips.service.OtpAttemptConfigService;
+import com.ips.service.PhysicalLetterDataService;
+import com.ips.service.RefAppService;
+import com.ips.service.RefSponsorConfigurationService;
+import com.ips.service.RefSponsorDataService;
+import com.ips.service.RpFeatureAttemptService;
+import com.ips.service.RpInfPvAttemptConfigService;
+import com.ips.service.SponsorApplicationMapService;
+import com.ips.service.SponsorEmailValuesService;
+import com.ips.service.SponsorEndpointService;
+import com.ips.service.SponsorFacilitiesService;
+import com.ips.service.SponsorFairIdService;
+import com.ips.service.SponsorIncomingRequestsService;
+import com.ips.service.SponsorReportService;
+import com.ips.service.SponsorReportsService;
+import com.ips.service.SponsorStrongIdService;
+import com.ips.service.SponsorTokensService;
+import com.ips.service.SponsorWebServiceHistoryService;
+import com.ips.service.SponsorWebServicePendingService;
+import com.ips.service.SponsorWebServiceQueueService;
+import com.ips.service.SponsorWebServiceRequestService;
+
+@ManagedBean(name = "sponsorAppConfigAdminBean")
+@ViewScoped
+public class SponsorAppConfigAdminBean extends IPSAdminController {
+	private static final long serialVersionUID = 1L;
+	private AdminEventService adminEventService;
+	private AdminService adminService;
+	private ApplicationWorkflowsService applicationWorkflowsService;
+	private IdVerifyServiceRequestService idVerifyServiceRequestService;
+	private OtpAttemptConfigService otpAttemptConfigService;
+	private PhysicalLetterDataService physicalLetterDataService;
+	private RefAppService refAppService;
+	private RefSponsorConfigurationService refSponsorConfigService;
+	private RefSponsorDataService refSponsorDataService;
+	private RpFeatureAttemptService rpFeatureAttemptService;
+	private RpInfPvAttemptConfigService rpInfPvAttemptConfigService;
+	private SponsorApplicationMapService sponsorAppMapService;
+	private SponsorEmailValuesService sponsorEmailValuesService;
+	private SponsorEndpointService sponsorEndpointService;
+	private SponsorFacilitiesService sponsorFacilitiesService;
+	private SponsorFairIdService sponsorFairIdService;
+	private SponsorIncomingRequestsService sponsorIncomingRequestsService;
+	private SponsorReportService sponsorReportService;
+	private SponsorReportsService sponsorReportsService;
+	private SponsorStrongIdService sponsorStrongIdService;
+	private SponsorTokensService sponsorTokensService;
+	private SponsorWebServiceHistoryService sponsorWebServiceHistoryService;
+	private SponsorWebServicePendingService sponsorWebServicePendingService;
+	private SponsorWebServiceRequestService sponsorWebServiceRequestService;
+	private SponsorWebServiceQueueService sponsorWebServiceQueueService;
+	private VerificationProviderService verificationProviderService;
+
+	private SponsorApplicationMapPK selectedSponsorAppMapPKForEdit;
+	private RefSponsor selectedRefSponsor;
+	private RefApp selectedApp;
+	private SponsorApplicationMap selectedSponsorApplicationMap;
+
+	private long selectedSponsorForEdit = 0;
+	private long selectedApplicationForEdit = 0;
+	private long selectedSponsorMap;
+	private long selectedApplicationMap;
+	private String sponsorName;
+	private String applicationName;
+	private String sponsorSuccessMsg;
+	private String sponsorWarningMsg;
+	private String sponsorValidationErrorMsg;
+	private String sponsorEmailErrorMsg;
+	private String applicationSuccessMsg;
+	private String applicationWarningMsg;
+	private String applicationValidationErrorMsg;
+	private String applicationEmailErrorMsg;
+	private String sponsorAppMapSuccessMsg;
+	private String sponsorAppMapWarningMsg;
+	private String sponsorAppMapValidationErrorMsg;
+	private String sponsorAppMapEmailErrorMsg;
+	private String sponsorWaitMsg;
+	private Date activationDate;
+	private Date deactivationDate;
+	private List<RefSponsor> sponsorAllList;
+
+	/*ECR dashboard redesign*/
+	private List<WorkflowAPI> availableWorkflowAPIs = new ArrayList<>();
+
+	private List<WorkflowAPI> selectedWorkflowAPIs = new ArrayList<>();
+
+	private List<RefApp> applicationAllList;
+	private List<SponsorApplicationMap> sponsorApplicationMapList;
+	private List<RpAdmin> rpAdminList;
+	private List<IdVerifyServiceRequest> idVerifySvcRequestList;
+	private List<ApplicationWorkflows> appWorkflowList;
+	private List<SponsorWebServiceRequests> webSvcRequestList;
+	private List<SponsorEndpoints> endpointList;
+	private List<SponsorWebServiceHistory> webSvcHistoryList;
+	private List<SponsorReportHistory> reportHistoryList;
+	private List<SponsorIncomingRequests> incomingRequestList;
+	private List<SponsorFacilities> facilityList;
+	private List<SponsorWebServicePending> webSvcPendingList;
+	private List<SponsorTokens> tokenList;
+	private List<SponsorFairId> fairIdList;
+	private List<SponsorStrongId> strongIdList;
+	private List<SponsorEmailValues> emailValueList;
+	private List<SponsorWebServiceQueue> webSvcQueueList;
+	private List<PhysicalLetterData> phyLetterDataList;
+	private List<RefSponsorConfiguration> sponsorConfigList;
+	private List<SponsorReports> sponsorReportList;
+	private List<String> childTableList;
+
+	private Map<String, Boolean> booleanPropertyMapping;
+	private boolean externalIppClient;
+	private boolean remoteProofingClient;
+	private boolean isInitialized = false;
+	private int deleteAttempts = 0;
+
+	private static final String MAP_KEY_SPONSOR_SUCCESS_MSG = "sponsorSuccessMsg";
+	private static final String MAP_KEY_APP_SUCCESS_MSG = "appSuccessMsg";
+	private static final String MAP_KEY_SPAPPMAP_SUCCESS_MSG = "sponsorAppMapSuccessMsg";
+
+	private static final String MAP_KEY_SPONSOR_WARNING_MSG = "sponsorWarningMsg";
+	private static final String MAP_KEY_APP_WARNING_MSG = "appWarningMsg";
+	private static final String MAP_KEY_SPAPPMAP_WARNING_MSG = "sponsorAppMapWarningMsg";
+
+	private static final String MAP_KEY_SPONSOR_VALIDATION_ERROR_MSG = "sponsorValidationErrorMsg";
+	private static final String MAP_KEY_APP_VALIDATION_ERROR_MSG = "appValidationErrorMsg";
+	private static final String MAP_KEY_SPAPPMAP_VALIDATION_ERROR_MSG = "sponsorAppMapValidationErrorMsg";
+
+	private static final String MAP_KEY_SPONSOR_EMAIL_ERROR_MSG = "sponsorEmailErrorMsg";
+	private static final String MAP_KEY_APP_EMAIL_ERROR_MSG = "appEmailErrorMsg";
+	private static final String MAP_KEY_SPAPPMAP_EMAIL_ERROR_MSG = "sponsorAppMapEmailErrorMsg";
+
+	private static final String MAP_KEY_SHOWSPONSORADDBTN = "showSponsorAddButton";
+	private static final String MAP_KEY_SHOWSPONSORUPDATEBTN = "showSponsorUpdateButton";
+	private static final String MAP_KEY_SHOWSPONSORDELETEBTN = "showSponsorDeleteButton";
+	private static final String MAP_KEY_SHOWSPONSORCANCELBTN = "showSponsorCancelButton";
+
+	private static final String MAP_KEY_SHOWAPPADDBTN = "showApplicationAddButton";
+	private static final String MAP_KEY_SHOWAPPUPDATEBTN = "showApplicationUpdateButton";
+	private static final String MAP_KEY_SHOWAPPDELETEBTN = "showApplicationDeleteButton";
+	private static final String MAP_KEY_SHOWAPPCANCELBTN = "showApplicationCancelButton";
+
+	private static final String MAP_KEY_SHOWSPONSORAPPMAPADDBTN = "showSponsorAppMapAddButton";
+	private static final String MAP_KEY_SHOWSPONSORAPPMAPUPDATEBTN = "showSponsorAppMapUpdateButton";
+	private static final String MAP_KEY_SHOWSPONSORAPPMAPDELETEBTN = "showSponsorAppMapDeleteButton";
+	private static final String MAP_KEY_SHOWSPONSORAPPMAPCANCELBTN = "showSponsorAppMapCancelButton";
+
+	private static final String MAP_KEY_DISABLESPONSORNAMEBOX = "disableSponsorNameBox";
+	private static final String MAP_KEY_DISABLEDROPDOWNS = "disableDropdowns";
+	private static final String MAP_KEY_DISABLEEXTIPPCLIENT = "disableExternalIppClient";
+	private static final String MAP_KEY_DISABLERPCLIENT = "disableRemoteProofingClient";
+	private static final String ATTRIBUTE_IVSTOKEN = "IVSToken";
+	private static final String CONST_VALUE_Y = "Y";
+	private static final String CONST_VALUE_N = "N";
+	private static final String EXCEPTION_ADMIN_NOTIFY_MSG_FMT = "Exception occurred creating admin notification for %s";
+
+	private static final String ID_VERIFY_SERVICE_REQUEST = "IdVerifyServiceRequest";
+	private static final String APPLICATION_WORKFLOWS = "ApplicationWorkflows";
+	private static final String SPONSOR_WEB_SERVICE_REQUEST = "SponsorWebServiceRequests";
+	private static final String SPONSOR_ENDPOINTS = "SponsorEndpoints";
+	private static final String SPONSOR_WEB_SERVICE_HISTORY = "SponsorWebServiceHistory";
+	private static final String SPONSOR_REPORT_HISTORY = "SponsorReportHistory";
+	private static final String SPONSOR_INCOMING_REQUESTS = "SponsorIncomingRequests";
+	private static final String SPONSOR_FACILITIES = "SponsorFacilities";
+	private static final String SPONSOR_WEB_SERVICE_PENDING = "SponsorWebServicePending";
+	private static final String SPONSOR_TOKENS = "SponsorTokens";
+	private static final String SPONSOR_FAIR_ID = "SponsorFairId";
+	private static final String SPONSOR_STRONG_ID = "SponsorStrongId";
+	private static final String SPONSOR_EMAIL_VALUES = "SponsorEmailValues";
+	private static final String SPONSOR_WEB_SERVICE_QUEUE = "SponsorWebServiceQueue";
+	private static final String PHYSICAL_LETTER_DATA = "PhysicalLetterData";
+	private static final String REF_SPONSOR_CONFIGURATION = "RefSponsorConfiguration";
+	private static final String SPONSOR_REPORTS = "SponsorReports";
+	private static final String RP_FEATURE_ATTEMPT = "RpFeatureAttempt";
+	private static final String RP_KBA_ATTEMPTS = "RpOtpAttemptConfig";
+	private static final String RP_INF_PV_ATTEMPTS = "RpInfPvAttemptConfig";
+
+	private static final String SPONSOR_ENTITY_TYPE = "Sponsor";
+	private static final String APPLICATION_ENTITY_TYPE = "Application";
+	private static final String SPONSOR_APP_MAP_ENTITY_TYPE = "SponsorAppMap";
+	private static final String SPONSOR_SUCCESS = "sponsorSuccess";
+	private static final String SPONSOR_WARNING = "sponsorWarning";
+	private static final String SPONSOR_VALIDATION_ERROR = "sponsorValidationError";
+	private static final String SPONSOR_EMAIL_ERROR = "sponsorEmailError";
+
+	private static final String APPLICATION_SUCCESS = "applicationSuccess";
+	private static final String APPLICATION_WARNING = "applicationWarning";
+	private static final String APPLICATION_VALIDATION_ERROR = "applicationValidationError";
+	private static final String APPLICATION_EMAIL_ERROR = "applicationEmailError";
+	private static final String SPONSOR_APP_MAP_SUCCESS = "sponsorAppMapSuccess";
+	private static final String SPONSOR_APP_MAP_WARNING = "sponsorAppMapWarning";
+	private static final String SPONSOR_APP_MAP_VALIDATION_ERROR = "sponsorAppMapValidationError";
+	private static final String SPONSOR_APP_MAP_EMAIL_ERROR = "sponsorAppMapEmailError";
+
+	private static final String SPONSOR_CLEAR = "sponsorClear";
+	private static final String SPONSOR_INIT = "sponsorInit";
+	private static final String SPONSOR_UPDATE = "sponsorUpdate";
+	private static final String SPONSOR_DELETE_TRUE = "sponsorDeleteTrue";
+	private static final String SPONSOR_DELETE_FALSE = "sponsorDeleteFalse";
+	private static final String APPLICATION_CLEAR = "applicationClear";
+	private static final String APPLICATION_INIT = "applicationInit";
+	private static final String APPLICATION_UPDATE = "applicationUpdate";
+	private static final String APPLICATION_DELETE = "applicationDelete";
+	private static final String SPONSOR_APP_MAP_CLEAR = "sponsorAppMapClear";
+	private static final String SPONSOR_APP_MAP_INIT = "sponsorAppMapInit";
+	private static final String SPONSOR_APP_MAP_UPDATE = "sponsorAppMapUpdate";
+	private static final String SPONSOR_APP_MAP_DELETE = "sponsorAppMapDelete";
+
+	public void init() {
+		CustomLogger.enter(this.getClass());
+
+		if (!isInitialized) {
+			loadAppSponsorServices();
+			buildSponsorList();
+			// ECR dahsboard redesign
+			initWorkflowBean();
+			//initSelectedWorkflowBean();
+
+			buildApplicationList();
+			buildSponsorApplicationMapList();
+			buildMap();
+			manageMessageDisplay(SPONSOR_CLEAR);
+			manageMessageDisplay(APPLICATION_CLEAR);
+			manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+			manageButtonDisplay(SPONSOR_INIT);
+			manageButtonDisplay(APPLICATION_INIT);
+			manageButtonDisplay(SPONSOR_APP_MAP_INIT);
+			isInitialized = true;
+		}
+	}
+
+	public void addSponsor() {
+		CustomLogger.enter(this.getClass());
+
+		long newSponsorId = 0L;
+		Optional<RefSponsor> result = sponsorAllList.stream().max(Comparator.comparingLong(RefSponsor::getSponsorId));
+
+		if (result.isPresent()) {
+			newSponsorId = result.get().getSponsorId() + 1;
+		}
+
+		RefSponsor newSponsor = new RefSponsor();
+		newSponsor.setCreateDate(new Timestamp(new Date().getTime()));
+		newSponsor.setIppClientActive(isExternalIppClient() ? CONST_VALUE_Y : CONST_VALUE_N);
+		newSponsor.setRemoteProofingClient(isRemoteProofingClient() ? CONST_VALUE_Y : CONST_VALUE_N);
+		newSponsor.setSponsorName(sponsorName);
+		newSponsor.setSponsorId(newSponsorId);
+
+		try {
+			refSponsorDataService.create(newSponsor);
+		} catch (Exception e) {
+			String errMsg = "Exception occurred creating new sponsor";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			return;
+		}
+
+		try {
+			createNewRefSponsorConfigsIfNeeded(newSponsor);
+		} catch (Exception e) {
+			String errMsg = "Exception occurred creating new ref sponsor configs";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			return;
+		}
+
+		createSponsorReports(newSponsor);
+
+		buildSponsorList();
+		// ECR dahsboard redesign
+		initWorkflowBean();
+		sponsorName = "";
+		setExternalIppClient(false);
+		setRemoteProofingClient(false);
+
+		setSponsorSuccessMsg(String.format("Sponsor '%s' was successfully added!", newSponsor.getSponsorName()));
+		manageMessageDisplay(SPONSOR_SUCCESS);
+		manageButtonDisplay(SPONSOR_INIT);
+
+		sendSponsorNotification(newSponsor, RefAdminEvent.ADD_NEW_SPONSOR);
+	}
+
+	private void createSponsorReports(RefSponsor sponsor) {
+		if (CONST_VALUE_Y.equalsIgnoreCase(sponsor.getIppClientActive())) {
+			try {
+				long[] reportIdArray = new long[] { 1, 2, 3 };
+				for (long reportId : reportIdArray) {
+					RefReports report = adminService.getRefReportsById(reportId);
+					SponsorReports sponsorReport = new SponsorReports();
+					sponsorReport.setReports(report);
+					sponsorReport.setSponsor(sponsor);
+					sponsorReport.setCreateDate(new Date());
+
+					adminService.createSponsorReports(sponsorReport);
+				}
+			} catch (Exception e) {
+				String errMsg = "Exception occurred creating new sponsor reports";
+				CustomLogger.error(this.getClass(), errMsg, e);
+
+				setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+				manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			}
+		}
+	}
+
+	public void showSponsorForEdit(RefSponsor sponsor) {
+		CustomLogger.enter(this.getClass());
+		boolean isSponsorNotReferencedInIppEvent = isSponsorNotReferencedInIppEvent(sponsor, "edited");
+
+		if (!isSponsorNotReferencedInIppEvent) {
+			return;
+		}
+
+		manageMessageDisplay(SPONSOR_CLEAR);
+		manageButtonDisplay(SPONSOR_UPDATE);
+
+		try {
+			sponsorName = sponsor.getSponsorName();
+			setExternalIppClient(sponsor.isIppClientActive());
+			setRemoteProofingClient(sponsor.isRemoteProofingClientActive());
+
+			setDisableSponsorNameBox(!isSponsorDeletable(sponsor));
+			setDisableExternalIppClient(isSponsorNotReferencedInIppEvent);
+			selectedSponsorForEdit = sponsor.getSponsorId();
+		} catch (Exception e) {
+			String errMsg = "Exception occurred setting up sponsor for edit";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			return;
+		}
+
+		manageMessageDisplay(SPONSOR_CLEAR);
+		manageButtonDisplay("sponsorEdit");
+	}
+
+	public void updateSponsor() {
+		CustomLogger.enter(this.getClass());
+
+		RefSponsor sponsor = null;
+		try {
+			sponsor = refSponsorDataService.findByPK(selectedSponsorForEdit);
+			if (sponsor != null) {
+				sponsor.setIppClientActive(isExternalIppClient() ? CONST_VALUE_Y : CONST_VALUE_N);
+				sponsor.setRemoteProofingClient(isRemoteProofingClient() ? CONST_VALUE_Y : CONST_VALUE_N);
+				createNewRefSponsorConfigsIfNeeded(sponsor);
+
+				boolean isSponsorNotReferencedInIppEvent = isSponsorNotReferencedInIppEvent(sponsor, "edited");
+
+				if (isSponsorNotReferencedInIppEvent) {
+					sponsor.setSponsorName(sponsorName);
+				}
+				sponsor.setUpdateDate(new Timestamp(new Date().getTime()));
+				refSponsorDataService.update(sponsor);
+			}
+		} catch (Exception e) {
+			String errMsg = "Exception occurred updating sponsor";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+
+			return;
+		}
+
+		buildSponsorList();
+		// ECR dahsboard redesign
+		initWorkflowBean();
+		cancelSponsorEdit();
+
+		setSponsorSuccessMsg(String.format("Sponsor '%s' was successfully updated!",
+				sponsor != null ? sponsor.getSponsorName() : "null"));
+		manageMessageDisplay(SPONSOR_SUCCESS);
+		manageButtonDisplay(SPONSOR_INIT);
+
+		sendSponsorNotification(sponsor, RefAdminEvent.UPDATE_SPONSOR);
+	}
+
+	private void createNewRefSponsorConfigsIfNeeded(RefSponsor sponsor) {
+		CustomLogger.enter(this.getClass());
+
+		refSponsorConfigService.createRefSponsorConfigurationsForNewSponsor(sponsor);
+	}
+
+	public void cancelSponsorEdit() {
+		CustomLogger.enter(this.getClass());
+
+		setSponsorName("");
+		setExternalIppClient(false);
+		setRemoteProofingClient(false);
+		setDisableSponsorNameBox(false);
+		setDisableExternalIppClient(false);
+		setDisableRemoteProofingClient(false);
+		selectedSponsorForEdit = 0;
+
+		manageMessageDisplay(SPONSOR_CLEAR);
+		manageButtonDisplay(SPONSOR_INIT);
+	}
+
+	public void checkDeleteSponsor(RefSponsor sponsor) {
+		selectedRefSponsor = sponsor;
+
+		if (!isSponsorDeletable(sponsor)) {
+			manageButtonDisplay(SPONSOR_DELETE_FALSE);
+			return;
+		}
+
+		boolean isSponsorNotReferencedInIppEvent = isSponsorNotReferencedInIppEvent(sponsor, "deleted");
+
+		if (!isSponsorNotReferencedInIppEvent) {
+			return;
+		}
+
+		manageMessageDisplay(SPONSOR_CLEAR);
+
+		List<RecordRemovalData> recordRemovalDataList = new ArrayList<>();
+		boolean isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalDataList,
+				false);
+		int assocTableCtr = 0;
+		childTableList = new ArrayList<>();
+
+		for (RecordRemovalData data : recordRemovalDataList) {
+			assocTableCtr++;
+			String tableData = String.format("%s - %s records", data.getTableName(), data.getNumRecordsDeleted());
+			childTableList.add(tableData);
+		}
+
+		if (isDeleteSponsorParentRecordSuccessful) {
+			if (assocTableCtr > 0) {
+				String warningMsg = String.format(
+						"Sponsor '%s' will be deleted with the following associated table child records. Please confirm.",
+						sponsor.getSponsorName());
+				setSponsorWarningMsg(warningMsg);
+			} else {
+				String warningMsg = String.format("Sponsor '%s' will be deleted. Please confirm.",
+						sponsor.getSponsorName());
+				setSponsorWarningMsg(warningMsg);
+			}
+
+			manageMessageDisplay(SPONSOR_WARNING);
+			manageButtonDisplay(SPONSOR_DELETE_TRUE);
+		}
+
+		setSponsorWaitMsg("");
+	}
+
+	public void confirmDeleteSponsor() {
+		CustomLogger.enter(this.getClass());
+
+		RefSponsor sponsor = selectedRefSponsor;
+
+		if (!isSponsorNotReferencedInIppEvent(sponsor, "deleted")) {
+			return;
+		}
+
+		if (!isSponsorDeletable(sponsor)) {
+			return;
+		}
+
+		manageMessageDisplay(SPONSOR_CLEAR);
+		List<RecordRemovalData> recordRemovalDataList = new ArrayList<>();
+		boolean isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalDataList,
+				true);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return;
+		}
+
+		hasUpdatedRelatedRpAdminToNull(sponsor);
+
+		try {
+			refSponsorDataService.delete(sponsor);
+			CustomLogger.debug(this.getClass(), String
+					.format("Delete sponsor operation was successful for sponsor '%s'.", sponsor.getSponsorName()));
+		} catch (Exception e) {
+			String errMsg = String.format("Exception occurred when deleting sponsor '%s'.", sponsor.getSponsorName());
+			CustomLogger.error(this.getClass(), errMsg);
+
+			processExceptionDetail(SPONSOR_ENTITY_TYPE, sponsor.getSponsorName(), e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			return;
+		}
+
+		buildSponsorList();
+		// ECR dahsboard redesign
+		initWorkflowBean();
+		setSponsorSuccessMsg(String.format("Sponsor '%s' was successfully deleted.", sponsor.getSponsorName()));
+		manageMessageDisplay(SPONSOR_SUCCESS);
+		manageButtonDisplay(SPONSOR_INIT);
+
+		sendSponsorNotification(sponsor, RefAdminEvent.DELETED_SPONSOR);
+	}
+
+	public boolean isDeleteSponsorParentSuccessful(RefSponsor sponsor, List<RecordRemovalData> recordRemovalDataList,
+			boolean executeDelete) {
+		CustomLogger.enter(this.getClass());
+
+		boolean isDeleteSponsorParentRecordSuccessful = false;
+
+		RecordRemovalData recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				REF_SPONSOR_CONFIGURATION, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				RP_FEATURE_ATTEMPT, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				RP_KBA_ATTEMPTS, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_REPORTS, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_FAIR_ID, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_STRONG_ID, executeDelete);
+
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_EMAIL_VALUES, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				ID_VERIFY_SERVICE_REQUEST, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				APPLICATION_WORKFLOWS, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_WEB_SERVICE_REQUEST, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_ENDPOINTS, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_WEB_SERVICE_HISTORY, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_REPORT_HISTORY, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_INCOMING_REQUESTS, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_FACILITIES, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_WEB_SERVICE_PENDING, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_TOKENS, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				SPONSOR_WEB_SERVICE_QUEUE, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		recordRemovalData = new RecordRemovalData();
+		isDeleteSponsorParentRecordSuccessful = isDeleteSponsorParentSuccessful(sponsor, recordRemovalData,
+				PHYSICAL_LETTER_DATA, executeDelete);
+		if (!isDeleteSponsorParentRecordSuccessful) {
+			return false;
+		}
+
+		if (recordRemovalData.getNumRecordsDeleted() > 0) {
+			recordRemovalDataList.add(recordRemovalData);
+		}
+
+		return true;
+	}
+
+	private boolean isSponsorDeletable(RefSponsor sponsor) {
+
+		boolean isSponsorDeletable = true;
+		String errMsg = "";
+
+		if (!isSponsorNotRegular(sponsor.getSponsorId())) {
+			isSponsorDeletable = false;
+			errMsg = "It is a regular sponsor.";
+		} else if (!isSponsorNotReferencedInPerson(sponsor.getSponsorId())) {
+			isSponsorDeletable = false;
+			errMsg = "It is tied to a person.";
+		} else if (!isSponsorNotReferencedInSponsorAppMap(sponsor.getSponsorId())) {
+			isSponsorDeletable = false;
+			errMsg = "It is referenced in SponsorAppMap.";
+		}
+
+		if (!isSponsorDeletable) {
+			errMsg = String.format("'%s' sponsor record cannot be deleted. %s", sponsor.getSponsorName(), errMsg);
+			CustomLogger.debug(this.getClass(), errMsg);
+			setSponsorValidationErrorMsg(errMsg);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+		}
+
+		return isSponsorDeletable;
+	}
+
+	private boolean isDeleteSponsorParentSuccessful(RefSponsor sponsor, RecordRemovalData recordRemovalData,
+			String childTable, boolean executeDelete) {
+		boolean isDeleteSponsorParentRecordSucessful = false;
+		deleteAttempts = 0;
+		do {
+			deleteAttempts++;
+			isDeleteSponsorParentRecordSucessful = isDeleteAttemptSponsorParentSuccessful(sponsor, recordRemovalData,
+					childTable, executeDelete);
+		} while (!isDeleteSponsorParentRecordSucessful && deleteAttempts < 2);
+
+		return isDeleteSponsorParentRecordSucessful;
+	}
+
+	private boolean isDeleteAttemptSponsorParentSuccessful(RefSponsor sponsor, RecordRemovalData recordRemovalData,
+			String childTable, boolean executeDelete) {
+		int recordsDeleted = 0;
+		recordRemovalData.setTableName(childTable);
+		recordRemovalData.setNumRecordsDeleted(0);
+
+		try {
+			switch (childTable) {
+			case ID_VERIFY_SERVICE_REQUEST:
+				idVerifySvcRequestList = idVerifyServiceRequestService
+						.findIdVerifyServiceRequestBySponsor(sponsor.getSponsorId());
+				if (idVerifySvcRequestList != null) {
+					recordsDeleted = idVerifySvcRequestList.size();
+					if (executeDelete) {
+						for (IdVerifyServiceRequest entity : idVerifySvcRequestList) {
+							idVerifyServiceRequestService.delete(entity);
+						}
+					}
+				}
+				break;
+			case APPLICATION_WORKFLOWS:
+				appWorkflowList = applicationWorkflowsService.findApplicationWorkflowsBySponsor(sponsor.getSponsorId());
+				if (appWorkflowList != null) {
+					recordsDeleted = appWorkflowList.size();
+					if (executeDelete) {
+						for (ApplicationWorkflows entity : appWorkflowList) {
+							applicationWorkflowsService.deleteApplicationWorkflow(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_REQUEST:
+				webSvcRequestList = sponsorWebServiceRequestService
+						.findSponsorWebServiceRequestsBySponsor(sponsor.getSponsorId());
+				if (webSvcRequestList != null) {
+					recordsDeleted = webSvcRequestList.size();
+					if (executeDelete) {
+						for (SponsorWebServiceRequests entity : webSvcRequestList) {
+							sponsorWebServiceRequestService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_ENDPOINTS:
+				endpointList = sponsorEndpointService.findSponsorEndpointsBySponsor(sponsor.getSponsorId());
+				if (endpointList != null) {
+					recordsDeleted = endpointList.size();
+					if (executeDelete) {
+						for (SponsorEndpoints entity : endpointList) {
+							sponsorEndpointService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_HISTORY:
+				webSvcHistoryList = sponsorWebServiceHistoryService
+						.findSponsorWebServiceHistoryBySponsor(sponsor.getSponsorId());
+				if (webSvcHistoryList != null) {
+					recordsDeleted = webSvcHistoryList.size();
+					if (executeDelete) {
+						for (SponsorWebServiceHistory entity : webSvcHistoryList) {
+							sponsorWebServiceHistoryService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_REPORT_HISTORY:
+				reportHistoryList = sponsorReportService.findSponsorReportHistoryBySponsor(sponsor.getSponsorId());
+				if (reportHistoryList != null) {
+					recordsDeleted = reportHistoryList.size();
+					if (executeDelete) {
+						for (SponsorReportHistory entity : reportHistoryList) {
+							sponsorReportService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_INCOMING_REQUESTS:
+				incomingRequestList = sponsorIncomingRequestsService
+						.findSponsorIncomingRequestsBySponsor(sponsor.getSponsorId());
+				if (incomingRequestList != null) {
+					recordsDeleted = incomingRequestList.size();
+					if (executeDelete) {
+						for (SponsorIncomingRequests entity : incomingRequestList) {
+							sponsorIncomingRequestsService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_FACILITIES:
+				facilityList = sponsorFacilitiesService.findSponsorFacilitiesBySponsor(sponsor.getSponsorId());
+				if (facilityList != null) {
+					recordsDeleted = facilityList.size();
+					if (executeDelete) {
+						for (SponsorFacilities entity : facilityList) {
+							sponsorFacilitiesService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_PENDING:
+				webSvcPendingList = sponsorWebServicePendingService
+						.findSponsorWebServicePendingBySponsor(sponsor.getSponsorId());
+				if (webSvcPendingList != null) {
+					recordsDeleted = webSvcPendingList.size();
+					if (executeDelete) {
+						for (SponsorWebServicePending entity : webSvcPendingList) {
+							sponsorWebServicePendingService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_TOKENS:
+				tokenList = sponsorTokensService.findSponsorTokensBySponsor(sponsor.getSponsorId());
+				if (tokenList != null) {
+					recordsDeleted = tokenList.size();
+					if (executeDelete) {
+						for (SponsorTokens entity : tokenList) {
+							sponsorTokensService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_FAIR_ID:
+				fairIdList = sponsorFairIdService.findSponsorFairIdBySponsor(sponsor.getSponsorId());
+				if (fairIdList != null) {
+					recordsDeleted = fairIdList.size();
+					if (executeDelete) {
+						for (SponsorFairId entity : fairIdList) {
+							sponsorFairIdService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_STRONG_ID:
+				strongIdList = sponsorStrongIdService.findSponsorStrongIdBySponsor(sponsor.getSponsorId());
+				if (strongIdList != null) {
+					recordsDeleted = strongIdList.size();
+					if (executeDelete) {
+						for (SponsorStrongId entity : strongIdList) {
+							sponsorStrongIdService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_EMAIL_VALUES:
+				emailValueList = sponsorEmailValuesService.findSponsorEmailValuesBySponsor(sponsor.getSponsorId());
+				if (emailValueList != null) {
+					recordsDeleted = emailValueList.size();
+					if (executeDelete) {
+						for (SponsorEmailValues entity : emailValueList) {
+							sponsorEmailValuesService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_QUEUE:
+				webSvcQueueList = sponsorWebServiceQueueService
+						.findSponsorWebServiceQueueBySponsor(sponsor.getSponsorId());
+				if (webSvcQueueList != null) {
+					recordsDeleted = webSvcQueueList.size();
+					if (executeDelete) {
+						for (SponsorWebServiceQueue entity : webSvcQueueList) {
+							sponsorWebServiceQueueService.delete(entity);
+						}
+					}
+				}
+				break;
+			case PHYSICAL_LETTER_DATA:
+				phyLetterDataList = physicalLetterDataService.findPhysicalLetterDataBySponsor(sponsor.getSponsorId());
+				if (phyLetterDataList != null) {
+					recordsDeleted = phyLetterDataList.size();
+					if (executeDelete) {
+						for (PhysicalLetterData entity : phyLetterDataList) {
+							physicalLetterDataService.delete(entity);
+						}
+					}
+				}
+				break;
+			case REF_SPONSOR_CONFIGURATION:
+				sponsorConfigList = refSponsorConfigService.findConfigRecordsBySponsor(sponsor.getSponsorId());
+				if (sponsorConfigList != null) {
+					recordsDeleted = sponsorConfigList.size();
+
+					if (executeDelete) {
+						for (RefSponsorConfiguration entity : sponsorConfigList) {
+							refSponsorConfigService.delete(entity);
+						}
+					}
+				}
+				break;
+			case SPONSOR_REPORTS:
+				sponsorReportList = sponsorReportsService.findSponsorReportsBySponsor(sponsor.getSponsorId());
+				if (sponsorReportList != null) {
+					recordsDeleted = sponsorReportList.size();
+
+					if (executeDelete) {
+						for (SponsorReports entity : sponsorReportList) {
+							sponsorReportsService.delete(entity);
+						}
+					}
+				}
+				break;
+			case RP_FEATURE_ATTEMPT:
+				RefSponsor refSponsor = refSponsorDataService.findByPK(sponsor.getSponsorId());
+				if (refSponsor != null && (RefSponsor.SPONSOR_CUSTREG.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_OPERATION_SANTA.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_CHANGE_ADDRESS.equalsIgnoreCase(refSponsor.getSponsorName()))) {
+					break;
+				}
+
+				List<RpFeatureAttempt> rpFeatureAttemptList = rpFeatureAttemptService
+						.getListBySponsorId(sponsor.getSponsorId());
+				if (rpFeatureAttemptList != null) {
+					recordsDeleted = rpFeatureAttemptList.size();
+
+					if (executeDelete) {
+						for (RpFeatureAttempt entity : rpFeatureAttemptList) {
+
+							rpFeatureAttemptService.delete(entity);
+						}
+					}
+				}
+				break;
+			case RP_KBA_ATTEMPTS:
+				refSponsor = refSponsorDataService.findByPK(sponsor.getSponsorId());
+				if (refSponsor != null && (RefSponsor.SPONSOR_CUSTREG.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_OPERATION_SANTA.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_CHANGE_ADDRESS.equalsIgnoreCase(refSponsor.getSponsorName()))) {
+					break;
+				}
+
+				List<RpOtpAttemptConfig> rpOtpAttemptConfigList = otpAttemptConfigService
+						.getByProofingLevel(RefLoaLevel.LOA15_CODE, refSponsor.getSponsorId());
+
+				if (rpOtpAttemptConfigList != null) {
+					recordsDeleted = rpOtpAttemptConfigList.size();
+					if (executeDelete) {
+						for (RpOtpAttemptConfig entity : rpOtpAttemptConfigList) {
+							otpAttemptConfigService.delete(entity);
+						}
+					}
+				}
+				break;
+			case RP_INF_PV_ATTEMPTS:
+				refSponsor = refSponsorDataService.findByPK(sponsor.getSponsorId());
+				if (refSponsor != null && (RefSponsor.SPONSOR_CUSTREG.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_OPERATION_SANTA.equalsIgnoreCase(refSponsor.getSponsorName())
+						|| RefSponsor.SPONSOR_CHANGE_ADDRESS.equalsIgnoreCase(refSponsor.getSponsorName()))) {
+					break;
+				}
+
+				List<RpInfPvAttemptConfig> rpinfPvAttemptConfigList = rpInfPvAttemptConfigService
+						.getByProofingLevel(RefLoaLevel.LOA15_CODE, refSponsor.getSponsorId());
+
+				if (rpinfPvAttemptConfigList != null) {
+					recordsDeleted = rpinfPvAttemptConfigList.size();
+					if (executeDelete) {
+						for (RpInfPvAttemptConfig entity : rpinfPvAttemptConfigList) {
+							rpInfPvAttemptConfigService.delete(entity);
+						}
+					}
+				}
+				break;
+			default:
+			}
+
+			if (recordsDeleted > 0) {
+				recordRemovalData.setNumRecordsDeleted(recordsDeleted);
+				if (executeDelete) {
+					CustomLogger.debug(this.getClass(),
+							String.format("Deletion of %s parent %s records of child sponsor %s was successful.",
+									recordsDeleted, childTable, sponsor.getSponsorName()));
+				}
+			}
+		} catch (Exception e) {
+			CustomLogger.error(this.getClass(),
+					String.format("Exception occurred when deleting child record '%s'of parent sponsor '%s'.",
+							childTable, sponsor.getSponsorName()));
+			processExceptionDetail(SPONSOR_ENTITY_TYPE, sponsor.getSponsorName(), e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+			return false;
+		}
+
+		return true;
+	}
+
+	private boolean hasUpdatedRelatedRpAdminToNull(RefSponsor sponsor) {
+
+		rpAdminList = adminEventService.findRpAdminBySponsor(sponsor.getSponsorId());
+		if (rpAdminList != null) {
+			for (RpAdmin entity : rpAdminList) {
+				entity.setSponsorId(null);
+				adminEventService.update(entity);
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+	private void restoreSponsorChildRecords(RefSponsor sponsor) {
+		CustomLogger.enter(this.getClass());
+
+		restoreSponsorChildRecords(sponsor, ID_VERIFY_SERVICE_REQUEST);
+		restoreSponsorChildRecords(sponsor, APPLICATION_WORKFLOWS);
+		restoreSponsorChildRecords(sponsor, SPONSOR_WEB_SERVICE_REQUEST);
+		restoreSponsorChildRecords(sponsor, SPONSOR_ENDPOINTS);
+		restoreSponsorChildRecords(sponsor, SPONSOR_WEB_SERVICE_HISTORY);
+		restoreSponsorChildRecords(sponsor, SPONSOR_REPORT_HISTORY);
+		restoreSponsorChildRecords(sponsor, SPONSOR_INCOMING_REQUESTS);
+		restoreSponsorChildRecords(sponsor, SPONSOR_FACILITIES);
+		restoreSponsorChildRecords(sponsor, SPONSOR_WEB_SERVICE_PENDING);
+		restoreSponsorChildRecords(sponsor, SPONSOR_TOKENS);
+		restoreSponsorChildRecords(sponsor, SPONSOR_FAIR_ID);
+		restoreSponsorChildRecords(sponsor, SPONSOR_STRONG_ID);
+		restoreSponsorChildRecords(sponsor, SPONSOR_EMAIL_VALUES);
+		restoreSponsorChildRecords(sponsor, SPONSOR_WEB_SERVICE_QUEUE);
+		restoreSponsorChildRecords(sponsor, PHYSICAL_LETTER_DATA);
+		restoreSponsorChildRecords(sponsor, SPONSOR_REPORTS);
+	}
+
+	private void restoreSponsorChildRecords(RefSponsor sponsor, String parentTable) {
+		try {
+			int recordsRestored = 0;
+			switch (parentTable) {
+			case ID_VERIFY_SERVICE_REQUEST:
+				if (idVerifySvcRequestList != null) {
+					recordsRestored = idVerifySvcRequestList.size();
+					for (IdVerifyServiceRequest entity : idVerifySvcRequestList) {
+						idVerifyServiceRequestService.save(entity);
+					}
+					idVerifySvcRequestList = null;
+				}
+				break;
+			case APPLICATION_WORKFLOWS:
+				if (appWorkflowList != null) {
+					recordsRestored = appWorkflowList.size();
+					for (ApplicationWorkflows entity : appWorkflowList) {
+						applicationWorkflowsService.saveApplicationWorkflow(entity);
+					}
+					appWorkflowList = null;
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_REQUEST:
+				if (webSvcRequestList != null) {
+					recordsRestored = webSvcRequestList.size();
+					for (SponsorWebServiceRequests entity : webSvcRequestList) {
+						sponsorWebServiceRequestService.save(entity);
+					}
+					webSvcRequestList = null;
+				}
+				break;
+			case SPONSOR_ENDPOINTS:
+				if (endpointList != null) {
+					recordsRestored = endpointList.size();
+					for (SponsorEndpoints entity : endpointList) {
+						sponsorEndpointService.save(entity);
+					}
+					endpointList = null;
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_HISTORY:
+				if (webSvcHistoryList != null) {
+					recordsRestored = webSvcHistoryList.size();
+					for (SponsorWebServiceHistory entity : webSvcHistoryList) {
+						sponsorWebServiceHistoryService.save(entity);
+					}
+					webSvcHistoryList = null;
+				}
+				break;
+			case SPONSOR_REPORT_HISTORY:
+				if (reportHistoryList != null) {
+					recordsRestored = reportHistoryList.size();
+					for (SponsorReportHistory entity : reportHistoryList) {
+						sponsorReportService.saveReportHistory(entity);
+					}
+					reportHistoryList = null;
+				}
+				break;
+			case SPONSOR_INCOMING_REQUESTS:
+				if (incomingRequestList != null) {
+					recordsRestored = incomingRequestList.size();
+					for (SponsorIncomingRequests entity : incomingRequestList) {
+						sponsorIncomingRequestsService.create(entity);
+					}
+					incomingRequestList = null;
+				}
+				break;
+			case SPONSOR_FACILITIES:
+				if (facilityList != null) {
+					recordsRestored = facilityList.size();
+					for (SponsorFacilities entity : facilityList) {
+						sponsorFacilitiesService.save(entity);
+					}
+					facilityList = null;
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_PENDING:
+				webSvcPendingList = sponsorWebServicePendingService
+						.findSponsorWebServicePendingBySponsor(sponsor.getSponsorId());
+				if (webSvcPendingList != null) {
+					recordsRestored = webSvcPendingList.size();
+					for (SponsorWebServicePending entity : webSvcPendingList) {
+						sponsorWebServicePendingService.save(entity);
+					}
+					webSvcPendingList = null;
+				}
+				break;
+			case SPONSOR_TOKENS:
+				if (tokenList != null) {
+					recordsRestored = tokenList.size();
+					for (SponsorTokens entity : tokenList) {
+						sponsorTokensService.save(entity);
+					}
+					tokenList = null;
+				}
+				break;
+			case SPONSOR_FAIR_ID:
+				if (fairIdList != null) {
+					recordsRestored = fairIdList.size();
+					for (SponsorFairId entity : fairIdList) {
+						sponsorFairIdService.create(entity);
+					}
+					fairIdList = null;
+				}
+				break;
+			case SPONSOR_STRONG_ID:
+				if (strongIdList != null) {
+					recordsRestored = strongIdList.size();
+					for (SponsorStrongId entity : strongIdList) {
+						sponsorStrongIdService.create(entity);
+					}
+					strongIdList = null;
+				}
+				break;
+			case SPONSOR_EMAIL_VALUES:
+				if (emailValueList != null) {
+					recordsRestored = emailValueList.size();
+					for (SponsorEmailValues entity : emailValueList) {
+						sponsorEmailValuesService.create(entity);
+					}
+					emailValueList = null;
+				}
+				break;
+			case SPONSOR_WEB_SERVICE_QUEUE:
+				if (webSvcQueueList != null) {
+					recordsRestored = webSvcQueueList.size();
+					for (SponsorWebServiceQueue entity : webSvcQueueList) {
+						sponsorWebServiceQueueService.save(entity);
+					}
+					webSvcQueueList = null;
+				}
+				break;
+			case PHYSICAL_LETTER_DATA:
+				if (phyLetterDataList != null) {
+					recordsRestored = phyLetterDataList.size();
+					for (PhysicalLetterData entity : phyLetterDataList) {
+						physicalLetterDataService.create(entity);
+					}
+					phyLetterDataList = null;
+				}
+				break;
+			case REF_SPONSOR_CONFIGURATION:
+				if (sponsorConfigList != null) {
+					recordsRestored = sponsorConfigList.size();
+					for (RefSponsorConfiguration entity : sponsorConfigList) {
+						refSponsorConfigService.create(entity);
+					}
+					sponsorConfigList = null;
+				}
+				break;
+			case SPONSOR_REPORTS:
+				if (sponsorReportList != null) {
+					recordsRestored = sponsorReportList.size();
+					for (SponsorReports entity : sponsorReportList) {
+						sponsorReportsService.create(entity);
+					}
+					sponsorReportList = null;
+				}
+				break;
+			default:
+			}
+
+			if (recordsRestored > 0) {
+				CustomLogger.debug(this.getClass(),
+						String.format("%s child '%s' records of parent sponsor '%s' was successfully restored.",
+								recordsRestored, parentTable, sponsor.getSponsorName()));
+			}
+		} catch (Exception e) {
+			String errMsg = String.format("Exception occurred when restoring child %s record of parent sponsor %s.",
+					parentTable, sponsor.getSponsorName());
+
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			processExceptionDetail(SPONSOR_ENTITY_TYPE, sponsor.getSponsorName(), e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+		}
+	}
+
+	private void processExceptionDetail(String entityType, String entityName, Exception e) {
+		CustomLogger.enter(this.getClass());
+		String errMsg = "";
+
+		StringWriter sw = new StringWriter();
+		e.printStackTrace(new PrintWriter(sw));
+		String stackTrace = sw.toString();
+
+		if (stackTrace.contains("IPS_OWN.")) {
+			int idx = stackTrace.lastIndexOf("IPS_OWN.");
+			int startIdx = idx - 30;
+			int endIdx = idx + 70;
+			String exceptionDetail = stackTrace.substring(startIdx, endIdx);
+
+			startIdx = exceptionDetail.lastIndexOf('(');
+			endIdx = exceptionDetail.lastIndexOf(')');
+			String constraintTableName = exceptionDetail.substring(startIdx + 9, endIdx);
+
+			startIdx = exceptionDetail.lastIndexOf(')');
+			endIdx = exceptionDetail.lastIndexOf('{');
+			String exceptionDesc = exceptionDetail.substring(startIdx, endIdx);
+
+			String specErrMsgFmt = "%s %s cannot be deleted. A child record is found in %s table.";
+			String childTableName = "";
+
+			switch (constraintTableName) {
+			case "FK_SRPT_SPONSOR":
+				childTableName = "SPONSOR_REPORTS";
+				break;
+			case "FK_SPONSOR_ID":
+				childTableName = "REF_SPONSOR_CONFIGURATION";
+				break;
+			case "FK_SPAPP_MAP_SP":
+				childTableName = "SPONSOR_APPLICATION_MAP";
+				break;
+			case "FK_PERSON_SPONSOR":
+				childTableName = "PERSON";
+				break;
+			case "FK_SPONS_STRONGID_SP":
+				childTableName = "SPONSOR_STRONG_IDS";
+				break;
+			case "FK_SPONS_FAIRID_SP":
+				childTableName = "SPONSOR_FAIR_IDS";
+				break;
+			case "FK_SPONSOR_FAC_SPONSOR":
+				childTableName = "SPONSOR_FACILITIES";
+				break;
+			case "FK_RP_ADMIN_SPONSOR":
+				childTableName = "RP_ADMIN";
+				break;
+			case "FK_SPONSOR_EMAIL_SPONSOR":
+				childTableName = "SPONSOR_EMAIL_VALUES";
+				break;
+			case "FK_PHYSICALLETTER_SP":
+				childTableName = "PHYSICAL_LETTER_DATA";
+				break;
+			case "FK_APP_WKFL_SP":
+				childTableName = "SPONSOR_";
+				break;
+			case "FK_IDVERIFREQUESTS_SPONSOR":
+				childTableName = "ID_VERIFY_SERVICE_REQUESTS";
+				break;
+			case "FK_SRPT_SPONSOR_HIS":
+				childTableName = "SPONSOR_REPORT_HISTORY";
+				break;
+			case "FK_SPONSOR_WS_HOSTORY_SPONSOR":
+				childTableName = "SPONSOR_WEB_SERVICE_HISTORY";
+				break;
+			case "FK_SE_SPONSOR":
+				childTableName = "SPONSOR_ENDPOINTS";
+				break;
+			case "FK_SPONSOR_TOKENS_SPONSOR":
+				childTableName = "SPONSOR_TOKENS";
+				break;
+			case "FK_SIR_SPONSOR":
+				childTableName = "SPONSOR_INCOMING_REQUESTS";
+				break;
+			case "FK_SWS_SPONSOR":
+				childTableName = "SPONSOR_WEB_SERVICE_REQUESTS";
+				break;
+			case "FK_SPONSOR_WS_SPONSOR":
+				childTableName = "SPONSOR_WEB_SERVICE_QUEUE";
+				break;
+			case "FK_SPONSOR_WS_PENDING_SPONSOR":
+				childTableName = "SPONSOR_WEB_SERVICE_PENDING";
+				break;
+			case "FK_RP_F_ATTEMPT_SPONSOR":
+				childTableName = "RP_FEATURES_ATTEMPTS";
+				break;
+			case "FK_KBA_ATTEMPT_SPONSOR":
+				childTableName = "FK_KBA_ATTEMPT_SPONSOR";
+				break;
+			default:
+
+			}
+
+			if (!StringUtils.isEmpty(childTableName) && exceptionDesc.contains("child record found")) {
+				errMsg = String.format(specErrMsgFmt, entityName, entityType, childTableName);
+			}
+		}
+
+		if (StringUtils.isEmpty(errMsg)) {
+			errMsg = String.format("'%s %s' cannot be deleted. It is referenced in other record(s).", entityName,
+					entityType);
+		}
+
+		if (SPONSOR_ENTITY_TYPE.equals(entityType)) {
+			setSponsorValidationErrorMsg(errMsg);
+		} else if (APPLICATION_ENTITY_TYPE.equals(entityType)) {
+			setApplicationValidationErrorMsg(errMsg);
+		} else if (SPONSOR_APP_MAP_ENTITY_TYPE.equals(entityType)) {
+			setSponsorAppMapValidationErrorMsg(errMsg);
+		}
+	}
+
+	private void setValidationErrorMsg(String entityType, String promptMsg, Exception e) {
+		CustomLogger.enter(this.getClass());
+
+		String errMsg = String.format("%s: %s", promptMsg, e.getMessage());
+
+		if (SPONSOR_ENTITY_TYPE.equals(entityType)) {
+			setSponsorValidationErrorMsg(errMsg);
+		} else if (APPLICATION_ENTITY_TYPE.equals(entityType)) {
+			setApplicationValidationErrorMsg(errMsg);
+		} else if (SPONSOR_APP_MAP_ENTITY_TYPE.equals(entityType)) {
+			setSponsorAppMapValidationErrorMsg(errMsg);
+		}
+	}
+
+	private boolean isSponsorNotRegular(long sponsorId) {
+		CustomLogger.enter(this.getClass());
+
+		return refSponsorDataService.isSponsorNotRegular(sponsorId);
+	}
+
+	private boolean isSponsorNotReferencedInSponsorAppMap(long sponsorId) {
+		CustomLogger.enter(this.getClass());
+
+		return refSponsorDataService.isSponsorNotReferencedInSponsorAppMap(sponsorId);
+	}
+
+	private boolean isSponsorNotReferencedInPerson(long sponsorId) {
+		CustomLogger.enter(this.getClass());
+
+		return refSponsorDataService.isSponsorNotReferencedInPerson(sponsorId);
+	}
+
+	private boolean isSponsorNotReferencedInIppEvent(RefSponsor sponsor, String action) {
+		CustomLogger.enter(this.getClass());
+
+		boolean isSponsorNotReferencedInIppEvent = refSponsorDataService.isSponsorEditable(sponsor.getSponsorId());
+
+		if (!isSponsorNotReferencedInIppEvent) {
+			String errMsg = String.format(
+					"%s sponsor cannot be %s. It is referenced in Person with IPP_Event of Start Status.",
+					sponsor.getSponsorName(), action);
+			setSponsorValidationErrorMsg(errMsg);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+		}
+
+		return isSponsorNotReferencedInIppEvent;
+	}
+
+	public void addApplication() {
+		CustomLogger.enter(this.getClass());
+
+		manageMessageDisplay(APPLICATION_CLEAR);
+
+		long appId = 0L;
+		Optional<RefApp> result = applicationAllList.stream().max(Comparator.comparingLong(RefApp::getAppId));
+
+		if (result.isPresent()) {
+			appId = result.get().getAppId() + 1;
+		}
+
+		RefApp app = new RefApp();
+		app.setAppId(appId);
+		app.setAppName(applicationName);
+		app.setCreateDate(new Date());
+
+		try {
+			refAppService.create(app);
+		} catch (Exception e) {
+			String errMsg = "Exception occurred when adding application";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(APPLICATION_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(APPLICATION_VALIDATION_ERROR);
+			return;
+		}
+
+		buildApplicationList();
+		applicationName = "";
+		setApplicationSuccessMsg(String.format("Application '%s' was successfully added!", app.getAppName()));
+		manageMessageDisplay(APPLICATION_SUCCESS);
+		manageButtonDisplay(APPLICATION_INIT);
+
+		sendApplicationNotification(app, RefAdminEvent.NEW_APPLICATION);
+	}
+
+	public void includeWorkFlow(int workFlowId){
+		CustomLogger.enter(this.getClass());
+		System.out.println("Inside includeWorkFlow");
+
+		/*long wfId = 0L;
+		Optional<WorkflowAPI> result = availableWorkflowAPIs.stream().max(Comparator.comparingLong(WorkflowAPI::getId));
+		if (result.isPresent()) {
+			wfId = result.get().getId() + 1;
+		}*/
+
+
+		// get the work flow from availableWorkflowAPIs using the wfId
+		//add to the selected selectedWorkflowAPIs
+		selectedWorkflowAPIs.add(new WorkflowAPI(11, "TestName", "TestDescr"));
+	}
+
+	public void showApplicationForEdit(RefApp app) {
+		CustomLogger.enter(this.getClass());
+
+		String validationMsg = applicationModifiableCheckMessage(app, "edited");
+
+		if (!StringUtils.isEmpty(validationMsg)) {
+			setApplicationValidationErrorMsg(validationMsg);
+			manageMessageDisplay(APPLICATION_VALIDATION_ERROR);
+
+			return;
+		}
+
+		applicationName = app.getAppName();
+		selectedApplicationForEdit = app.getAppId();
+		manageMessageDisplay(APPLICATION_CLEAR);
+		manageButtonDisplay(APPLICATION_UPDATE);
+	}
+
+	public void updateApplication() {
+		CustomLogger.enter(this.getClass());
+
+		manageMessageDisplay(APPLICATION_CLEAR);
+
+		RefApp app = null;
+		try {
+			app = refAppService.findByPK(selectedApplicationForEdit);
+			if (app != null) {
+				app.setAppName(applicationName);
+				app.setUpdateDate(new Date());
+				refAppService.update(app);
+			}
+		} catch (Exception e) {
+			String errMsg = "Exception occurred updating application";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(APPLICATION_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(APPLICATION_VALIDATION_ERROR);
+			return;
+		}
+
+		buildApplicationList();
+		cancelApplicationEdit();
+
+		setApplicationSuccessMsg(
+				String.format("Application '%s' was successfully updated!", app != null ? app.getAppName() : "null"));
+		manageMessageDisplay(APPLICATION_SUCCESS);
+		manageButtonDisplay(APPLICATION_INIT);
+
+		sendApplicationNotification(app, RefAdminEvent.UPDATED_APPLICATION);
+	}
+
+	public void cancelApplicationEdit() {
+		CustomLogger.enter(this.getClass());
+
+		setApplicationName("");
+		selectedApplicationForEdit = 0;
+
+		manageMessageDisplay(APPLICATION_CLEAR);
+		manageButtonDisplay(APPLICATION_INIT);
+	}
+
+	public void checkDeleteApplication(RefApp app) {
+		CustomLogger.enter(this.getClass());
+
+		selectedApp = app;
+		String validationMsg = applicationModifiableCheckMessage(app, "deleted");
+
+		if (!StringUtils.isEmpty(validationMsg)) {
+			setApplicationValidationErrorMsg(validationMsg);
+			manageMessageDisplay(APPLICATION_VALIDATION_ERROR);
+			manageButtonDisplay(APPLICATION_INIT);
+
+			return;
+		}
+
+		setApplicationWarningMsg(String.format("Application '%s' will be deleted. Please confirm.", app.getAppName()));
+		manageMessageDisplay(APPLICATION_WARNING);
+		manageButtonDisplay(APPLICATION_DELETE);
+	}
+
+	public void confirmDeleteApplication() {
+		CustomLogger.enter(this.getClass());
+
+		RefApp app = selectedApp;
+
+		try {
+			refAppService.delete(app);
+		} catch (Exception e) {
+			CustomLogger.error(this.getClass(), "Exception occurred when deleting Ref_App record " + app.getAppId(), e);
+
+			processExceptionDetail(APPLICATION_ENTITY_TYPE, app.getAppName(), e);
+			manageMessageDisplay(APPLICATION_VALIDATION_ERROR);
+			return;
+		}
+
+		buildApplicationList();
+		setApplicationSuccessMsg(String.format("Application '%s' was successfully deleted!", app.getAppName()));
+		manageMessageDisplay(APPLICATION_SUCCESS);
+
+		sendApplicationNotification(app, RefAdminEvent.DELETED_APPLICATION);
+	}
+
+	private String applicationModifiableCheckMessage(RefApp app, String action) {
+		CustomLogger.enter(this.getClass());
+
+		String valMsgFmt = String.format("%s application record cannot be %s. ", app.getAppName(), action);
+
+		if (!refAppService.applicationNotRegularApp(app.getAppId())) {
+			valMsgFmt += "It is a regular application (i.e. Customer Reg, Hold Mail, Operation Santa).";
+			return valMsgFmt;
+		}
+
+		if (!refAppService.applicationNotReferencedInSponsorAppMap(app.getAppId())) {
+			valMsgFmt += "It is a referenced in Sponsor_Application_Map table";
+			return valMsgFmt;
+		}
+
+		if (!refAppService.applicationNotReferencedInIppEvent(app.getAppId())) {
+			valMsgFmt += "It is a referenced in IPP_Event table";
+			return valMsgFmt;
+		}
+
+		if (!refAppService.applicationNotReferencedInRpEvent(app.getAppId())) {
+			valMsgFmt += "It is a referenced in RP_Event table";
+			return valMsgFmt;
+		}
+
+		return "";
+	}
+
+	public void addSponsorAppMap() {
+		CustomLogger.enter(this.getClass());
+
+		manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+
+		SponsorApplicationMapPK samPK = new SponsorApplicationMapPK();
+		samPK.setAppId(selectedApplicationMap);
+		samPK.setSponsorId(selectedSponsorMap);
+
+		SponsorApplicationMap sam = new SponsorApplicationMap();
+		sam.setId(samPK);
+		sam.setCreateDate(new Date());
+		sam.setActivationDate(activationDate);
+		sam.setDeactivationDate(deactivationDate);
+
+		if (!sponsorAppMapService.isRelationUnique(sam)) {
+			return;
+		}
+
+		try {
+			sponsorAppMapService.create(sam);
+			sam = sponsorAppMapService.getRelationBySponsorAndApplication(selectedSponsorMap, selectedApplicationMap);
+		} catch (Exception e) {
+			String errMsg = "Exception occurred creating sponsor application map";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_APP_MAP_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+			return;
+		}
+
+		buildSponsorApplicationMapList();
+		buildSponsorList();
+		// ECR dahsboard redesign
+		initWorkflowBean();
+		buildApplicationList();
+		cancelSponsorAppMapEdit();
+
+		setSponsorAppMapSuccessMsg(String.format("SponsorApplicationMap '%s-%s' was successfully added!",
+				sam.getSponsor().getSponsorName(), sam.getApp().getAppName()));
+		manageMessageDisplay(SPONSOR_APP_MAP_SUCCESS);
+		manageButtonDisplay(SPONSOR_APP_MAP_INIT);
+
+		sendApplicationMapNotification(sam, RefAdminEvent.CONFIGURE_APPLICATION);
+	}
+
+	public void updateSponsorAppMap() {
+		CustomLogger.enter(this.getClass());
+
+		manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+		SponsorApplicationMap sam = null;
+
+		try {
+			sam = sponsorAppMapService.getRelationBySponsorAndApplication(selectedSponsorAppMapPKForEdit.getSponsorId(),
+					selectedSponsorAppMapPKForEdit.getAppId());
+			if (sam != null) {
+				sam.setActivationDate(activationDate);
+				sam.setDeactivationDate(deactivationDate);
+				sam.setUpdateDate(new Date());
+				sponsorAppMapService.update(sam);
+			}
+		} catch (Exception e) {
+			String errMsg = "Exception occurred updating sponsor application map";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_APP_MAP_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+			return;
+		}
+
+		buildSponsorApplicationMapList();
+		cancelSponsorAppMapEdit();
+
+		setSponsorAppMapSuccessMsg(String.format("SponsorApplicationMap '%s-%s' was successfully updated!",
+				sam != null ? sam.getSponsor().getSponsorName() : "null",
+				sam != null ? sam.getApp().getAppName() : "null"));
+		manageMessageDisplay(SPONSOR_APP_MAP_SUCCESS);
+		manageButtonDisplay(SPONSOR_APP_MAP_INIT);
+
+		sendApplicationMapNotification(sam, RefAdminEvent.UPDATE_APPLICATION_MAP);
+	}
+
+	public void cancelSponsorAppMapEdit() {
+		CustomLogger.enter(this.getClass());
+
+		activationDate = null;
+		deactivationDate = null;
+		selectedSponsorMap = 0;
+		selectedApplicationMap = 0;
+		setDisableDropdowns(false);
+		selectedSponsorAppMapPKForEdit = null;
+
+		manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+		manageButtonDisplay(SPONSOR_APP_MAP_INIT);
+	}
+
+	public void showMapForEdit(SponsorApplicationMapPK id) {
+		CustomLogger.enter(this.getClass());
+
+		manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+
+		try {
+			SponsorApplicationMap sam = sponsorAppMapService.getRelationBySponsorAndApplication(id.getSponsorId(),
+					id.getAppId());
+			activationDate = sam.getActivationDate();
+			deactivationDate = sam.getDeactivationDate();
+			selectedSponsorMap = sam.getSponsor().getSponsorId();
+			selectedApplicationMap = sam.getApp().getAppId();
+			setDisableDropdowns(true);
+			selectedSponsorAppMapPKForEdit = sam.getId();
+		} catch (Exception e) {
+			String errMsg = "Exception occurred when getting relation by sponsor and application";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_APP_MAP_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+			return;
+		}
+
+		manageMessageDisplay(SPONSOR_APP_MAP_CLEAR);
+		manageButtonDisplay(SPONSOR_APP_MAP_UPDATE);
+	}
+
+	public void checkDeleteSponsorAppMap(SponsorApplicationMap sam) {
+		CustomLogger.enter(this.getClass());
+
+		selectedSponsorApplicationMap = sam;
+		setSponsorAppMapWarningMsg(String.format("SponsorApplicationMap '%s-%s' will be deleted. Please confirm.",
+				sam.getSponsor().getSponsorName(), sam.getApp().getAppName()));
+		manageMessageDisplay(SPONSOR_APP_MAP_WARNING);
+		manageButtonDisplay(SPONSOR_APP_MAP_DELETE);
+	}
+
+	public void confirmDeleteSponsorAppMap() {
+		CustomLogger.enter(this.getClass());
+
+		SponsorApplicationMap sam = selectedSponsorApplicationMap;
+		String sponsorAppMapName = String.format("%s-%s", sam.getSponsor().getSponsorName(), sam.getApp().getAppName());
+
+		try {
+			sponsorAppMapService.delete(sam);
+		} catch (Exception e) {
+			CustomLogger.error(this.getClass(),
+					"Exception occurred when deleting sponsor application map " + sponsorAppMapName, e);
+
+			processExceptionDetail(SPONSOR_APP_MAP_ENTITY_TYPE, sponsorAppMapName, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+			return;
+		}
+
+		buildSponsorApplicationMapList();
+		buildSponsorList();
+		// ECR dahsboard redesign
+		initWorkflowBean();
+		buildApplicationList();
+		setSponsorAppMapSuccessMsg(
+				String.format("SponsorApplicationMap '%s' was successfully deleted!", sponsorAppMapName));
+		manageMessageDisplay(SPONSOR_APP_MAP_SUCCESS);
+		manageButtonDisplay(SPONSOR_APP_MAP_INIT);
+
+		sendApplicationMapNotification(sam, RefAdminEvent.DELETE_APPLICATION_MAP);
+	}
+
+	private void buildSponsorList() {
+		CustomLogger.enter(this.getClass());
+
+		try {
+			sponsorAllList = refSponsorDataService.list();
+		} catch (Exception e) {
+			String errMsg = "Exception occurred when building RefSponsor list";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_APP_MAP_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+		}
+	}
+
+	private void initWorkflowBean() {
+		CustomLogger.enter(this.getClass());
+		//availableWorkflowAPIs = new ArrayList<>();
+
+		// Adding sample data
+		availableWorkflowAPIs.add(new WorkflowAPI(1, "DA", "ThreatMatrix/LexisNexis Device Assessment (DA) for individual transaction"));
+		availableWorkflowAPIs.add(new WorkflowAPI(2, "PV/DIT", "LexisNexis/Experian Phone Verification (PV) or Equifax Didital Identity trust (DIT) for individual transaction."));
+		availableWorkflowAPIs.add(new WorkflowAPI(3, "OTP/MFA", "LexisNexis/Experian One-Time Passcode (OTP) or Equifax Multi-Factor Authentication (MFA) for individual transaction."));
+		availableWorkflowAPIs.add(new WorkflowAPI(4, "DERA", "ThreatMetrix/LexisNexis Device and Email Risk Assessment (DERA) for business transaction."));
+		availableWorkflowAPIs.add(new WorkflowAPI(5, "BIID", "ThreatMetrix/LexisNexis Business Instant ID (BIID) for business transaction."));
+		availableWorkflowAPIs.add(new WorkflowAPI(6, "AMS", "Address Management System (AMS) address verification for business transaction."));
+	}
+
+	private void initSelectedWorkflowBean() {
+		selectedWorkflowAPIs.add(new WorkflowAPI(99, "sample", "sampleDescr"));
+
+	}
+
+	private void loadAppSponsorServices() {
+		CustomLogger.enter(this.getClass());
+
+		ServletContext ctx = (ServletContext) FacesContext.getCurrentInstance().getExternalContext().getContext();
+		WebApplicationContext webAppContext = WebApplicationContextUtils.getWebApplicationContext(ctx);
+		if (webAppContext != null) {
+			adminEventService = webAppContext.getBean(AdminEventService.class);
+			adminService = webAppContext.getBean(AdminService.class);
+			applicationWorkflowsService = webAppContext.getBean(ApplicationWorkflowsService.class);
+			idVerifyServiceRequestService = webAppContext.getBean(IdVerifyServiceRequestService.class);
+			otpAttemptConfigService = webAppContext.getBean(OtpAttemptConfigService.class);
+			physicalLetterDataService = webAppContext.getBean(PhysicalLetterDataService.class);
+			refAppService = webAppContext.getBean(RefAppService.class);
+			refSponsorConfigService = webAppContext.getBean(RefSponsorConfigurationService.class);
+			refSponsorDataService = webAppContext.getBean(RefSponsorDataService.class);
+			rpFeatureAttemptService = webAppContext.getBean(RpFeatureAttemptService.class);
+			rpInfPvAttemptConfigService = webAppContext.getBean(RpInfPvAttemptConfigService.class);
+			sponsorAppMapService = webAppContext.getBean(SponsorApplicationMapService.class);
+			sponsorReportsService = webAppContext.getBean(SponsorReportsService.class);
+			sponsorWebServiceRequestService = webAppContext.getBean(SponsorWebServiceRequestService.class);
+			sponsorEndpointService = webAppContext.getBean(SponsorEndpointService.class);
+			sponsorWebServiceHistoryService = webAppContext.getBean(SponsorWebServiceHistoryService.class);
+			sponsorReportService = webAppContext.getBean(SponsorReportService.class);
+			sponsorIncomingRequestsService = webAppContext.getBean(SponsorIncomingRequestsService.class);
+			sponsorFacilitiesService = webAppContext.getBean(SponsorFacilitiesService.class);
+			sponsorWebServicePendingService = webAppContext.getBean(SponsorWebServicePendingService.class);
+			sponsorTokensService = webAppContext.getBean(SponsorTokensService.class);
+			sponsorFairIdService = webAppContext.getBean(SponsorFairIdService.class);
+			sponsorStrongIdService = webAppContext.getBean(SponsorStrongIdService.class);
+			sponsorEmailValuesService = webAppContext.getBean(SponsorEmailValuesService.class);
+			sponsorWebServiceQueueService = webAppContext.getBean(SponsorWebServiceQueueService.class);
+			physicalLetterDataService = webAppContext.getBean(PhysicalLetterDataService.class);
+			verificationProviderService = webAppContext.getBean(VerificationProviderService.class);
+		} else {
+			CustomLogger.error(this.getClass(),
+					"Error: WebApplicationContext is null. Unable to retrieve necessary services.");
+			goToPage(SYSTEM_ERROR_PAGE);
+		}
+	}
+
+	private void buildApplicationList() {
+		CustomLogger.enter(this.getClass());
+
+		try {
+			applicationAllList = refAppService.list();
+		} catch (Exception e) {
+			String errMsg = "Exception occurred when building RefApp list";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_VALIDATION_ERROR);
+		}
+	}
+
+	private void buildSponsorApplicationMapList() {
+		CustomLogger.enter(this.getClass());
+
+		try {
+			sponsorApplicationMapList = sponsorAppMapService.getAllRelations();
+		} catch (Exception e) {
+			String errMsg = "Exception occurred when building SponsorApplicationMap list";
+			CustomLogger.error(this.getClass(), errMsg, e);
+
+			setValidationErrorMsg(SPONSOR_APP_MAP_ENTITY_TYPE, errMsg, e);
+			manageMessageDisplay(SPONSOR_APP_MAP_VALIDATION_ERROR);
+		}
+	}
+
+	private void buildMap() {
+		CustomLogger.enter(this.getClass());
+
+		booleanPropertyMapping = new HashMap<>();
+
+		booleanPropertyMapping.put(MAP_KEY_SPONSOR_SUCCESS_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_APP_SUCCESS_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPAPPMAP_SUCCESS_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPONSOR_WARNING_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_APP_WARNING_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPAPPMAP_WARNING_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPONSOR_VALIDATION_ERROR_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_APP_VALIDATION_ERROR_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPAPPMAP_VALIDATION_ERROR_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPONSOR_EMAIL_ERROR_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_APP_EMAIL_ERROR_MSG, false);
+		booleanPropertyMapping.put(MAP_KEY_SPAPPMAP_EMAIL_ERROR_MSG, false);
+
+		booleanPropertyMapping.put(MAP_KEY_DISABLESPONSORNAMEBOX, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORADDBTN, true);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORUPDATEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORDELETEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORCANCELBTN, false);
+
+		booleanPropertyMapping.put(MAP_KEY_SHOWAPPADDBTN, true);
+		booleanPropertyMapping.put(MAP_KEY_SHOWAPPUPDATEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWAPPDELETEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWAPPCANCELBTN, false);
+
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORAPPMAPADDBTN, true);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORAPPMAPUPDATEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORAPPMAPDELETEBTN, false);
+		booleanPropertyMapping.put(MAP_KEY_SHOWSPONSORAPPMAPCANCELBTN, false);
+
+		booleanPropertyMapping.put(MAP_KEY_DISABLEDROPDOWNS, false);
+		booleanPropertyMapping.put(MAP_KEY_DISABLEEXTIPPCLIENT, false);
+	}
+
+	private void manageMessageDisplay(String event) {
+		CustomLogger.enter(this.getClass());
+
+		switch (event) {
+		case SPONSOR_CLEAR:
+			setShowSponsorSuccessMsg(false);
+			setShowSponsorWarningMsg(false);
+			setShowSponsorValidationErrorMsg(false);
+			setShowSponsorEmailErrorMsg(false);
+			break;
+		case SPONSOR_SUCCESS:
+			setShowSponsorSuccessMsg(true);
+			setShowSponsorWarningMsg(false);
+			setShowSponsorValidationErrorMsg(false);
+			setShowSponsorEmailErrorMsg(false);
+			break;
+		case SPONSOR_WARNING:
+			setShowSponsorSuccessMsg(false);
+			setShowSponsorWarningMsg(true);
+			setShowSponsorValidationErrorMsg(false);
+			setShowSponsorEmailErrorMsg(false);
+			break;
+		case SPONSOR_VALIDATION_ERROR:
+			setShowSponsorSuccessMsg(false);
+			setShowSponsorWarningMsg(false);
+			setShowSponsorValidationErrorMsg(true);
+			setShowSponsorEmailErrorMsg(false);
+			break;
+		case SPONSOR_EMAIL_ERROR:
+			setShowSponsorSuccessMsg(false);
+			setShowSponsorWarningMsg(false);
+			setShowSponsorValidationErrorMsg(false);
+			setShowSponsorEmailErrorMsg(true);
+			break;
+		case APPLICATION_CLEAR:
+			setShowAppSuccessMsg(false);
+			setShowAppWarningMsg(false);
+			setShowAppValidationErrorMsg(false);
+			setShowAppEmailErrorMsg(false);
+			break;
+		case APPLICATION_SUCCESS:
+			setShowAppSuccessMsg(true);
+			setShowAppWarningMsg(false);
+			setShowAppValidationErrorMsg(false);
+			setShowAppEmailErrorMsg(false);
+			break;
+		case APPLICATION_WARNING:
+			setShowAppSuccessMsg(false);
+			setShowAppWarningMsg(true);
+			setShowAppValidationErrorMsg(false);
+			setShowAppEmailErrorMsg(false);
+			break;
+		case APPLICATION_VALIDATION_ERROR:
+			setShowAppSuccessMsg(false);
+			setShowAppWarningMsg(false);
+			setShowAppValidationErrorMsg(true);
+			setShowAppEmailErrorMsg(false);
+			break;
+		case APPLICATION_EMAIL_ERROR:
+			setShowAppSuccessMsg(false);
+			setShowAppWarningMsg(false);
+			setShowAppValidationErrorMsg(false);
+			setShowAppEmailErrorMsg(true);
+			break;
+		case SPONSOR_APP_MAP_CLEAR:
+			setShowSponsorAppMapSuccessMsg(false);
+			setShowSponsorAppMapWarningMsg(false);
+			setShowSponsorAppMapValidationErrorMsg(false);
+			setShowSponsorAppMapEmailErrorMsg(false);
+			break;
+		case SPONSOR_APP_MAP_SUCCESS:
+			setShowSponsorAppMapSuccessMsg(true);
+			setShowSponsorAppMapWarningMsg(false);
+			setShowSponsorAppMapValidationErrorMsg(false);
+			setShowSponsorAppMapEmailErrorMsg(false);
+			break;
+		case SPONSOR_APP_MAP_WARNING:
+			setShowSponsorAppMapSuccessMsg(false);
+			setShowSponsorAppMapWarningMsg(true);
+			setShowSponsorAppMapValidationErrorMsg(false);
+			setShowSponsorAppMapEmailErrorMsg(false);
+			break;
+		case SPONSOR_APP_MAP_VALIDATION_ERROR:
+			setShowSponsorAppMapSuccessMsg(false);
+			setShowSponsorAppMapWarningMsg(false);
+			setShowSponsorAppMapValidationErrorMsg(true);
+			setShowSponsorAppMapEmailErrorMsg(false);
+			break;
+		case SPONSOR_APP_MAP_EMAIL_ERROR:
+			setShowSponsorAppMapSuccessMsg(false);
+			setShowSponsorAppMapWarningMsg(false);
+			setShowSponsorAppMapValidationErrorMsg(false);
+			setShowSponsorAppMapEmailErrorMsg(true);
+			break;
+		default:
+		}
+	}
+
+	private void manageButtonDisplay(String event) {
+		CustomLogger.enter(this.getClass());
+
+		switch (event) {
+		case SPONSOR_INIT:
+			setShowSponsorAddButton(true);
+			setShowSponsorUpdateButton(false);
+			setShowSponsorDeleteButton(false);
+			setShowSponsorCancelButton(false);
+			break;
+		case SPONSOR_DELETE_TRUE:
+			setShowSponsorAddButton(false);
+			setShowSponsorUpdateButton(false);
+			setShowSponsorDeleteButton(true);
+			setShowSponsorCancelButton(true);
+			setDisableSponsorNameBox(true);
+			setDisableExternalIppClient(true);
+			setDisableRemoteProofingClient(true);
+			break;
+		case SPONSOR_DELETE_FALSE:
+			setShowSponsorAddButton(true);
+			setShowSponsorUpdateButton(false);
+			setShowSponsorDeleteButton(false);
+			setShowSponsorCancelButton(false);
+			setDisableSponsorNameBox(false);
+			setDisableExternalIppClient(false);
+			setDisableRemoteProofingClient(false);
+			break;
+		case SPONSOR_UPDATE:
+			setShowSponsorAddButton(false);
+			setShowSponsorUpdateButton(true);
+			setShowSponsorDeleteButton(false);
+			setShowSponsorCancelButton(true);
+			break;
+		case APPLICATION_INIT:
+			setShowApplicationAddButton(true);
+			setShowApplicationUpdateButton(false);
+			setShowApplicationDeleteButton(false);
+			setShowApplicationCancelButton(false);
+			break;
+		case APPLICATION_DELETE:
+			setShowApplicationAddButton(false);
+			setShowApplicationUpdateButton(false);
+			setShowApplicationDeleteButton(true);
+			setShowApplicationCancelButton(true);
+			break;
+		case APPLICATION_UPDATE:
+			setShowApplicationAddButton(false);
+			setShowApplicationUpdateButton(true);
+			setShowApplicationDeleteButton(false);
+			setShowApplicationCancelButton(true);
+			break;
+		case SPONSOR_APP_MAP_INIT:
+			setShowSponsorAppMapAddButton(true);
+			setShowSponsorAppMapUpdateButton(false);
+			setShowSponsorAppMapDeleteButton(false);
+			setShowSponsorAppMapCancelButton(false);
+			break;
+		case SPONSOR_APP_MAP_DELETE:
+			setShowSponsorAppMapAddButton(false);
+			setShowSponsorAppMapUpdateButton(false);
+			setShowSponsorAppMapDeleteButton(true);
+			setShowSponsorAppMapCancelButton(true);
+			break;
+		case SPONSOR_APP_MAP_UPDATE:
+			setShowSponsorAppMapAddButton(false);
+			setShowSponsorAppMapUpdateButton(true);
+			setShowSponsorAppMapDeleteButton(false);
+			setShowSponsorAppMapCancelButton(true);
+			break;
+		default:
+		}
+	}
+
+	private void sendSponsorNotification(RefSponsor sponsor, String action) {
+		CustomLogger.enter(this.getClass());
+		CustomLogger.debug(this.getClass(), "sendSponsorNotification...");
+		HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext()
+				.getRequest();
+
+		String logAction = "";
+		switch (action) {
+		case RefAdminEvent.ADD_NEW_SPONSOR:
+			logAction = "new sponsor";
+			break;
+		case RefAdminEvent.UPDATE_SPONSOR:
+			logAction = "update sponsor";
+			break;
+		case RefAdminEvent.DELETED_SPONSOR:
+			logAction = "delete sponsor";
+			break;
+		default:
+		}
+
+		try {
+			CustomLogger.debug(this.getClass(), "sendSponsorNotification :: action:" + action);
+			adminService.sponsorNotification((String) request.getSession().getAttribute(ATTRIBUTE_IVSTOKEN), sponsor,
+					new Timestamp(new Date().getTime()), action);
+		} catch (IPSException e) {
+			CustomLogger.error(this.getClass(), String.format(EXCEPTION_ADMIN_NOTIFY_MSG_FMT, logAction), e);
+			manageMessageDisplay(SPONSOR_EMAIL_ERROR);
+		}
+	}
+
+	private void sendApplicationNotification(RefApp app, String action) {
+		CustomLogger.enter(this.getClass());
+
+		HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext()
+				.getRequest();
+
+		String logAction = "";
+		switch (action) {
+		case RefAdminEvent.NEW_APPLICATION:
+			logAction = "new application";
+			break;
+		case RefAdminEvent.UPDATED_APPLICATION:
+			logAction = "update application";
+			break;
+		case RefAdminEvent.DELETED_APPLICATION:
+			logAction = "delete application";
+			break;
+		default:
+		}
+
+		try {
+			adminService.applicationNotification((String) request.getSession().getAttribute(ATTRIBUTE_IVSTOKEN), app,
+					new Timestamp(new Date().getTime()), action);
+		} catch (IPSException e) {
+			CustomLogger.error(this.getClass(), String.format(EXCEPTION_ADMIN_NOTIFY_MSG_FMT, logAction), e);
+			manageMessageDisplay("appEmailError");
+		}
+	}
+
+	private void sendApplicationMapNotification(SponsorApplicationMap sam, String action) {
+		CustomLogger.enter(this.getClass());
+
+		HttpServletRequest request = (HttpServletRequest) FacesContext.getCurrentInstance().getExternalContext()
+				.getRequest();
+
+		String logAction = "";
+		switch (action) {
+		case RefAdminEvent.CONFIGURE_APPLICATION:
+			logAction = "new sponsor application map";
+			break;
+		case RefAdminEvent.UPDATE_APPLICATION_MAP:
+			logAction = "update sponsor application map";
+			break;
+		case RefAdminEvent.DELETE_APPLICATION_MAP:
+			logAction = "delete sponsor application map";
+			break;
+		default:
+		}
+
+		try {
+			adminService.sponsorApplicationMapNotification(
+					(String) request.getSession().getAttribute(ATTRIBUTE_IVSTOKEN), sam,
+					new Timestamp(new Date().getTime()), action);
+
+		} catch (IPSException e) {
+			CustomLogger.error(this.getClass(), String.format(EXCEPTION_ADMIN_NOTIFY_MSG_FMT, logAction), e);
+			manageMessageDisplay(SPONSOR_APP_MAP_EMAIL_ERROR);
+		}
+	}
+
+	private class RecordRemovalData {
+		private String tableName;
+		private int numRecordsDeleted = 0;
+
+		public String getTableName() {
+			return tableName;
+		}
+
+		public void setTableName(String tableName) {
+			this.tableName = tableName;
+		}
+
+		public int getNumRecordsDeleted() {
+			return numRecordsDeleted;
+		}
+
+		public void setNumRecordsDeleted(int numRecordsDeleted) {
+			this.numRecordsDeleted = numRecordsDeleted;
+		}
+	}
+
+	public boolean disableExternalIppClient() {
+		return booleanPropertyMapping.get(MAP_KEY_DISABLEEXTIPPCLIENT);
+	}
+
+	public void setDisableExternalIppClient(boolean disableExternalIppClient) {
+		this.booleanPropertyMapping.replace(MAP_KEY_DISABLEEXTIPPCLIENT, disableExternalIppClient);
+	}
+
+	public boolean disableRemoteProofingClient() {
+		return booleanPropertyMapping.get(MAP_KEY_DISABLERPCLIENT);
+	}
+
+	public void setDisableRemoteProofingClient(boolean disableRemoteProofingClient) {
+		this.booleanPropertyMapping.replace(MAP_KEY_DISABLERPCLIENT, disableRemoteProofingClient);
+	}
+
+	public boolean disableDropdowns() {
+		return booleanPropertyMapping.get(MAP_KEY_DISABLEDROPDOWNS);
+	}
+
+	public void setDisableDropdowns(boolean disableDropdowns) {
+		this.booleanPropertyMapping.replace(MAP_KEY_DISABLEDROPDOWNS, disableDropdowns);
+	}
+
+	/*** Sponsor Buttons ***/
+
+	public boolean showSponsorAddButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORADDBTN);
+	}
+
+	public void setShowSponsorAddButton(boolean showSponsorAddButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORADDBTN, showSponsorAddButton);
+	}
+
+	public boolean showSponsorUpdateButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORUPDATEBTN);
+	}
+
+	public void setShowSponsorUpdateButton(boolean showSponsorUpdateButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORUPDATEBTN, showSponsorUpdateButton);
+	}
+
+	public boolean showSponsorDeleteButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORDELETEBTN);
+	}
+
+	public void setShowSponsorDeleteButton(boolean showSponsorDeleteButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORDELETEBTN, showSponsorDeleteButton);
+	}
+
+	public boolean showSponsorCancelButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORCANCELBTN);
+	}
+
+	public void setShowSponsorCancelButton(boolean showSponsorCancelButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORCANCELBTN, showSponsorCancelButton);
+	}
+
+	/*** Application Buttons ***/
+
+	public boolean showApplicationAddButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWAPPADDBTN);
+	}
+
+	public void setShowApplicationAddButton(boolean showApplicationAddButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWAPPADDBTN, showApplicationAddButton);
+	}
+
+	public boolean showApplicationUpdateButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWAPPUPDATEBTN);
+	}
+
+	public void setShowApplicationUpdateButton(boolean showApplicationUpdateButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWAPPUPDATEBTN, showApplicationUpdateButton);
+	}
+
+	public boolean showApplicationDeleteButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWAPPDELETEBTN);
+	}
+
+	public void setShowApplicationDeleteButton(boolean showApplicationDeleteButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWAPPDELETEBTN, showApplicationDeleteButton);
+	}
+
+	public boolean showApplicationCancelButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWAPPCANCELBTN);
+	}
+
+	public void setShowApplicationCancelButton(boolean showApplicationCancelButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWAPPCANCELBTN, showApplicationCancelButton);
+	}
+
+	/*** SponsorAppMap Buttons ***/
+
+	public boolean showSponsorAppMapAddButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORAPPMAPADDBTN);
+	}
+
+	public void setShowSponsorAppMapAddButton(boolean showSponsorAppMapAddButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORAPPMAPADDBTN, showSponsorAppMapAddButton);
+	}
+
+	public boolean showSponsorAppMapUpdateButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORAPPMAPUPDATEBTN);
+	}
+
+	public void setShowSponsorAppMapUpdateButton(boolean showSponsorAppMapUpdateButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORAPPMAPUPDATEBTN, showSponsorAppMapUpdateButton);
+	}
+
+	public boolean showSponsorAppMapDeleteButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORAPPMAPDELETEBTN);
+	}
+
+	public void setShowSponsorAppMapDeleteButton(boolean showSponsorAppMapDeleteButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORAPPMAPDELETEBTN, showSponsorAppMapDeleteButton);
+	}
+
+	public boolean showSponsorAppMapCancelButton() {
+		return booleanPropertyMapping.get(MAP_KEY_SHOWSPONSORAPPMAPCANCELBTN);
+	}
+
+	public void setShowSponsorAppMapCancelButton(boolean showSponsorAppMapCancelButton) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SHOWSPONSORAPPMAPCANCELBTN, showSponsorAppMapCancelButton);
+	}
+
+	public boolean isDisableSponsorNameBox() {
+		return booleanPropertyMapping.get(MAP_KEY_DISABLESPONSORNAMEBOX);
+	}
+
+	public void setDisableSponsorNameBox(boolean disableSponsorNameBox) {
+		this.booleanPropertyMapping.replace(MAP_KEY_DISABLESPONSORNAMEBOX, disableSponsorNameBox);
+	}
+
+	/***** Success Message ******/
+
+	public boolean showSponsorSuccessMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPONSOR_SUCCESS_MSG);
+	}
+
+	public void setShowSponsorSuccessMsg(boolean isSponsorSuccessMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPONSOR_SUCCESS_MSG, isSponsorSuccessMsg);
+	}
+
+	public boolean showAppSuccessMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_APP_SUCCESS_MSG);
+	}
+
+	public void setShowAppSuccessMsg(boolean isAppSuccessMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_APP_SUCCESS_MSG, isAppSuccessMsg);
+	}
+
+	public boolean showSponsorAppMapSuccessMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPAPPMAP_SUCCESS_MSG);
+	}
+
+	public void setShowSponsorAppMapSuccessMsg(boolean isSponsorAppMapSuccessMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPAPPMAP_SUCCESS_MSG, isSponsorAppMapSuccessMsg);
+	}
+
+	/***** Warning Message ******/
+
+	public boolean showSponsorWarningMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPONSOR_WARNING_MSG);
+	}
+
+	public void setShowSponsorWarningMsg(boolean isSponsorWarningMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPONSOR_WARNING_MSG, isSponsorWarningMsg);
+	}
+
+	public boolean showAppWarningMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_APP_WARNING_MSG);
+	}
+
+	public void setShowAppWarningMsg(boolean isAppWarningMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_APP_WARNING_MSG, isAppWarningMsg);
+	}
+
+	public boolean showSponsorAppMapWarningMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPAPPMAP_WARNING_MSG);
+	}
+
+	public void setShowSponsorAppMapWarningMsg(boolean isSponsorAppMapWarningMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPAPPMAP_WARNING_MSG, isSponsorAppMapWarningMsg);
+	}
+
+	/***** Validation Error Message ******/
+
+	public boolean showSponsorValidationErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPONSOR_VALIDATION_ERROR_MSG);
+	}
+
+	public void setShowSponsorValidationErrorMsg(boolean isSponsorValidationMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPONSOR_VALIDATION_ERROR_MSG, isSponsorValidationMsg);
+	}
+
+	public boolean showAppValidationErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_APP_VALIDATION_ERROR_MSG);
+	}
+
+	public void setShowAppValidationErrorMsg(boolean isAppValidationMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_APP_VALIDATION_ERROR_MSG, isAppValidationMsg);
+	}
+
+	public boolean showSponsorAppMapValidationErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPAPPMAP_VALIDATION_ERROR_MSG);
+	}
+
+	public void setShowSponsorAppMapValidationErrorMsg(boolean isSponsorAppMapValidationMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPAPPMAP_VALIDATION_ERROR_MSG, isSponsorAppMapValidationMsg);
+	}
+
+	/***** Email Error Message ******/
+
+	public boolean showSponsorEmailErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPONSOR_EMAIL_ERROR_MSG);
+	}
+
+	public void setShowSponsorEmailErrorMsg(boolean isSponsorEmailErrorMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPONSOR_EMAIL_ERROR_MSG, isSponsorEmailErrorMsg);
+	}
+
+	public boolean showAppEmailErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_APP_EMAIL_ERROR_MSG);
+	}
+
+	public void setShowAppEmailErrorMsg(boolean isAppEmailErrorMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_APP_EMAIL_ERROR_MSG, isAppEmailErrorMsg);
+	}
+
+	public boolean showSponsorAppMapEmailErrorMsg() {
+		return booleanPropertyMapping.get(MAP_KEY_SPAPPMAP_EMAIL_ERROR_MSG);
+	}
+
+	public void setShowSponsorAppMapEmailErrorMsg(boolean isSponsorAppMapEmailErrorMsg) {
+		this.booleanPropertyMapping.replace(MAP_KEY_SPAPPMAP_EMAIL_ERROR_MSG, isSponsorAppMapEmailErrorMsg);
+	}
+
+	public List<RefSponsor> getSponsorAllList() {
+		return sponsorAllList;
+	}
+
+	public List<WorkflowAPI> getAvailableWorkflowAPIs() {
+		return availableWorkflowAPIs;
+	}
+
+	public List<WorkflowAPI> getSelectedWorkflowAPIs() {
+		return selectedWorkflowAPIs;
+	}
+
+	public List<RefApp> getApplicationAllList() {
+		return applicationAllList;
+	}
+
+	public List<SponsorApplicationMap> getSponsorApplicationMapList() {
+		return sponsorApplicationMapList;
+	}
+
+	public String getSponsorName() {
+		return sponsorName;
+	}
+
+	public void setSponsorName(String sponsorName) {
+		this.sponsorName = sponsorName;
+	}
+
+	public boolean isExternalIppClient() {
+		return externalIppClient;
+	}
+
+	public void setExternalIppClient(boolean externalIppClient) {
+		this.externalIppClient = externalIppClient;
+	}
+
+	public boolean isRemoteProofingClient() {
+		return remoteProofingClient;
+	}
+
+	public void setRemoteProofingClient(boolean remoteProofingClient) {
+		this.remoteProofingClient = remoteProofingClient;
+	}
+
+	public String getApplicationName() {
+		return applicationName;
+	}
+
+	public void setApplicationName(String applicationName) {
+		this.applicationName = applicationName;
+	}
+
+	public Date getActivationDate() {
+		return activationDate;
+	}
+
+	public void setActivationDate(Date activationDate) {
+		this.activationDate = activationDate;
+	}
+
+	public Date getDeactivationDate() {
+		return deactivationDate;
+	}
+
+	public void setDeactivationDate(Date deactivationDate) {
+		this.deactivationDate = deactivationDate;
+	}
+
+	public long getSelectedSponsorMap() {
+		return selectedSponsorMap;
+	}
+
+	public void setSelectedSponsorMap(long selectedSponsorMap) {
+		this.selectedSponsorMap = selectedSponsorMap;
+	}
+
+	public long getSelectedApplicationMap() {
+		return selectedApplicationMap;
+	}
+
+	public void setSelectedApplicationMap(long selectedApplicationMap) {
+		this.selectedApplicationMap = selectedApplicationMap;
+	}
+
+	public int getDeleteAttempts() {
+		return deleteAttempts;
+	}
+
+	public void setDeleteAttempts(int deleteAttempts) {
+		this.deleteAttempts = deleteAttempts;
+	}
+
+	public List<RpAdmin> getRpAdminList() {
+		return rpAdminList;
+	}
+
+	public void setRpAdminList(List<RpAdmin> rpAdminList) {
+		this.rpAdminList = rpAdminList;
+	}
+
+	public List<IdVerifyServiceRequest> getIdVerifySvcRequestList() {
+		return idVerifySvcRequestList;
+	}
+
+	public void setIdVerifySvcRequestList(List<IdVerifyServiceRequest> idVerifySvcRequestList) {
+		this.idVerifySvcRequestList = idVerifySvcRequestList;
+	}
+
+	public List<ApplicationWorkflows> getAppWorkflowList() {
+		return appWorkflowList;
+	}
+
+	public void setAppWorkflowList(List<ApplicationWorkflows> appWorkflowList) {
+		this.appWorkflowList = appWorkflowList;
+	}
+
+	public List<SponsorEndpoints> getEndpointList() {
+		return endpointList;
+	}
+
+	public void setEndpointList(List<SponsorEndpoints> endpointList) {
+		this.endpointList = endpointList;
+	}
+
+	public List<SponsorWebServiceRequests> getWebSvcRequestList() {
+		return webSvcRequestList;
+	}
+
+	public void setWebSvcRequestList(List<SponsorWebServiceRequests> webSvcRequestList) {
+		this.webSvcRequestList = webSvcRequestList;
+	}
+
+	public List<SponsorWebServiceHistory> getWebSvcHistoryList() {
+		return webSvcHistoryList;
+	}
+
+	public void setWebSvcHistoryList(List<SponsorWebServiceHistory> webSvcHistoryList) {
+		this.webSvcHistoryList = webSvcHistoryList;
+	}
+
+	public List<SponsorReportHistory> getReportHistoryList() {
+		return reportHistoryList;
+	}
+
+	public void setReportHistoryList(List<SponsorReportHistory> reportHistoryList) {
+		this.reportHistoryList = reportHistoryList;
+	}
+
+	public List<SponsorIncomingRequests> getIncomingRequestList() {
+		return incomingRequestList;
+	}
+
+	public void setIncomingRequestList(List<SponsorIncomingRequests> incomingRequestList) {
+		this.incomingRequestList = incomingRequestList;
+	}
+
+	public List<SponsorFacilities> getFacilityList() {
+		return facilityList;
+	}
+
+	public void setFacilityList(List<SponsorFacilities> facilityList) {
+		this.facilityList = facilityList;
+	}
+
+	public List<SponsorWebServicePending> getWebSvcPendingList() {
+		return webSvcPendingList;
+	}
+
+	public void setWebSvcPendingList(List<SponsorWebServicePending> webSvcPendingList) {
+		this.webSvcPendingList = webSvcPendingList;
+	}
+
+	public List<SponsorTokens> getTokenList() {
+		return tokenList;
+	}
+
+	public void setTokenList(List<SponsorTokens> tokenList) {
+		this.tokenList = tokenList;
+	}
+
+	public List<SponsorFairId> getFairIdList() {
+		return fairIdList;
+	}
+
+	public void setFairIdList(List<SponsorFairId> fairIdList) {
+		this.fairIdList = fairIdList;
+	}
+
+	public List<SponsorStrongId> getStrongIdList() {
+		return strongIdList;
+	}
+
+	public void setStrongIdList(List<SponsorStrongId> strongIdList) {
+		this.strongIdList = strongIdList;
+	}
+
+	public List<SponsorEmailValues> getEmailValueList() {
+		return emailValueList;
+	}
+
+	public void setEmailValueList(List<SponsorEmailValues> emailValueList) {
+		this.emailValueList = emailValueList;
+	}
+
+	public List<SponsorWebServiceQueue> getWebSvcQueueList() {
+		return webSvcQueueList;
+	}
+
+	public void setWebSvcQueueList(List<SponsorWebServiceQueue> webSvcQueueList) {
+		this.webSvcQueueList = webSvcQueueList;
+	}
+
+	public List<PhysicalLetterData> getPhyLetterDataList() {
+		return phyLetterDataList;
+	}
+
+	public void setPhyLetterDataList(List<PhysicalLetterData> phyLetterDataList) {
+		this.phyLetterDataList = phyLetterDataList;
+	}
+
+	public List<RefSponsorConfiguration> getSponsorConfigList() {
+		return sponsorConfigList;
+	}
+
+	public void setSponsorConfigList(List<RefSponsorConfiguration> sponsorConfigList) {
+		this.sponsorConfigList = sponsorConfigList;
+	}
+
+	public List<SponsorReports> getSponsorReportList() {
+		return sponsorReportList;
+	}
+
+	public void setSponsorReportList(List<SponsorReports> sponsorReportList) {
+		this.sponsorReportList = sponsorReportList;
+	}
+
+	public RefSponsor getSelectedRefSponsor() {
+		return selectedRefSponsor;
+	}
+
+	public void setSelectedRefSponsor(RefSponsor selectedRefSponsor) {
+		this.selectedRefSponsor = selectedRefSponsor;
+	}
+
+	public RefApp getSelectedApp() {
+		return selectedApp;
+	}
+
+	public void setSelectedApp(RefApp selectedApp) {
+		this.selectedApp = selectedApp;
+	}
+
+	public SponsorApplicationMap getSelectedSponsorApplicationMap() {
+		return selectedSponsorApplicationMap;
+	}
+
+	public void setSelectedSponsorApplicationMap(SponsorApplicationMap selectedSponsorApplicationMap) {
+		this.selectedSponsorApplicationMap = selectedSponsorApplicationMap;
+	}
+
+	public List<String> getChildTableList() {
+		return childTableList;
+	}
+
+	public void setChildTableList(List<String> childTableList) {
+		this.childTableList = childTableList;
+	}
+
+	public String getSponsorSuccessMsg() {
+		return sponsorSuccessMsg;
+	}
+
+	public void setSponsorSuccessMsg(String sponsorSuccessMsg) {
+		this.sponsorSuccessMsg = sponsorSuccessMsg;
+	}
+
+	public String getSponsorWarningMsg() {
+		return sponsorWarningMsg;
+	}
+
+	public void setSponsorWarningMsg(String sponsorWarningMsg) {
+		this.sponsorWarningMsg = sponsorWarningMsg;
+	}
+
+	public String getSponsorValidationErrorMsg() {
+		return sponsorValidationErrorMsg;
+	}
+
+	public void setSponsorValidationErrorMsg(String sponsorValidationErrorMsg) {
+		this.sponsorValidationErrorMsg = sponsorValidationErrorMsg;
+	}
+
+	public String getSponsorEmailErrorMsg() {
+		return sponsorEmailErrorMsg;
+	}
+
+	public void setSponsorEmailErrorMsg(String sponsorEmailErrorMsg) {
+		this.sponsorEmailErrorMsg = sponsorEmailErrorMsg;
+	}
+
+	public String getApplicationSuccessMsg() {
+		return applicationSuccessMsg;
+	}
+
+	public void setApplicationSuccessMsg(String applicationSuccessMsg) {
+		this.applicationSuccessMsg = applicationSuccessMsg;
+	}
+
+	public String getApplicationWarningMsg() {
+		return applicationWarningMsg;
+	}
+
+	public void setApplicationWarningMsg(String applicationWarningMsg) {
+		this.applicationWarningMsg = applicationWarningMsg;
+	}
+
+	public String getApplicationValidationErrorMsg() {
+		return applicationValidationErrorMsg;
+	}
+
+	public void setApplicationValidationErrorMsg(String applicationValidationErrorMsg) {
+		this.applicationValidationErrorMsg = applicationValidationErrorMsg;
+	}
+
+	public String getApplicationEmailErrorMsg() {
+		return applicationEmailErrorMsg;
+	}
+
+	public void setApplicationEmailErrorMsg(String applicationEmailErrorMsg) {
+		this.applicationEmailErrorMsg = applicationEmailErrorMsg;
+	}
+
+	public String getSponsorAppMapSuccessMsg() {
+		return sponsorAppMapSuccessMsg;
+	}
+
+	public void setSponsorAppMapSuccessMsg(String sponsorAppMapSuccessMsg) {
+		this.sponsorAppMapSuccessMsg = sponsorAppMapSuccessMsg;
+	}
+
+	public String getSponsorAppMapEmailErrorMsg() {
+		return sponsorAppMapEmailErrorMsg;
+	}
+
+	public void setSponsorAppMapEmailErrorMsg(String sponsorAppMapEmailErrorMsg) {
+		this.sponsorAppMapEmailErrorMsg = sponsorAppMapEmailErrorMsg;
+	}
+
+	public String getSponsorAppMapWarningMsg() {
+		return sponsorAppMapWarningMsg;
+	}
+
+	public void setSponsorAppMapWarningMsg(String sponsorAppMapWarningMsg) {
+		this.sponsorAppMapWarningMsg = sponsorAppMapWarningMsg;
+	}
+
+	public String getSponsorAppMapValidationErrorMsg() {
+		return sponsorAppMapValidationErrorMsg;
+	}
+
+	public void setSponsorAppMapValidationErrorMsg(String sponsorAppMapValidationErrorMsg) {
+		this.sponsorAppMapValidationErrorMsg = sponsorAppMapValidationErrorMsg;
+	}
+
+	public String getSponsorWaitMsg() {
+		return sponsorWaitMsg;
+	}
+
+	public void setSponsorWaitMsg(String sponsorWaitMsg) {
+		this.sponsorWaitMsg = sponsorWaitMsg;
+	}
+
+}
+
+
+-----------------------------
+<ui:composition template="templates/main-admin.xhtml" 
+	xmlns="http://www.w3.org/1999/xhtml" 
+	xmlns:h="http://java.sun.com/jsf/html" 
+	xmlns:f="http://java.sun.com/jsf/core" 
+	xmlns:ui="http://java.sun.com/jsf/facelets" 
+	xmlns:rich="http://richfaces.org/rich" 
+	xmlns:a4j="http://richfaces.org/a4j"> 
+	<ui:define name="browser-title">
+	  	<h:outputText value="Sponsor / Application Configuration" escape="false" />
+	  	#{sponsorAppConfigAdminBean.init()}
+	</ui:define>
+	
+	<ui:define name="page-title">
+	  	<h:outputText value="Sponsor / Application Configuration" escape="false" />
+	</ui:define>
+
+	<ui:define name="content">
+
+		<ui:param name="bean" value="#{sponsorAppConfigAdminBean}" />
+		<div class="ips-content">
+        	
+        	<rich:collapsiblePanel id="sponsorPanel" header="Create / Modify Sponsor" switchType="client" expanded="false">
+	        	<h:panelGroup id="sponsorMsgPanel">
+	        		<a4j:outputPanel>
+		        		<h:outputText id="idSponsorWaitMsgPnl" value="#{bean.sponsorWaitMsg}" escape="false" />
+		        	</a4j:outputPanel>
+	       			<a4j:outputPanel rendered="#{bean.showSponsorSuccessMsg()}">
+		        		<p class="success">
+		         			<h:graphicImage value="images/iconSuccess.gif" />
+		         			<h:outputText id="idSponsorSuccessMsg" value="#{bean.sponsorSuccessMsg}" escape="false" />
+		        		</p>
+		        	</a4j:outputPanel>
+		        	<a4j:outputPanel rendered="#{bean.showSponsorWarningMsg()}">
+		        		<p class="warning">
+		         			<h:graphicImage value="images/iconWarning.gif" />
+		         			<h:outputText id="idSponsorWarningMsg" value="#{bean.sponsorWarningMsg}" escape="false" /><br/>
+		         			<ui:repeat var="e" value="#{bean.childTableList}">
+		         				<h:outputText value="#{e}" escape="false" /><br/>
+		         			</ui:repeat>
+		        		</p>
+		        	</a4j:outputPanel>
+	       			<a4j:outputPanel rendered="#{bean.showSponsorValidationErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idSponsorValidationErrorMsg" value="#{bean.sponsorValidationErrorMsg}" escape="true" />
+						</p>
+					</a4j:outputPanel>
+					<a4j:outputPanel rendered="#{bean.showSponsorEmailErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idSponsorEmailErrorMsg"  value="An error occurred while attempting to send the notification email. However, the new values have still been saved." />
+						</p>
+					</a4j:outputPanel>
+	        	</h:panelGroup>
+        	
+        		<p class="error" style="display: none;" id="sponsorNameError"></p>
+        		<h:outputLabel for="sponsorNameTextBox" value="Sponsor Name" />
+        		<h:inputText maxlength="50" value="#{bean.sponsorName}" size="50" id="sponsorNameTextBox" 
+        			disabled="#{bean.isDisableSponsorNameBox()}" />
+        		
+        		<h:outputLabel for="externalIppClientCheckbox" value="External IPP Client" />
+				<h:selectBooleanCheckbox id="externalIppClientCheckbox"
+					immediate="true" value="#{bean.externalIppClient}"
+					disabled="bean.disableExternalIppClient()}" 
+					styleClass="checkbox"
+					style="margin-right:0px;">
+				</h:selectBooleanCheckbox>
+				
+				<h:outputLabel for="remoteProofingClientCheckbox" value="Remote Proofing Client" />
+				<h:selectBooleanCheckbox id="remoteProofingClientCheckbox"
+					immediate="true" value="#{bean.remoteProofingClient}"
+					disabled="bean.disableRemoteProofingClient()}}" 
+					styleClass="checkbox"
+					style="margin-right:0px;">
+				</h:selectBooleanCheckbox>
+       			<br/><br/>
+       			
+       			<h:panelGroup layout="block" class="left-buttons" id="sponsorButtons" style="margin-bottom: 15px;">
+       				<a4j:commandButton id="idSponsorAdd" value="Add" 
+       					onclick="return validateInput('sponsorName');" 
+       					action="#{bean.addSponsor()}"
+       					render="sponsorDt,idSponsorCol,externalIppClientCheckbox,remoteProofingClientCheckbox,sponsorNameTextBox,sponsorMsgPanel"
+       					rendered="#{bean.showSponsorAddButton()}" />
+       				<a4j:commandButton id="idSponsorUpdate" value="Update" 
+       					action="#{bean.updateSponsor()}" 
+       					render="sponsorButtons,sponsorDt,idSponsorCol,externalIppClientCheckbox,remoteProofingClientCheckbox,sponsorNameTextBox,sponsorMsgPanel"
+       					rendered="#{bean.showSponsorUpdateButton()}" />
+       				<a4j:commandButton id="idSponsorDelete" value="Confirm Delete" 
+       					action="#{bean.confirmDeleteSponsor()}" 
+       					render="sponsorButtons,sponsorDt,idSponsorCol,externalIppClientCheckbox,remoteProofingClientCheckbox,sponsorNameTextBox,sponsorMsgPanel"
+       					rendered="#{bean.showSponsorDeleteButton()}" />
+       				<a4j:commandButton id="idSponsorCancel" value="Cancel" 
+       					action="#{bean.cancelSponsorEdit()}"
+       					render="sponsorButtons,externalIppClientCheckbox,remoteProofingClientCheckbox,sponsorNameTextBox,sponsorMsgPanel" 
+       					rendered="#{bean.showSponsorCancelButton()}" />
+       			</h:panelGroup>
+       			
+        		<h:dataTable id="sponsorDt" class="footable toggle-arrow-small" value="#{bean.sponsorAllList}" var="sp">
+        			<h:column class="footable-first-column" style="text-align: center;">
+        				<f:facet name="header">Edit / Delete</f:facet>
+        				<a4j:commandLink 
+        					title="Edit Sponsor" 
+        					action="#{bean.showSponsorForEdit(sp)}" 
+        					render="sponsorButtons,sponsorMsgPanel,sponsorNameTextBox,externalIppClientCheckbox,remoteProofingClientCheckbox"
+         					styleClass="btn btn-default btnDelete" style="margin-right: 8px;">
+        					<img src="images/iconEdit.gif" title="Edit Sponsor" alt="Edit Sponsor" height="14px" 
+        						style="vertical-align: middle;" />
+        				</a4j:commandLink>
+        				<a4j:commandLink 
+         					title="Delete Sponsor" 
+        					action="#{bean.checkDeleteSponsor(sp)}" 
+        					render="sponsorButtons,sponsorMsgPanel,sponsorNameTextBox,externalIppClientCheckbox,remoteProofingClientCheckbox" 
+           					styleClass="btn btn-default btnDelete">
+        					<img src="images/iconDelete.gif" title="Remove Sponsor" alt="Remove Sponsor"  
+        						height="14px" style="vertical-align: middle;" />
+        				</a4j:commandLink>
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Sponsor ID</f:facet>
+        				#{sp.sponsorId}
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Sponsor Name</f:facet>
+        				#{sp.sponsorName}
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">External IPP Client</f:facet>
+        				<h:outputText value="Yes" rendered="#{sp.isIppClientActive()}" />
+        				<h:outputText value="No" rendered="#{!sp.isIppClientActive()}" />
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Remote Proofing Client</f:facet>
+        				<h:outputText value="Yes" rendered="#{sp.isRemoteProofingClientActive()}" />
+        				<h:outputText value="No" rendered="#{!sp.isRemoteProofingClientActive()}" />
+        			</h:column>
+        		</h:dataTable>
+        	</rich:collapsiblePanel>
+        	
+        	<rich:collapsiblePanel id="applicationPanel" header="Create / Modify Application" switchType="client" expanded="false">
+        		<h:panelGroup id="appMsgPanel">
+	       			<a4j:outputPanel rendered="#{bean.showAppSuccessMsg()}">
+		        		<p class="success">
+		         			<h:graphicImage value="images/iconSuccess.gif" />
+		         			<h:outputText id="idApplicationSuccessMsg" value="#{bean.applicationSuccessMsg}" escape="false" />
+		        		</p>
+		        	</a4j:outputPanel>
+		        	<a4j:outputPanel rendered="#{bean.showAppWarningMsg()}">
+		        		<p class="warning">
+		         			<h:graphicImage value="images/iconWarning.gif" />
+		         			<h:outputText id="idApplicationWarningMsg" value="#{bean.applicationWarningMsg}" escape="false" />
+		        		</p>
+		        	</a4j:outputPanel>	        	
+	       			<a4j:outputPanel rendered="#{bean.showAppValidationErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idApplicationValidationErrorMsg" value="#{bean.applicationValidationErrorMsg}"  />
+						</p>
+					</a4j:outputPanel>
+					<a4j:outputPanel rendered="#{bean.showAppEmailErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idApplicationEmailErrorMsg" value="An error occurred while attempting to send the notification email. However, the new values have still been saved." />
+						</p>
+					</a4j:outputPanel>
+	        	</h:panelGroup>
+	        	
+        		<p class="error" style="display: none;" id="applicationNameError"></p>
+        		<h:outputLabel for="applicationNameTextBox" value="Application Name" />
+        		<h:inputText maxlength="50" value="#{bean.applicationName}" size="50" id="applicationNameTextBox" 
+        			disabled="#{bean.showSponsorValidationErrorMsg()}"/>
+
+				<!--customer category-->
+				<h:outputLabel for="CustCat" value="Customer Category" />
+
+				<h:selectOneMenu style="margin-right: 15px;" id="CustCat" styleClass="select_menu select_sponsor_width">
+					<f:selectItem itemValue="0" itemLabel="Select a Customer Category" selected="selected"/>
+					<f:selectItem itemValue="1" itemLabel="business" />
+					<f:selectItem itemValue="2" itemLabel="government" />
+					<f:selectItem itemValue="3" itemLabel="individual" />
+				</h:selectOneMenu>
+
+				<!--<h:selectOneMenu style="margin-right: 15px;" id="idSponsorCol" disabled="#{bean.disableDropdowns()}"
+								 value="#{bean.selectedSponsorMap}" styleClass="select_menu select_sponsor_width">
+					<f:selectItem itemValue="0" itemLabel="Select a Sponsor" />
+					<f:selectItems value="#{bean.sponsorAllList}" var="sp" itemLabel="#{sp.sponsorName}"
+								   itemValue="#{sp.sponsorId}" />
+				</h:selectOneMenu>-->
+
+				<h:outputLabel for="availableWorkflowAPIs" value="Available Workflow APIs" />
+
+				<h:dataTable id="availableWorkflowAPIs" class="footable toggle-arrow-small" value="#{bean.availableWorkflowAPIs}" var="available" >
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">blank</f:facet>
+						<h:selectBooleanCheckbox id="chkboxInputAWFApi" disabled="false" />
+					</h:column>
+
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">API Type ID</f:facet>
+						<h:outputText value="#{available.id}" /><br/><br/><br/>
+						<!--<p>1</p>-->
+					</h:column>
+
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Code</f:facet>
+						<h:outputText value="#{available.typeCode}" />
+					</h:column>
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Description</f:facet>
+						<h:outputText value="#{available.description}" /><br/><br/><br/>
+					</h:column>
+				</h:dataTable>
+
+				<h:panelGroup layout="block" id="includeButton" class="left-buttons" style="margin-bottom: 15px; margin-top: 15px;">
+				<a4j:commandButton id="includeWorkFlow" value="Include" action="#{bean.includeWorkFlow('11')}"/>
+				</h:panelGroup>
+
+				<h:outputLabel for="selectedWorkflowAPIs" value="Selected Workflow APIs for the Application" />
+
+				<h:dataTable id="selectedWorkflowAPIs" class="footable toggle-arrow-small" value="#{bean.selectedWorkflowAPIs}" var="selected" >
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">blank</f:facet>
+						<h:selectBooleanCheckbox id="chkboxInputSWFApi" disabled="false" />
+					</h:column>
+
+					<h:column class="footable-first-column" style="text-align: center;">
+						<f:facet name="header">API Type ID</f:facet>
+						<h:outputText value="#{selected.id}" /><br/><br/><br/>
+						<!--<p>1</p>-->
+					</h:column>
+
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Code</f:facet>
+						<h:outputText value="#{selected.typeCode}" />
+					</h:column>
+					<h:column class="footable-first-column">
+						<f:facet name="header">API Type Description</f:facet>
+						<h:outputText value="#{selected.description}" /><br/><br/><br/>
+					</h:column>
+				</h:dataTable>
+
+       		  
+       			<h:panelGroup layout="block" id="applicationButtons" class="left-buttons" style="margin-bottom: 15px; margin-top: 15px;">
+       				<a4j:commandButton id="idApplicationAdd" value="Add" onclick="return validateInput('applicationName');" 
+       					action="#{bean.addApplication()}" 
+       					render="idApplicationCol,applicationNameTextBox,applicationDt,appMsgPanel"
+       					rendered="#{bean.showApplicationAddButton()}" />
+       				<a4j:commandButton id="idApplicationUpdate" value="Update" 
+       					action="#{bean.updateApplication()}"
+       					render="applicationButtons,idApplicationCol,applicationNameTextBox,applicationDt,appMsgPanel"
+       					rendered="#{bean.showApplicationUpdateButton()}" 
+       					style="margin-right: 10px;"/>
+       				<a4j:commandButton id="idApplicationDelete" value="Confirm Delete" 
+       					action="#{bean.confirmDeleteApplication()}" 
+       					render="applicationButtons,idApplicationCol,applicationNameTextBox,applicationDt,appMsgPanel"
+      					rendered="#{bean.showApplicationDeleteButton()}" />
+       				<a4j:commandButton id="idApplicationCancel" value="Cancel" 
+       					action="#{bean.cancelApplicationEdit()}"
+       					render="applicationButtons,applicationNameTextBox,appMsgPanel"
+       					rendered="#{bean.showApplicationCancelButton()}" />
+       			</h:panelGroup>
+       			
+        		<h:dataTable id="applicationDt" class="footable toggle-arrow-small" value="#{bean.applicationAllList}" var="app">
+        			<h:column class="footable-first-column" style="text-align: center;">
+        				<f:facet name="header">Edit / Delete</f:facet>
+        				<a4j:commandLink title="Edit Application" action="#{bean.showApplicationForEdit(app)}" 
+        					render="applicationButtons,applicationNameTextBox,appMsgPanel"
+        					styleClass="btn btn-default btnDelete" style="margin-right: 8px;">
+        					<img src="images/iconEdit.gif" title="Edit Application" alt="Edit Application" height="14px" 
+        					style="vertical-align: middle;" />
+        				</a4j:commandLink>
+        				<a4j:commandLink title="Delete Application" 
+        					action="#{bean.checkDeleteApplication(app)}" 
+        					render="applicationButtons,idApplicationCol,applicationDt,appMsgPanel"
+        					styleClass="btn btn-default btnDelete">
+        					<img src="images/iconDelete.gif" title="Remove Application" alt="Remove Application" 
+        						height="14px" style="vertical-align: middle;" />
+        				</a4j:commandLink>
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Application ID</f:facet>
+        				#{app.appId}
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Application Name</f:facet>
+        				#{app.appName}
+        			</h:column>
+        		</h:dataTable>
+        	</rich:collapsiblePanel>
+        	
+        	<rich:collapsiblePanel id="sponsorAppMapPanel" header="Sponsor / Application Configuration" 
+        		switchType="client" expanded="false">
+        		 <h:panelGroup id="sponsorAppMapMsgPanel">
+	       			<a4j:outputPanel rendered="#{bean.showSponsorAppMapSuccessMsg()}">
+		        		<p class="success">
+		         			<h:graphicImage value="images/iconSuccess.gif" />
+		         			<h:outputText id="idSponsorAppMapSuccessMsg" value="#{bean.sponsorAppMapSuccessMsg}" escape="false" />
+		        		</p>
+		        	</a4j:outputPanel>
+		        	<a4j:outputPanel rendered="#{bean.showSponsorAppMapWarningMsg()}">
+		        		<p class="warning">
+		         			<h:graphicImage value="images/iconWarning.gif" />
+		         			<h:outputText id="idSponsorAppMapWarningMsg" value="#{bean.sponsorAppMapWarningMsg}" escape="false" />
+		        		</p>
+		        	</a4j:outputPanel>	        	
+		        	
+	       			<a4j:outputPanel rendered="#{bean.showSponsorAppMapValidationErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idSponsorAppMapValidationErrorMsg" value="#{bean.sponsorAppMapValidationErrorMsg}"  />
+						</p>
+					</a4j:outputPanel>
+					<a4j:outputPanel rendered="#{bean.showSponsorAppMapEmailErrorMsg()}">
+		        		<p class="error">
+		       				<h:graphicImage value="images/iconError.gif" />
+		       				<h:outputText id="idSponsorAppMapErrorErrorMsg" value="An error occurred while attempting to send the notification email. However, the new values have still been saved." />
+						</p>
+					</a4j:outputPanel>
+	        	</h:panelGroup>
+	        	
+        		<p class="error" id="sponsorAppMapError" style="display: none;"></p>
+        		<span><strong>Important: </strong>An External IPP Client sponsor should only be disabled after all IPP events for the sponsor have expired.</span>
+        		
+        		<h:panelGrid columns="2" columnClasses="sponsorColCls" width="20%" border="1">
+        			<h:outputLabel for="idSponsorCol" value="Sponsor" />
+        			<h:outputLabel for="idApplicationCol" value="Application" />
+        			<h:selectOneMenu style="margin-right: 15px;" id="idSponsorCol" disabled="#{bean.disableDropdowns()}" 
+        				value="#{bean.selectedSponsorMap}" styleClass="select_menu select_sponsor_width">
+        				<f:selectItem itemValue="0" itemLabel="Select a Sponsor" />
+        				<f:selectItems value="#{bean.sponsorAllList}" var="sp" itemLabel="#{sp.sponsorName}" 
+        					itemValue="#{sp.sponsorId}" />
+        			</h:selectOneMenu>
+        			<h:selectOneMenu id="idApplicationCol" disabled="#{bean.disableDropdowns()}" 
+        				value="#{bean.selectedApplicationMap}" styleClass="select_menu select_sponsor_width">
+        				<f:selectItem itemValue="0" itemLabel="Select an Application" />
+        				<f:selectItems value="#{bean.applicationAllList}" var="app" 
+        					itemLabel="#{app.appName}" 
+        					itemValue="#{app.appId}" />
+        			</h:selectOneMenu>
+        			<h:outputLabel for="idActivationDate" value="Enable On" />
+        			<h:outputLabel for="idDeactivationDate" value="Disable On" />
+        			<rich:calendar value="#{bean.activationDate}" id="idActivationDate" popup="true" 
+        				enableManualInput="false" datePattern="MM/dd/yyyy" styleClass="formatCal" />
+        			<rich:calendar value="#{bean.deactivationDate}" id="idDeactivationDate" popup="true" 
+        				enableManualInput="false" datePattern="MM/dd/yyyy" styleClass="formatCal" />
+        		</h:panelGrid>
+        		
+        		<h:panelGroup layout="block" class="left-buttons" id="sponsorAppMapButtons" style="margin-bottom: 15px;">
+        			<a4j:commandButton id="idSponsorAppMapAdd" value="Add" 
+        				onclick="return validateInput('sponsorAppRelation');" 
+        				action="#{bean.addSponsorAppMap()}" 
+        				render="sponsorAppMapDt,idActivationDate,idDeactivationDate,idApplicationCol,idSponsorCol,applicationDt,sponsorDt,sponsorAppMapMsgPanel"
+        				rendered="#{bean.showSponsorAppMapAddButton()}" />
+       				<a4j:commandButton id="idSponsorAppMapUpdate" value="Update"  
+       					onclick="return validateInput('dates');" 
+       					action="#{bean.updateSponsorAppMap()}"
+       					render="sponsorAppMapButtons,sponsorAppMapDt,idActivationDate,idDeactivationDate,idApplicationCol,idSponsorCol,sponsorAppMapMsgPanel"
+       					rendered="#{bean.showSponsorAppMapUpdateButton()}"  />
+       				<a4j:commandButton id="idSponsorAppMapDelete" value="Confirm Delete" 
+       					action="#{bean.confirmDeleteSponsorAppMap()}" 
+       					render="sponsorAppMapButtons,sponsorAppMapDt,idActivationDate,idDeactivationDate,idApplicationCol,idSponsorCol,sponsorAppMapMsgPanel"
+       					rendered="#{bean.showSponsorAppMapDeleteButton()}" />
+       				<a4j:commandButton id="idSponsorAppMapCancel" value="Cancel"  
+       					action="#{bean.cancelSponsorAppMapEdit()}"
+       					rendered="#{bean.showSponsorAppMapCancelButton()}" 
+       					render="sponsorAppMapButtons,idActivationDate,idDeactivationDate,idApplicationCol,idSponsorCol,sponsorAppMapMsgPanel" />
+        		</h:panelGroup>
+        	       			
+        		<h:dataTable id="sponsorAppMapDt" class="footable toggle-arrow-small" value="#{bean.sponsorApplicationMapList}" var="sam">
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Edit / Delete</f:facet>
+        				<a4j:commandLink title="Edit Sponsor Application Map" 
+        					action="#{bean.showMapForEdit(sam.id)}" 
+        					render="sponsorAppMapButtons,idActivationDate,idDeactivationDate,idApplicationCol,idSponsorCol,sponsorAppMapMsgPanel"
+        					styleClass="btn btn-default btnDelete" style="margin-right: 8px;">
+	        				<img src="images/iconEdit.gif" title="Edit Sponsor Application Map" 
+	        					alt="Edit Sponsor Application Map" height="14px" style="vertical-align: middle;" />
+	        			</a4j:commandLink>
+	        			<a4j:commandLink title="Delete Sponsor Application Map" 
+	        				action="#{bean.checkDeleteSponsorAppMap(sam)}" 
+	        				render="sponsorAppMapButtons,sponsorAppMapDt,applicationDt,sponsorDt,sponsorAppMapMsgPanel"
+	        				styleClass="btn btn-default btnDelete">
+	        				<img src="images/iconDelete.gif" title="Remove Sponsor Application Map" 
+	        					alt="Remove Sponsor Application Map" height="14px" style="vertical-align: middle;" />
+	        					
+	        			</a4j:commandLink>
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Sponsor ID</f:facet>
+        				#{sam.sponsor.sponsorId}
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Sponsor Name</f:facet>
+        				#{sam.sponsor.sponsorName}
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Enable On</f:facet>
+        				<h:outputText value="#{sam.activationDate}" escape="false">
+        					<f:convertDateTime pattern="MM/dd/yyyy" />
+        				</h:outputText>
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Disable On</f:facet>
+        				<h:outputText value="#{sam.deactivationDate}" escape="false">
+        					<f:convertDateTime pattern="MM/dd/yyyy" />
+        				</h:outputText>
+        			</h:column>
+        			<h:column class="footable-first-column">
+        				<f:facet name="header">Application Name</f:facet>
+        				#{sam.app.appName}
+        			</h:column>
+        		</h:dataTable>
+        		<span><strong>Note: </strong>Disabling an application and sponsor only disables incoming web service calls, it does not impact the online proofing application for Customer Registration.</span>
+        	</rich:collapsiblePanel>
+        </div>
+	</ui:define>
+</ui:composition>
