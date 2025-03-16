@@ -1,0 +1,69 @@
+The **difference between `render` and `rendered`** in JSF and RichFaces is:
+
+### **1️⃣ `render` (AJAX Update)**
+- Used in **`<a4j:commandButton>`** and other AJAX-based components.
+- Specifies **which UI components should be re-rendered** after an AJAX request.
+- Works with **AJAX partial page updates**.
+
+#### **Example:**
+```xml
+<a4j:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}"
+                   execute="@form" render="selectedApisTable workflowForm" />
+```
+✔️ **`render="selectedApisTable workflowForm"`**
+- **Re-renders the selected APIs table** and **the form** after clicking the button.
+
+---
+
+### **2️⃣ `rendered` (Component Visibility)**
+- Used in **all JSF components** (`<h:panelGroup>`, `<h:outputText>`, `<h:dataTable>`, etc.).
+- **Determines whether a component is displayed on the page.**
+- **Static evaluation**: If `rendered="false"`, the component **is not even sent to the browser**.
+
+#### **Example:**
+```xml
+<h:dataTable value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="api"
+             rendered="#{not empty sponsorAppConfigAdminBean.selectedWorkflowAPIs}">
+    <h:column>#{api.typeCode}</h:column>
+</h:dataTable>
+```
+✔️ **`rendered="#{not empty sponsorAppConfigAdminBean.selectedWorkflowAPIs}"`**
+- The table is **only displayed if `selectedWorkflowAPIs` is not empty**.
+- If `false`, the **component is not sent to the client at all**.
+
+---
+
+## **Key Differences**
+| Attribute  | Used in | Purpose |
+|------------|---------|----------|
+| **`render`** | `<a4j:commandButton>`, `<a4j:ajax>` | Updates specific components dynamically (AJAX). |
+| **`rendered`** | Any JSF Component | Determines if a component is included in the DOM. |
+
+---
+
+## **💡 When to Use What?**
+- Use **`render`** when you **want to update** components dynamically after an AJAX request.
+- Use **`rendered`** when you **want to show/hide components** based on a condition.
+
+---
+
+### **🚀 Example Combining Both**
+```xml
+<h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="api"
+             rendered="#{not empty sponsorAppConfigAdminBean.selectedWorkflowAPIs}">
+    <h:column>#{api.typeCode}</h:column>
+</h:dataTable>
+
+<a4j:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}"
+                   execute="@form" render="selectedApisTable" />
+```
+✔️ The **button updates the table** dynamically using `render`.  
+✔️ The **table is only visible if it contains data** using `rendered`.
+
+---
+
+### **🚀 Summary**
+- **Use `render` for AJAX updates** (refresh specific components dynamically). ✅
+- **Use `rendered` for conditional visibility** (hide/show components based on logic). ✅
+
+Hope this clears it up! 🚀 Let me know if you need more examples.
