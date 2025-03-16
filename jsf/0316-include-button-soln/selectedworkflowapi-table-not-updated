@@ -1,0 +1,147 @@
+If the **checkbox selection is working fine**, but the **selectedWorkflowAPIs table is not updating**, the issue is likely related to **JSF AJAX partial updates** or how data is being managed inside your `SponsorAppConfigAdminBean`. 
+
+---
+
+## **Troubleshooting & Fixes**
+### ✅ **1. Ensure `update="selectedApisTable"` is Correct**
+Your **Include** button must trigger an AJAX partial update. Ensure your XHTML button has:
+
+```xml
+<h:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" update="selectedApisTable workflowForm" />
+```
+- **`update="selectedApisTable workflowForm"`**: Ensures both the **selected APIs table** and the **form itself** refresh.
+- **If the table is inside a different form, move it inside the same `<h:form>`**.
+
+---
+
+### ✅ **2. Ensure `selectedWorkflowAPIs` is Updated in the Bean**
+Modify your **`includeSelectedApis()`** method to:
+1. **Ensure selected APIs are added to `selectedWorkflowAPIs`.**
+2. **Force JSF to recognize data changes using `FacesContext` (important for AJAX updates).**
+
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.application.FacesMessage;
+
+public void includeSelectedApis() {
+    List<WorkflowAPI> toAdd = new ArrayList<>();
+
+    for (WorkflowAPI api : availableWorkflowAPIs) {
+        if (api.isSelected() && !selectedWorkflowAPIs.contains(api)) {
+            toAdd.add(api);
+            api.setSelected(false); // Reset checkbox after adding
+        }
+    }
+
+    if (!toAdd.isEmpty()) {
+        selectedWorkflowAPIs.addAll(toAdd);
+        
+        // Force JSF to recognize the change
+        FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add("workflowForm:selectedApisTable");
+
+        // Optional: Add a success message
+        FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("APIs added successfully!"));
+    }
+}
+```
+- **Forces JSF to detect changes in the table** using:
+  ```java
+  FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add("workflowForm:selectedApisTable");
+  ```
+- **Resets checkbox selection after adding APIs** to avoid duplicate selections.
+- **Logs a FacesMessage** for debugging.
+
+---
+
+### ✅ **3. Ensure `selectedWorkflowAPIs` is Initialized**
+In your **constructor**, ensure `selectedWorkflowAPIs` is initialized **before usage**:
+
+```java
+public SponsorAppConfigAdminBean() {
+    availableWorkflowAPIs = new ArrayList<>();
+    selectedWorkflowAPIs = new ArrayList<>();
+}
+```
+
+---
+
+### ✅ **4. Ensure `<h:dataTable>` is Inside the Correct `<h:form>`**
+JSF requires the `<h:dataTable>` to be inside the same `<h:form>` that gets updated.
+
+```xml
+<h:form id="workflowForm">
+    <!-- Available APIs Table -->
+    <h:dataTable value="#{sponsorAppConfigAdminBean.availableWorkflowAPIs}" var="api" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{api.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{api.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Description</f:facet>
+            #{api.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- Include Button -->
+    <h:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" update="selectedApisTable" />
+
+    <!-- Selected APIs Table -->
+    <h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="selectedApi" border="1">
+        <h:column>
+            <f:facet name="header">API Type ID</f:facet>
+            #{selectedApi.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{selectedApi.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Description</f:facet>
+            #{selectedApi.description}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+- **Ensure `selectedApisTable` is inside the `<h:form>`** for proper AJAX updates.
+- **Ensure `update="selectedApisTable"` targets the correct table ID.**
+
+---
+
+### ✅ **5. Debug the `selectedWorkflowAPIs` List**
+If the UI **still does not update**, print debug logs in the `includeSelectedApis` method:
+
+```java
+public void includeSelectedApis() {
+    System.out.println("Before adding: " + selectedWorkflowAPIs.size());
+
+    List<WorkflowAPI> toAdd = new ArrayList<>();
+    for (WorkflowAPI api : availableWorkflowAPIs) {
+        if (api.isSelected() && !selectedWorkflowAPIs.contains(api)) {
+            toAdd.add(api);
+            api.setSelected(false);
+        }
+    }
+
+    selectedWorkflowAPIs.addAll(toAdd);
+
+    System.out.println("After adding: " + selectedWorkflowAPIs.size());
+
+    FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add("workflowForm:selectedApisTable");
+}
+```
+- **Check the logs** to see if `selectedWorkflowAPIs` is being updated.
+
+---
+
+## **Final Steps**
+✅ 1. **Ensure `update="selectedApisTable"` in the button.**  
+✅ 2. **Ensure `selectedWorkflowAPIs` updates inside `includeSelectedApis()`.**  
+✅ 3. **Ensure `<h:dataTable>` is inside `<h:form>`.**  
+✅ 4. **Add `FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add(...)`.**  
+✅ 5. **Check the logs to confirm updates.**
+
+**Try these fixes and let me know if it's still not updating! 🚀**
