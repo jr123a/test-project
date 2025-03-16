@@ -1,0 +1,91 @@
+Yes, your **XHTML file is using `<a4j:commandButton>`** instead of `<h:commandButton>`. Since you are using **RichFaces (`a4j:commandButton`)**, we need to ensure that it properly updates the UI when adding selected APIs.
+
+---
+
+## **Fixing the `<a4j:commandButton>` Implementation**
+Since **RichFaces uses Ajax for partial updates**, ensure the following:
+1. **Wrap everything in `<h:form>`** (if missing).
+2. **Use `render="selectedApisTable"`** to force an update.
+3. **Use `execute="@form"`** to ensure the form is processed correctly.
+
+---
+
+### **✅ Updated XHTML with `<a4j:commandButton>`**
+Modify your button to use RichFaces correctly:
+```xml
+<h:form id="workflowForm">
+    <!-- Available APIs Table -->
+    <h:dataTable value="#{sponsorAppConfigAdminBean.availableWorkflowAPIs}" var="api" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{api.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{api.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Description</f:facet>
+            #{api.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- RichFaces Include Button -->
+    <a4j:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" 
+                       execute="@form" render="selectedApisTable workflowForm" />
+
+    <!-- Selected APIs Table -->
+    <h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="selectedApi" border="1">
+        <h:column>
+            <f:facet name="header">API Type ID</f:facet>
+            #{selectedApi.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{selectedApi.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Description</f:facet>
+            #{selectedApi.description}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+### **✅ Fixing `includeSelectedApis()` in `SponsorAppConfigAdminBean.java`**
+Modify your **Managed Bean** to ensure UI updates properly:
+```java
+public void includeSelectedApis() {
+    List<WorkflowAPI> toAdd = new ArrayList<>();
+
+    for (WorkflowAPI api : availableWorkflowAPIs) {
+        if (api.isSelected() && !selectedWorkflowAPIs.contains(api)) {
+            toAdd.add(api);
+            api.setSelected(false); // Reset checkbox
+        }
+    }
+
+    if (!toAdd.isEmpty()) {
+        selectedWorkflowAPIs.addAll(toAdd);
+        FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add("workflowForm:selectedApisTable");
+    }
+}
+```
+
+---
+
+## **💡 Why This Works**
+✅ **`<a4j:commandButton>` with `execute="@form"` ensures form processing**  
+✅ **`render="selectedApisTable"` triggers UI update in AJAX mode**  
+✅ **Checkbox selection is correctly applied with `api.selected`**  
+
+---
+
+### **🚀 Next Steps**
+1. **Deploy the changes**.
+2. **Ensure WebSphere caches are cleared**.
+3. **Test selecting and adding APIs**.
+
+Let me know if you need more help! 🚀
