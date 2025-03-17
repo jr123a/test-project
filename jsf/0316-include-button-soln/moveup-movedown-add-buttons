@@ -1,0 +1,139 @@
+### **Implementation for Move Up, Move Down, and Add Buttons**
+Based on your requirements:
+1. **Move Up / Move Down**:  
+   - Allows rearranging selected workflow APIs in the **Selected Workflow APIs** table.
+2. **Add Button**:  
+   - Adds a new entry to the **Business Applications Table**.
+
+---
+
+## **✅ Step 1: Update `SponsorAppConfigAdminBean.java`**
+Modify the Managed Bean to support **move up, move down, and add** functionality.
+
+### **1️⃣ Move Up Method**
+```java
+public void moveUp() {
+    for (int i = 1; i < selectedWorkflowAPIs.size(); i++) {
+        WorkflowAPI api = selectedWorkflowAPIs.get(i);
+        if (api.isSelected()) {
+            Collections.swap(selectedWorkflowAPIs, i, i - 1); // Swap with previous
+            break; // Only move one item at a time
+        }
+    }
+}
+```
+
+---
+
+### **2️⃣ Move Down Method**
+```java
+public void moveDown() {
+    for (int i = selectedWorkflowAPIs.size() - 2; i >= 0; i--) {
+        WorkflowAPI api = selectedWorkflowAPIs.get(i);
+        if (api.isSelected()) {
+            Collections.swap(selectedWorkflowAPIs, i, i + 1); // Swap with next
+            break; // Only move one item at a time
+        }
+    }
+}
+```
+
+---
+
+### **3️⃣ Add Business Application Entry**
+```java
+private List<BusinessApplication> businessApplications = new ArrayList<>();
+
+public void addBusinessApplication() {
+    if (!selectedWorkflowAPIs.isEmpty()) {
+        String workflowCodes = selectedWorkflowAPIs.stream()
+                .map(WorkflowAPI::getTypeCode)
+                .collect(Collectors.joining(", "));
+
+        BusinessApplication newApp = new BusinessApplication(businessApplications.size() + 1, "New Application", workflowCodes);
+        businessApplications.add(newApp);
+    }
+}
+```
+
+---
+
+### **✅ Step 2: Update XHTML File**
+Modify your **JSF page** to include buttons for **Move Up, Move Down, and Add**.
+
+```xml
+<h:form id="workflowForm">
+    <!-- Available Workflow APIs Table -->
+    <h:dataTable value="#{sponsorAppConfigAdminBean.availableWorkflowAPIs}" var="api" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{api.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{api.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Description</f:facet>
+            #{api.description}
+        </h:column>
+    </h:dataTable>
+
+    <a4j:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" execute="@form" render="selectedApisTable workflowForm" />
+
+    <!-- Selected Workflow APIs Table -->
+    <h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="selectedApi" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{selectedApi.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type ID</f:facet>
+            #{selectedApi.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{selectedApi.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Description</f:facet>
+            #{selectedApi.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- Move Up, Move Down, and Add Buttons -->
+    <a4j:commandButton value="Move Up" action="#{sponsorAppConfigAdminBean.moveUp}" execute="@form" render="selectedApisTable" />
+    <a4j:commandButton value="Move Down" action="#{sponsorAppConfigAdminBean.moveDown}" execute="@form" render="selectedApisTable" />
+    <a4j:commandButton value="Add" action="#{sponsorAppConfigAdminBean.addBusinessApplication}" execute="@form" render="businessApplicationsTable" />
+
+    <!-- Business Applications Table -->
+    <h:dataTable id="businessApplicationsTable" value="#{sponsorAppConfigAdminBean.businessApplications}" var="app" border="1">
+        <h:column>
+            <f:facet name="header">Application ID</f:facet>
+            #{app.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Application Name</f:facet>
+            #{app.name}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Workflow API Type Codes</f:facet>
+            #{app.workflowApiCodes}
+        </h:column>
+    </h:dataTable>
+</h:form>
+```
+
+---
+
+## **🔹 Summary**
+✅ **"Move Up" and "Move Down" allow ordering of Selected APIs**  
+✅ **"Add" button adds an entry to the Business Applications Table**  
+✅ **Uses `<a4j:commandButton>` to ensure AJAX updates without refreshing the page**  
+
+### **🚀 Final Steps**
+1. **Deploy the updated XHTML and Java files**.
+2. **Test Move Up / Move Down** to ensure workflows re-order correctly.
+3. **Test Add Button** to verify business applications update properly.
+
+This should meet your requirements! 🚀 Let me know if you need refinements. 😊
