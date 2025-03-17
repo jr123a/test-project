@@ -1,0 +1,148 @@
+To implement the **"Exclude"** button (which removes selected APIs from the **Selected Workflow APIs** table), we will follow a similar approach as the **"Include"** button.
+
+---
+
+## **🔹 Implementation Plan**
+1. **Modify the `WorkflowAPI` class** to use the `selected` flag for tracking checkboxes.
+2. **Create a method `excludeSelectedApis()`** in `SponsorAppConfigAdminBean.java` to remove selected APIs.
+3. **Update the XHTML file** to include an **Exclude** button.
+
+---
+
+## **✅ Step 1: Update `WorkflowAPI.java`**
+Ensure the `selected` property exists in your `WorkflowAPI` class.
+
+```java
+public class WorkflowAPI {
+    private int id;
+    private String typeCode;
+    private String description;
+    private boolean selected; // Used for checkbox selection
+
+    public WorkflowAPI(int id, String typeCode, String description) {
+        this.id = id;
+        this.typeCode = typeCode;
+        this.description = description;
+        this.selected = false; // Default to false
+    }
+
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getTypeCode() { return typeCode; }
+    public void setTypeCode(String typeCode) { this.typeCode = typeCode; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public boolean isSelected() { return selected; }
+    public void setSelected(boolean selected) { this.selected = selected; }
+}
+```
+
+---
+
+## **✅ Step 2: Add `excludeSelectedApis()` Method**
+Modify your **`SponsorAppConfigAdminBean.java`** to include the new `excludeSelectedApis()` method.
+
+```java
+import jakarta.faces.context.FacesContext;
+import jakarta.faces.application.FacesMessage;
+
+public void excludeSelectedApis() {
+    List<WorkflowAPI> toRemove = new ArrayList<>();
+
+    // Identify selected APIs for removal
+    for (WorkflowAPI api : selectedWorkflowAPIs) {
+        if (api.isSelected()) {
+            toRemove.add(api);
+        }
+    }
+
+    // Remove them from the list
+    selectedWorkflowAPIs.removeAll(toRemove);
+
+    // Reset selection after removing
+    for (WorkflowAPI api : selectedWorkflowAPIs) {
+        api.setSelected(false);
+    }
+
+    // Force UI update for AJAX
+    FacesContext.getCurrentInstance().getPartialViewContext().getRenderIds().add("workflowForm:selectedApisTable");
+
+    // Optional: Add a success message
+    FacesContext.getCurrentInstance().addMessage(null, new FacesMessage("APIs removed successfully!"));
+}
+```
+
+---
+
+## **✅ Step 3: Update XHTML**
+Modify your **XHTML** file to include the "Exclude" button.
+
+```xml
+<h:form id="workflowForm">
+    <!-- Available APIs Table -->
+    <h:dataTable value="#{sponsorAppConfigAdminBean.availableWorkflowAPIs}" var="api" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{api.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{api.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">Description</f:facet>
+            #{api.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- Include Button -->
+    <a4j:commandButton value="Include" action="#{sponsorAppConfigAdminBean.includeSelectedApis}" 
+                       execute="@form" render="selectedApisTable workflowForm" />
+
+    <!-- Selected APIs Table -->
+    <h:dataTable id="selectedApisTable" value="#{sponsorAppConfigAdminBean.selectedWorkflowAPIs}" var="selectedApi" border="1">
+        <h:column>
+            <f:facet name="header">Select</f:facet>
+            <h:selectBooleanCheckbox value="#{selectedApi.selected}" />
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type ID</f:facet>
+            #{selectedApi.id}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Code</f:facet>
+            #{selectedApi.typeCode}
+        </h:column>
+        <h:column>
+            <f:facet name="header">API Type Description</f:facet>
+            #{selectedApi.description}
+        </h:column>
+    </h:dataTable>
+
+    <!-- Exclude Button -->
+    <a4j:commandButton value="Exclude" action="#{sponsorAppConfigAdminBean.excludeSelectedApis}" 
+                       execute="@form" render="selectedApisTable workflowForm" />
+</h:form>
+```
+
+---
+
+## **🔹 How This Works**
+✅ **Uses the `selected` property** to track checkboxes in both tables.  
+✅ **"Include" button adds APIs** to `selectedWorkflowAPIs`.  
+✅ **"Exclude" button removes APIs** from `selectedWorkflowAPIs`.  
+✅ **Uses AJAX (`a4j:commandButton`) for updates** to avoid full page reloads.  
+
+---
+
+## **🚀 Final Steps**
+1. **Deploy the updated files**.
+2. **Clear WebSphere cache** if necessary.
+3. **Restart WebSphere**.
+4. **Test adding and removing APIs using the Include/Exclude buttons**.
+
+This should now work seamlessly! 🚀 Let me know if you need further refinements. 😊
