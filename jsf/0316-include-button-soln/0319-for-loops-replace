@@ -1,0 +1,52 @@
+You can simplify the `moveUp()` and `moveDown()` methods by using **Streams and Optional** for better readability while maintaining functionality.
+
+### **Current Code:**
+```java
+public void moveUp() {
+    for (int i = 1; i < selectedWorkflowAPIs.size(); i++) {
+        WorkflowAPI api = selectedWorkflowAPIs.get(i);
+        if (api.isSelected()) {
+            Collections.swap(selectedWorkflowAPIs, i, i - 1); // Swap with previous
+            break; // Only move one item at a time
+        }
+    }
+}
+
+public void moveDown() {
+    for (int i = selectedWorkflowAPIs.size() - 2; i >= 0; i--) {
+        WorkflowAPI api = selectedWorkflowAPIs.get(i);
+        if (api.isSelected()) {
+            Collections.swap(selectedWorkflowAPIs, i, i + 1); // Swap with next
+            break; // Only move one item at a time
+        }
+    }
+}
+```
+
+---
+
+### **Simplified Version (Using Streams)**
+```java
+public void moveUp() {
+    IntStream.range(1, selectedWorkflowAPIs.size())
+        .filter(i -> selectedWorkflowAPIs.get(i).isSelected())
+        .findFirst()
+        .ifPresent(i -> Collections.swap(selectedWorkflowAPIs, i, i - 1)); // Swap with previous
+}
+
+public void moveDown() {
+    IntStream.iterate(selectedWorkflowAPIs.size() - 2, i -> i >= 0, i -> i - 1)
+        .filter(i -> selectedWorkflowAPIs.get(i).isSelected())
+        .findFirst()
+        .ifPresent(i -> Collections.swap(selectedWorkflowAPIs, i, i + 1)); // Swap with next
+}
+```
+
+---
+
+### **Why is this better?**
+1. **Improves Readability** - The logic is more declarative.
+2. **Removes Explicit Loops** - `IntStream.range()` and `IntStream.iterate()` handle index iteration.
+3. **Efficient and Concise** - Eliminates unnecessary `break` statements.
+
+This version **achieves the same functionality** while making the code **more elegant and expressive**. Let me know if you need further modifications!
