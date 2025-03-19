@@ -1,0 +1,200 @@
+Based on the requirements from the provided images, here is a **Java + JSF (PrimeFaces) implementation** for the **Create/Modify Application Panel** with the necessary dropdown, choices, and data display logic.
+
+---
+
+### **1. Managed Bean (Java)**
+```java
+import jakarta.faces.view.ViewScoped;
+import jakarta.inject.Named;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Named
+@ViewScoped
+@Getter
+@Setter
+public class ApplicationBean implements Serializable {
+    private String selectedCategory; // "Individual", "Business", or "Government"
+    private List<Application> applications;
+    private List<WorkflowAPI> availableWorkflowAPIs;
+    private List<WorkflowAPI> selectedWorkflowAPIs;
+
+    public ApplicationBean() {
+        applications = new ArrayList<>();
+        availableWorkflowAPIs = new ArrayList<>();
+        selectedWorkflowAPIs = new ArrayList<>();
+        loadApplications();
+    }
+
+    // Load applications based on category selection
+    public void loadApplications() {
+        applications.clear();
+        if ("Business".equals(selectedCategory)) {
+            applications.add(new Application(1, "Business Consulting", "Business", "CRM, AML"));
+            applications.add(new Application(2, "Debt Recovery Process", "Business", "AML, KYC"));
+        } else if ("Individual".equals(selectedCategory)) {
+            applications.add(new Application(3, "Change of Address", "Individual", ""));
+            applications.add(new Application(4, "Internet Delivery", "Individual", ""));
+        } else if ("Government".equals(selectedCategory)) {
+            applications.add(new Application(5, "Dept. of Labor App Stats", "Government", ""));
+            applications.add(new Application(6, "General Services Admin", "Government", ""));
+        }
+    }
+
+    // Load workflow APIs if "Business" is selected
+    public void loadWorkflowAPIs() {
+        availableWorkflowAPIs.clear();
+        selectedWorkflowAPIs.clear();
+        if ("Business".equals(selectedCategory)) {
+            availableWorkflowAPIs.add(new WorkflowAPI(101, "AML Risk Assessment", "AML"));
+            availableWorkflowAPIs.add(new WorkflowAPI(102, "Customer Risk Evaluation", "KYC"));
+            availableWorkflowAPIs.add(new WorkflowAPI(103, "Compliance Checks", "COMP"));
+        }
+    }
+
+    // Move API from available to selected
+    public void includeAPI(WorkflowAPI api) {
+        availableWorkflowAPIs.remove(api);
+        selectedWorkflowAPIs.add(api);
+    }
+
+    // Move API back to available
+    public void removeAPI(WorkflowAPI api) {
+        selectedWorkflowAPIs.remove(api);
+        availableWorkflowAPIs.add(api);
+    }
+}
+```
+
+---
+
+### **2. Application & WorkflowAPI Models**
+```java
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
+public class Application {
+    private int id;
+    private String name;
+    private String category;
+    private String apiTypeCodes;
+}
+
+@Getter
+@Setter
+@AllArgsConstructor
+public class WorkflowAPI {
+    private int id;
+    private String description;
+    private String typeCode;
+}
+```
+
+---
+
+### **3. JSF Page (XHTML with PrimeFaces)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:p="http://primefaces.org/ui">
+
+<h:head>
+    <title>Create/Modify Application</title>
+</h:head>
+
+<h:body>
+    <h:form id="applicationForm">
+        <p:panel header="Create / Modify Application">
+            
+            <!-- Customer Category Dropdown -->
+            <p:panelGrid columns="2">
+                <h:outputLabel for="category" value="Customer Category:" />
+                <p:selectOneMenu id="category" value="#{applicationBean.selectedCategory}"
+                                 onchange="PF('dataTableWidget').filter();"
+                                 valueChangeListener="#{applicationBean.loadApplications}">
+                    <f:selectItem itemLabel="Select Category" itemValue="" />
+                    <f:selectItem itemLabel="Individual" itemValue="Individual" />
+                    <f:selectItem itemLabel="Business" itemValue="Business" />
+                    <f:selectItem itemLabel="Government" itemValue="Government" />
+                    <p:ajax event="change" update="applicationsTable workflowPanel" listener="#{applicationBean.loadWorkflowAPIs}" />
+                </p:selectOneMenu>
+            </p:panelGrid>
+
+            <!-- Applications Table -->
+            <p:dataTable id="applicationsTable" var="app" value="#{applicationBean.applications}"
+                         widgetVar="dataTableWidget" filteredValue="#{applicationBean.filteredApplications}">
+                <p:column headerText="Edit / Delete">
+                    <p:commandButton icon="pi pi-pencil" />
+                    <p:commandButton icon="pi pi-trash" style="margin-left:5px;" />
+                </p:column>
+                <p:column headerText="Application ID" value="#{app.id}" />
+                <p:column headerText="Application Name" value="#{app.name}" />
+                <p:column headerText="Category" value="#{app.category}" />
+                <p:column headerText="Workflow API Type Codes" value="#{app.apiTypeCodes}" />
+            </p:dataTable>
+        </p:panel>
+
+        <!-- Workflow API Panel (Only for Business) -->
+        <p:panel id="workflowPanel" header="Workflow API Selection" rendered="#{applicationBean.selectedCategory eq 'Business'}">
+            
+            <h:outputText value="Available Workflow APIs" />
+            <p:dataTable var="api" value="#{applicationBean.availableWorkflowAPIs}">
+                <p:column headerText="Include">
+                    <p:commandButton icon="pi pi-plus" action="#{applicationBean.includeAPI(api)}"
+                                     update="workflowPanel" />
+                </p:column>
+                <p:column headerText="API Description" value="#{api.description}" />
+                <p:column headerText="API Type Code" value="#{api.typeCode}" />
+            </p:dataTable>
+
+            <h:outputText value="Selected Workflow APIs for the Application" />
+            <p:dataTable var="api" value="#{applicationBean.selectedWorkflowAPIs}">
+                <p:column headerText="Remove">
+                    <p:commandButton icon="pi pi-minus" action="#{applicationBean.removeAPI(api)}"
+                                     update="workflowPanel" />
+                </p:column>
+                <p:column headerText="API Description" value="#{api.description}" />
+                <p:column headerText="API Type Code" value="#{api.typeCode}" />
+            </p:dataTable>
+        </p:panel>
+
+    </h:form>
+</h:body>
+</html>
+```
+
+---
+
+### **Key Features Implemented:**
+1. **Dropdown (`p:selectOneMenu`)**:
+   - Allows users to select **Individual, Business, or Government**.
+   - Triggers AJAX update to load corresponding applications.
+
+2. **Applications Table (`p:dataTable`)**:
+   - Displays applications **filtered based on the selected category**.
+   - Shows application details (ID, Name, Category, API Codes).
+   - Includes **edit and delete buttons**.
+
+3. **Dynamic Workflow API Tables (For Business Only)**:
+   - **Available Workflow APIs**: Lists APIs that can be selected.
+   - **Selected Workflow APIs**: Shows APIs assigned to the application.
+   - Users can **add or remove APIs dynamically**.
+
+---
+
+### **Next Steps:**
+- If additional validation or backend persistence is required, integrate with a database (JPA/Hibernate).
+- Enhance UI with PrimeFaces styling if needed.
+
+This should **fully meet the requirements** from the document. Let me know if you need modifications!
