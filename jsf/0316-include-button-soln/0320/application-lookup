@@ -1,0 +1,94 @@
+I'll modify the **Application class** to include an **app_id** field and update the **lookup structure** accordingly.
+
+---
+
+## **Updated Java Implementation with `app_id`**
+```java
+import java.util.*;
+
+public class ApplicationLookup {
+    
+    // Define a map to store applications categorized by CUSTOMER_CATEGORY_ID
+    private static final Map<Integer, List<Application>> applicationLookup = new HashMap<>();
+
+    static {
+        initializeApplications();
+    }
+
+    private static void initializeApplications() {
+        // Predefined applications categorized by CUSTOMER_CATEGORY_ID
+        addApplication(1, 101, "Informed Delivery", "DA, PV/DIT, OTP/MFA");
+        addApplication(1, 102, "Hold Mail", "DA, PV/DIT, OTP/MFA");
+        addApplication(1, 103, "Change of Address", "DA, PV/DIT, OTP/MFA");
+        addApplication(1, 104, "Operation Santa", "DA, PV/DIT, OTP/MFA");
+        
+        addApplication(2, 201, "Business Customer Gateway", "BIID, AMS");
+        addApplication(2, 202, "Customer Onboarding Portal", "BIID, AMS");
+        addApplication(2, 203, "DotCom Business Registration", "DERA, AMS");
+        addApplication(2, 204, "Informed Delivery Business", "DERA, AMS");
+        addApplication(2, 205, "Guest Business Checkout", "DERA, AMS, DERA, AMS");
+    }
+
+    private static void addApplication(int categoryId, int appId, String appName, String workflowCodes) {
+        applicationLookup.computeIfAbsent(categoryId, k -> new ArrayList<>())
+                         .add(new Application(appId, appName, categoryId, workflowCodes));
+    }
+
+    public static List<Application> getApplicationsByCategory(int categoryId) {
+        return applicationLookup.getOrDefault(categoryId, Collections.emptyList());
+    }
+
+    public static void main(String[] args) {
+        // Example usage: Retrieve applications for category 1 (Individual)
+        int categoryId = 1;
+        List<Application> applications = getApplicationsByCategory(categoryId);
+
+        System.out.println("Applications for Category ID " + categoryId + ":");
+        for (Application app : applications) {
+            System.out.println(app);
+        }
+    }
+}
+
+// Updated Application class with app_id
+class Application {
+    private int id;
+    private String name;
+    private int categoryId;
+    private String workflowCodes;
+
+    public Application(int id, String name, int categoryId, String workflowCodes) {
+        this.id = id;
+        this.name = name;
+        this.categoryId = categoryId;
+        this.workflowCodes = workflowCodes;
+    }
+
+    @Override
+    public String toString() {
+        return "Application{app_id=" + id + ", name='" + name + "', workflowCodes='" + workflowCodes + "'}";
+    }
+}
+```
+
+---
+
+### **Updates Made**
+✅ **Added `app_id` to the `Application` class.**  
+✅ **Updated lookup initialization to include `app_id`.**  
+✅ **Updated `toString()` method to display `app_id`.**  
+
+---
+
+### **Example Output for Category `1`**
+```
+Applications for Category ID 1:
+Application{app_id=101, name='Informed Delivery', workflowCodes='DA, PV/DIT, OTP/MFA'}
+Application{app_id=102, name='Hold Mail', workflowCodes='DA, PV/DIT, OTP/MFA'}
+Application{app_id=103, name='Change of Address', workflowCodes='DA, PV/DIT, OTP/MFA'}
+Application{app_id=104, name='Operation Santa', workflowCodes='DA, PV/DIT, OTP/MFA'}
+```
+
+---
+
+This ensures each **application has a unique `app_id`**, making it easier to manage and reference applications in your **JSF UI or APIs**. Let me know if you need additional improvements! 🚀
