@@ -1,0 +1,309 @@
+1.	Overview
+ECR Dashboard is being redesigned and the requirements laid out for IVS side entail modifications of both code and database. Among others, modifications would involve expansion of Rp_Event to include a new column needed to indicate if the transaction is individual or not and creation of new Rp_Event record for business transaction.
+ 
+2.	Acceptance Criteria
+ 
+1.	 A new database record in "Rp_Event" table should be created for business transaction. Currently, "Rp_Event" record is only created for individual transaction during phone verification.
+ 
+2.	Database table "Rp_Event" should include two new columns, namely TMX_Decision  and Customer_Category_Id . TMX_Decision column will hold the ReviewStatus result from ThreatMetrix-LexisNexis Device Reputation Assessment API call. This column will only be populated for individual transactions (i.e. Informed Delivery, Hold Mail, OPs Santa) with possible values of “Pass”, “Review” and “Reject”. Customer_Category_Id column indicates whether a transaction is individual or business whose value is a foreign key to a new table “Ref_Customer_Category”. 
+ 
+3.	The possible values of the existing Transaction_Origin_Id column of Rp_Event table should be expanded to include application codes for business (Informed Delivery Business, Business Customer Gateway, USPS.com Business, Customer Onboarding Portal BCG 8, COP 9, IDB 11, .COM 10, GBC 12). Currently, it only includes application codes for individual category transaction. 
+
+4.	“Ref_App” database table should be modified to add two new columns, namely: “Customer_Category_Id” and “Workflow_API_Codes”. “Customer_Category_Id” column will be initialized with the ID that indicates the customer category to which the application will be servicing (i.e. Individual, Business, Government) and will refer to “Ref_ Ref_Customer_Category” table as foreign key. “Workflow_API_Codes” column will be initialized with the list of API codes as workflow configuration set for the application. The API code values should be entered in appropriate order separated by comma as set in the configuration. The API codes will refer to Ref_Workflow_API_Type table and will be modified through a new IVS Admin configuration UI.
+
+5.	“Rp_Device_Reputation_Response” database table should be modified to add four new columns, namely: “Overall_Decision”, “Transaction_Origin_Id”, “Customer_Category_Id”, and “Workflow_API_Type_Id”. “Overall_Decision” will be populated from Device Reputation response “TransactionStatus” field for business transaction. “Transaction_Origin_Id” will be populated with the ID of the application by which this API call has been initiated. “Customer_Category_Id” will be populated by the category ID of the customer initiating the transaction. “Workflow_API_Type_Id” will be populated by the ID of the workflow API from which the response will be returned.
+
+6.	A new database table called “Rp_Workflow_API_Decision” should be created to hold the records for the assessment decisions from the individual workflow API being called. There could be multiple records saved into this table for the same transaction.
+
+7.	A new database table called “Ref_Customer_Category” should be created to hold the categories of customers initiating the transactions. This will be initialized with the column values specified in Section 3.6.
+
+8.	A new database table called “Ref_Workflow_API_Type” should be created to hold the types of workflow API that will be called in the same transaction. This will be initialized with the column values specified in Section 3.7.
+ 
+9.	All the data in the ECR tables should be collected from one central data table "Rp_Event".
+
+10.	 To support the introduction of customer categories of an application, IVS Admin – “Sponsor & Application Configuration Section” > “Create/Modify Application” panel will be modified to be able to edit the existing remote proofing applications for business transactions as per UI specifications detailed in Section 4.6.
+
+3. Database Analysis
+3.1 Modify Table: RP_EVENT
+New columns will be added to “Rp_Event” table to log the decision values returned from various verification API calls and the identifier of the category of customer by which the transaction is initiated.  The yellow-highlighted rows in the table below specify the properties of the new database table columns.  
+
+
+Column Name	Type	Nullable	Data Default	Description
+EVENT_ID	NUMBER (9,0)
+	No		System-generated sequence number used as the primary key.
+PERSON_ID	NUMBER (9,0)	No
+		Foreign key to the person table.
+TMX_DECISION	VARCHAR (20 BYTE)
+	Yes
+	(null)	Decision returned from TMX-LN Device Assessment API call.
+FINAL_DECISION
+	VARCHAR (20 BYTE)
+	Yes	(null)	Final Decision returned from PV/DIT - OTP/MFA verification process for individual customer.
+KBA_SUPPLIER_ID
+	VARCHAR (20 BYTE)
+	No		Foreign key to the REF_KBA_SUPPLIER table.
+
+CUSTOMER_
+CATEGORY_ID	NUMBER (9,0)
+	Yes	(null)	Identifier for transaction customer category.  Foreign key to the REF_CUSTOMER_CATEGORY table.
+TRANSACTION_ORIGIN
+_ID	NUMBER (18,0)	Yes
+	(null)	Identifier for transaction origin.  Foreign key to the REF_APP table.
+KBA_TRANSACTION_ID	VARCHAR (100 BYTE)	Yes	(null)	Transaction ID assigned by KBS supplier.
+INITIATION_DATETIME	TIMESTAMP (6)	Yes	(null)	Format is yyyyMMddHHss. Datetime the transaction with Equifax is started.
+QUESTIONS_RECEIVED
+_DATETIME
+	TIMESTAMP (6)
+	Yes
+	(null)	Format is yyyyMMddHHss. Datetime the questions are received from Equifax.
+
+ANSWERS_SUBMITTED
+_DATETIME
+	TIMESTAMP (6)
+	Yes
+	(null)	Format is yyyyMMddHHss. Datetime the answers are submitted to Equifax.
+
+COMPLETION
+_DATETIME	TIMESTAMP (6)	Yes	(null)	Format is yyyyMMddHHss. Datetime the results are received from Equifax.
+
+AVS_ERRORS_DATETIME	TIMESTAMP (6)	Yes	(null)	Format is yyyyMMddHHss. Datetime errors are received from Equifax
+TRANSACTION_KEY	VARCHAR (20 BYTE)	Yes	(null)	Assigned by KBA supplier.
+PROOFING_LEVEL
+_SOUGHT	NUMBER (2,0)	No	0	Proofing level sought
+QUESTIONS_RETURNED	VARCHAR2 (1 BYTE)	Yes	(null)	Y if questions were returned
+CREATE_DATE	TIMESTAMP (6)	No		The date/time the service record was created.
+UPDATE_DATE	TIMESTAMP (6)
+	Yes	(null)	The date/time the service record was updated.
+
+
+3.2 Modify Table: REF_APP
+Two new columns will be added to “Ref_App” table to hold the identifier of the customer category to which the application is applicable, and the codes of the process workflow API in sequence to which the application is configured.  The yellow-highlighted rows in the table below specify the properties of the new database table columns.  
+
+
+Column Name	Type	Nullable	Data Default	Description
+APP_ID	NUMBER  (18,0)	No		Primary Key, Sequence generated unique identifier.
+APP_NAME	VARCHAR2 (50 BYTE)	No
+		Name for Applications.
+CUSTOMER_CATEGORY_ID	NUMBER (9,0)
+	Yes	(null)	Identifier for customer category to which the sponsor-application mapping is applicable.  Foreign key to the REF_CUSTOMER_CATEGORY table.
+WORKFLOW_API
+_CODES	VARCHAR (30 BYTES)
+	Yes	(null)	Workflow API code configuration for the application.
+CREATE_DATE	DATE	No		Date/time the record was inserted.
+UPDATE_DATE	DATE	Yes	(null)	Date/time the record was updated.
+
+The following are the values which will populate the “Customer_Category_Id” and “Workflow_API_Codes”  through the IVS Admin – Sponsor/Application Configuration section – Create/Modify Application panel UI which will also be modified (see section 4.4).
+
+
+APP_NAME	CUSTOMER_CATEGORY_ID	WORKFLOW_API_CODES
+Informed Delivery	1	DA, PV/DIT, OTP/MFA
+Hold Mail	1	DA, PV/DIT, OTP/MFA
+Change of Address	1	DA, PV/DIT, OTP/MFA
+Operation Santa	1	DA, PV/DIT, OTP/MFA
+Business Customer Gateway	2	BIID, AMS
+Customer Onboarding Portal	2	BIID, AMS
+DotCom Business Registration	2	DERA, AMS
+Informed Delivery Business	2	DERA, AMS
+Guest Business Checkout	2	DERA, AMS
+DERA, AMS
+
+Note: The workflow API code sequences are not final. These still have to be reviewed by the Business Team.
+3.3 Modify Table: RP_DEVICE_REPUTATION_RESPONSE
+New columns will be added to “Rp_Device_Reputation_Response” table to hold the assessment decision returned from the API call, identifier of the transaction origin or application, and identifier on what category of customer the transaction is initiated.  The yellow-highlighted rows in the table below specify the properties of the new database table columns. The data type property of the blue-highlighted cells needs to be modified from the existing VARCHAR2 (2000 BYTE) to VARCHAR2 (4000 BYTE).
+
+Column Name	Type	Nullable	Data Default	Description
+DEVICE_REPUTATION
+_RESPONSE_ID	NUMBER	No		Primary key. Sequence generated unique identifier.
+REQUEST_ID	VARCHAR2 (50 BYTE)	Yes
+	(null)	Unique identifier generated by LexisNexis.
+PERSON_ID	NUMBER (18,0)	No		FK to person table identifies the person.
+REQUEST	VARCHAR2 (4000 BYTE)
+(Changed from 2000 Byte)	Yes	(null)	Store the request to LexisNexis API call.
+RESPONSE	VARCHAR2 (4000 BYTE)
+	(null)		Store the response from LexisNexis API call.
+
+OVERALL_DECISION	VARCHAR2 (20 BYTE)
+	Yes	(null)	Decision returned as ReviewStatus for individual or TransactionStatus for business customer.
+TRANSACTION
+_ORIGIN_ID	NUMBER (9,0)
+	Yes
+	(null)	Identifier for transaction origin.  Foreign key to the REF_APP table
+CUSTOMER_CATEGORY_ID	NUMBER (9,0)
+	Yes	(null)	Identifier for transaction customer category. Foreign key to REF_CUSTOMER_CATEGORY table.
+WORKFLOW_API_
+TYPE_ID	NUMBER (9,0)
+	Yes	(null)	Identifier of the workflow API being called. Foreign key to REF_WORKFLOW_API_TYPE.
+CREATE_DATE	DATE	No		Date/time when row is initially inserted into the database.
+UPDATE_DATE	DATE	Yes	(null)	Date/time when row is last updated in the database.
+
+
+3.4 Create New Table: RP_WORKFLOW_API_DECISION
+A new table will be created to hold the overall decisions from the workflow API call.
+
+Column Name	Type	Nullable	Data Default	Description
+API_DECISION_ID	NUMBER	No		Primary key. Sequence generated unique identifier.
+EVENT_ID	NUMBER (18,0)	No		Identifier for the associated event. Foreign key to RP_EVENT with many-to-one relationship.
+WORKFLOW_API
+_TYPE_ID	NUMBER (3,0)
+	No		Identifier for the workflow API type. Foreign key to REF_WORKFLOW_API_TYPE with many-to-one relationship.
+DECISION	VARCHAR2 (20 BYTES)	Yes
+	(null)	The overall decision from the workflow API call of an event.
+CREATE_DATE	DATE	No		Date/time the record was inserted.
+UPDATE_DATE	DATE	Yes	(null)	Date/time the record was updated.
+
+
+3.5 Create New Table: REF_CUSTOMER_CATEGORY
+A new reference table will be created to hold the different categories of customers IVS applications are servicing.
+
+Column Name	Type	Nullable	Data Default	Description
+CUSTOMER_CATEGORY
+_ID	NUMBER (3,0)	No		Primary key. Sequence generated unique identifier.
+CATEGORY_NAME	VARCHAR2 (20 BYTES)	No
+		Name for customer category.
+CREATE_DATE	DATE	No		Date/time the record was inserted.
+UPDATE_DATE	DATE	Yes	(null)	Date/time the record was updated.
+
+The column values below are the initial “Ref_Customer_Category” table content. This will be initially populated through a new utility web service to be submitted using SoapUI or Postman. The “Customer_Category_Id” column values must be the same in all database environments.
+
+
+CUSTOMER_CATEGORY_ID	CATEGORY_NAME
+0	Unknown
+1	Individual
+2	Business
+3	Government
+
+3.6 Create New Table: REF_WORKFLOW_API_TYPE
+A new reference table will be created to hold the different types of workflows IVS remote proofing is utilizing.
+
+Column Name	Type	Nullable	Data Default	Description
+API_TYPE_ID	NUMBER (3,0)	No		Primary key. Sequence generated unique identifier.
+API_TYPE_CODE	VARCHAR2 (50 BYTES)	No
+		Code for workflow API type.
+API_TYPE_DESCRIPTION	VARCHAR2 (100 BYTES)	Yes	(null)	Description of the workflow API type.
+CREATE_DATE	DATE	No		Date/time the record was inserted.
+UPDATE_DATE	DATE	Yes	(null)	Date/time the record was updated.
+
+The following are the values which will populate the “API_Type_Id”, “API_Type_Code” and “API_Type_Description” through a new utility web service to be submitted using SoapUI or Postman. The “Customer_Category_Id” column values must be the same in all database environments.
+
+
+API_TYPE_ID	API_TYPE_CODE	API_TYPE_DESCRIPTION
+1	DA	ThreatMetrix/LexisNexis Device Assessment (DA) for individual transaction.
+2	PV/DIT	LexisNexis/Experian Phone Verification (PV) or Equifax Didital Identity trust (DIT) for individual transaction.
+3	OTP/MFA	LexisNexis/Experian One-Time Passcode (OTP) or Equifax Multi-Factor Authentication (MFA) for individual transaction.
+4	DERA	ThreatMetrix/LexisNexis Device and Email Risk Assessment (DERA) for business transaction.
+5	BIID	ThreatMetrix/LexisNexis Business Instant ID (BIID) for business transaction.
+6	AMS	Address Management System (AMS) address verification for business transaction.
+
+
+
+4. Technical Specifications
+4.1 Code Requirements to Support Rp_Event Table Modification
+
+A.	IVS back-end code will be modified to move the timing of “Rp_Event” table record in all transactions. “Rp_Event” table record will be created right after a response of TMX_LN  Device Reputation API (DA or DERA) is being returned. Currently, this record is created after the phone verification API call for individual transaction.
+
+B.	The new “TMX_Decision” column will be populated from the “ReviewStatus” field value returned from calling the Device Reputation Assessment API call for individual customer only. For repeat assessment, this will be populated from the previous decision result. The possible values are Pass, Review and Reject.
+
+C.	The new “Customer_Category_Id” column will be populated with the category ID of customer initiating the transaction based on consuming application. The possible of values are 1, 2, and 3 for “Individual”, “Business” and “Government” respectively which reference to a new table “Ref_Customer_Category”. For remote proofing, “Individual” and “Business” are the only applicable categories.
+
+D.	The existing “Transaction_Origin_Id”  column will still be populated with the application ID for individual transaction but will include the application ID for business transaction (i.e. Informed Delivery Business, Business Customer Gateway, USPS.com Business, Customer Onboarding Portal BCG 8, COP 9, IDB 11, .COM 10, GBC 12). 
+ 
+4.2 Code Requirements to Support Rp_Device_Reputation_Response Table Modification
+
+A.	A record of “Rp_Device_Reputation_Response” will be created for each LexisNexis workflow API request and response. When LexisNexis Business Instant ID (BIID) has a separate call along with Device-Email Risk Assessment, there may be two separate Rp_Device_Reputation_Response records, one for each API call. 
+
+B.	In the event there will be a subsequent Rp_Device_Reputation_Response record in the same transaction, the subsequent record should have the same Person_Id, Transaction_Orgin_Id and Customer_Category_Id. Aside from the primary key, the column value that will distinguish between the two is the Workflow_API_Type_Id. If DERA and BIID APIs are called in the same transaction, the values of the Workflow_API_Type_Id can be “DERA” and “BIID” respectively.
+
+C.	When a business application has previous Rp_Device_Reputation_Response record from transaction of different workflow (i.e. DERA >  AMS) and another transaction is initiated because of the change of workflow (i.e. DERA > AMS > BIID), the Person_Id should be the same as long as the business name, first and last name, mailing address are the same as the previous transaction
+
+D.	The new “Overall_Decision” column will be populated from Device Reputation response “ReviewStatus” field for individual transactions and from “TransactionStatus” field for business transaction. The possible values for individual transactions are “pass”, “review” and “reject” while the possible values for business transactions are “passed” and “failed”.
+
+E.	The new “Transaction_Origin_Id” column will be populated with the application ID of the application from which the transaction is originated. This will reference to the “Ref_App” table.
+
+F.	The new “Customer_Category_Id” column will be populated with the category ID of the customer to which the application is servicing. This will reference to the new “Ref_Customer_Category” table.
+
+G.	The new Workflow_API_Type_Id column will be populated with the typeID of the workflow API from which the response is being returned. This will reference to the new “Workflow_API_Type” table.
+
+4.3 Code Requirements to Support the New Rp_Workflow_API_Decision Table 
+
+A.	For business transaction, one or multiple verification APIs will be called. For each API call, there will be decision. This decision will be saved in a new record of “Rp_Workflow_API_Decision” table. The records will be created after the creation of “Rp_Event” record of the same transaction.
+
+B.	The “Event_Id” column will be populated with the ID of the transaction event. This will reference to the new “Ref_Workflow_API_Type” table.
+
+C.	The “Decision” column will be populated with the decision returned from the API call. The possible values are “passed’ and “failed”.
+
+D.	The “Workflow_API_Type_Id” column will be populated with the type ID of the workflow API.  This will reference to the new “Ref_Workflow_API_Type” table. 
+
+E.	“RpWorkflowAPIDecisionService” service and “RpWorkflowAPIDecisionDao” data access object persistence layers will be created along the database table “RpWorkflowAPIDecision” entity.
+
+4.4 Code Requirements to Support the New Ref_Customer_Category Table 
+
+A.	 As shown in Section 3.6 above, the new Ref_Customer_Category will be initially populated through a new utility web service to be submitted using SoapUI or Postman. 
+
+B.	The Customer_Category_Id column values must be the same in all database environments.
+
+C.	“RefCustomerCategoryService” service and “RefCustomerCategoryDao” data access object persistence layers will be created along the database table “RefCustomerCategory” entity.
+
+
+4.5 Code Requirements to Support the New Ref_Workflow_API_Type Table 
+     
+A.	As shown in Section 3.6 above, the new Ref_Workflow_API_Type will be initially populated through a new utility web service to be submitted using SoapUI or Postman. 
+
+B.	The API_Type_Id column values must be the same in all database environments.
+
+C.	“RefWorkflowAPITypeService” service and “RefWorkflowAPITypeDao” data access object persistence layers will be created along the database table “RefWorkflowAPIType” entity.
+
+4.6 IVS Admin – Sponsor & Application Configuration Section – Create/Modify Application Panel UI Modification
+
+A.	This panel will be modified to be able to edit the existing remote proofing applications for business transactions.
+
+B.	A new dropdown selector will be added for “Customer Category” as shown in Figure 
+4.6.1 below. The dropdown list will contain the three items namely: “Individual”, “Business”, and “Government”.
+
+C.	If there is no “Customer Category” is selected, all the tables and buttons are not initially displayed.
+
+D.	If “Business” item is selected, only business applications will be listed in the Applications table with the addition of two new columns, namely: “Customer Category” and “Workflow API Type Codes” as shown in Figure 4.6.2 below. 
+
+E.	Additionally, if “Business” item is selected, two new data tables will be displayed, namely: “Available Workflow APIs” and “Selected Workflow APIs for the Application”.
+
+F.	If “Individual” or “Government” is selected, only individual or government applications will be listed in the Applications table without the two new columns as these are only applicable to business applications. “Available Workflow APIs” and “Selected Workflow APIs for the Application” data tables are not displayed as well, as shown in Figure 4.6.3 and Figure 4.6.4 below.
+
+G.	In adding or updating a Business Application, select appropriate items in “Available Workflow APIs” data table and click on “Include” button so these items will be moved to “Selected Workflow APIs for the Application” data table. Make sure the items in “Selected Workflow APIs for the Application” are the only workflows required for the application.
+
+H.	Once the items in “Selected Workflow APIs for the Application” data table are verified to be the required workflows, check if the sequence is correct. The topmost workflow is the first one to be called, the followed by the second and/or the third one if the second and/or the third workflow are/is available. If the sequence order is not correct, the order can be updated by selecting one item and clicking on “Move Up” or “Move Down”.  An item or items can also be removed and moved back to “Available Workflow APIs” data table.
+
+
+
+Figure 4.6.1 Initial UI Status
+ 
+
+
+
+
+
+
+Figure 4.6.2 Business Applications
+
+ 
+
+
+
+
+
+
+
+
+
+Figure 4.6.3 Individual Applications
+ 
+
+
+Figure 4.6.4 Government Applications
+ 
+
+
+
+
+
+
+
+
