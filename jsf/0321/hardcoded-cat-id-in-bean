@@ -1,0 +1,148 @@
+I'll update the **Java Managed Bean (`VisibilityBean.java`)** and **JSF XHTML (`visibility_example.xhtml`)** to use the **customer categories from your table**.
+
+---
+
+## **Updated Java Managed Bean (`VisibilityBean.java`)**
+```java
+import jakarta.enterprise.context.SessionScoped;
+import jakarta.inject.Named;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+
+@Named
+@SessionScoped
+public class VisibilityBean implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
+
+    private String selectedCategory = "0"; // Default to Unknown
+
+    // Define category options based on the provided table
+    private static final List<Category> categories = Arrays.asList(
+        new Category("0", "Unknown"),
+        new Category("1", "Individual"),
+        new Category("2", "Business"),
+        new Category("3", "Government")
+    );
+
+    public String getSelectedCategory() {
+        return selectedCategory;
+    }
+
+    public void setSelectedCategory(String selectedCategory) {
+        this.selectedCategory = selectedCategory;
+    }
+
+    public boolean isIndividualSelected() {
+        return "1".equals(selectedCategory);
+    }
+
+    public boolean isBusinessSelected() {
+        return "2".equals(selectedCategory);
+    }
+
+    public boolean isGovernmentSelected() {
+        return "3".equals(selectedCategory);
+    }
+
+    public List<Category> getCategories() {
+        return categories;
+    }
+}
+
+// Helper class for categories
+class Category {
+    private String id;
+    private String name;
+
+    public Category(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+---
+
+## **Updated XHTML (`visibility_example.xhtml`)**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core">
+
+<h:head>
+    <title>Show/Hide Components</title>
+</h:head>
+
+<h:body>
+    <h:form>
+        <h2>Select Customer Category</h2>
+        <h:selectOneMenu value="#{visibilityBean.selectedCategory}">
+            <f:selectItems value="#{visibilityBean.categories}" var="category"
+                           itemLabel="#{category.name}" itemValue="#{category.id}" />
+            
+            <!-- AJAX call to update UI dynamically -->
+            <f:ajax render="individualSection businessSection governmentSection" />
+        </h:selectOneMenu>
+
+        <!-- Section for Individual -->
+        <h:panelGroup id="individualSection" rendered="#{visibilityBean.individualSelected}">
+            <h3>Individual Applications</h3>
+            <p>Displaying options for Individual customers.</p>
+        </h:panelGroup>
+
+        <!-- Section for Business -->
+        <h:panelGroup id="businessSection" rendered="#{visibilityBean.businessSelected}">
+            <h3>Business Applications</h3>
+            <p>Displaying options for Business customers.</p>
+        </h:panelGroup>
+
+        <!-- Section for Government -->
+        <h:panelGroup id="governmentSection" rendered="#{visibilityBean.governmentSelected}">
+            <h3>Government Applications</h3>
+            <p>Displaying options for Government customers.</p>
+        </h:panelGroup>
+    </h:form>
+</h:body>
+</html>
+```
+
+---
+
+## **Updates and Improvements**
+1. **Dropdown now uses `f:selectItems`**  
+   - Fetches customer categories dynamically from the `VisibilityBean`.
+   - Maps `CUSTOMER_CATEGORY_ID` to the dropdown options.
+
+2. **Dropdown options now match the table data**  
+   - `0` → Unknown  
+   - `1` → Individual  
+   - `2` → Business  
+   - `3` → Government  
+
+3. **Code is more maintainable**  
+   - If category data changes in the future, you only need to update the `categories` list in the bean.
+
+4. **AJAX ensures smooth UI updates**  
+   - Sections dynamically update without a page reload.
+
+---
+
+## **Expected Behavior**
+- **Initially ("Unknown" selected):** No sections visible.
+- **Select "Individual" (`1`):** The **Individual** section appears.
+- **Select "Business" (`2`):** The **Business** section appears.
+- **Select "Government" (`3`):** The **Government** section appears.
+
+This ensures **dropdown values exactly match your table data** while keeping the UI dynamic. Let me know if you need any refinements! 🚀
