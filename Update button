@@ -1,0 +1,33 @@
+Sure, here’s a concise and clear user story with acceptance criteria for adding the “Update” button functionality to persist the reordered API workflow list.
+
+⸻
+
+User Story: Add ‘Update’ Button to Persist API Workflow Order
+
+Title: Add “Update” Button to Persist Reordered Workflow APIs
+
+As a user of the application configuration UI,
+I want the ability to save the updated sequence of selected workflow APIs after reordering them using “Move Up” and “Move Down”,
+So that the new order is persisted and accurately reflected in the lower table as a comma-separated list under the “Workflow API Type Code” column.
+
+⸻
+
+Acceptance Criteria:
+	1.	UI Element Present
+	•	An “Update” button is displayed adjacent to the “Move Down” button.
+	•	Button label is clearly identifiable as “Update”.
+	2.	Persistence of Order
+	•	When the “Update” button is clicked, the current order of selected APIs (as shown in the table above) is persisted.
+	•	The persisted value is reflected as a comma-separated list in the lower table’s “Workflow API Type Code” column.
+	3.	Order Accuracy
+	•	The resulting string must represent the exact order of APIs as reordered by the user.
+	•	No additional sorting is applied when saving.
+	4.	Feedback/Confirmation (Optional)
+	•	(Optional but recommended) A success message is displayed to the user confirming that the sequence was saved.
+	5.	Session Consistency
+	•	Navigating away and returning to the screen (if applicable) should show the saved order unless explicitly reset.
+
+⸻
+
+Let me know if you’d like this converted into a JIRA-style format or want to include edge case handling (e.g., empty list, duplicate entries).
+
