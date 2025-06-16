@@ -1,0 +1,90 @@
+Here’s a **minimal reproducible test page** that isolates the JSF behavior **without RichFaces**, using just `<f:ajax>`. This will help confirm whether the issue is with **JSF lifecycle in WAS 9**, or specifically with **RichFaces’ `<a4j:ajax>`** behavior.
+
+---
+
+### ✅ Minimal JSF Test Page (`sponsor_test.xhtml`)
+
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core">
+<h:head>
+    <title>Minimal Sponsor AJAX Test</title>
+</h:head>
+<h:body>
+
+<h:form id="testForm">
+
+    <h:panelGrid columns="1" style="margin:20px">
+        <h:outputLabel for="idSelSponsor" value="Select Sponsor:" />
+        <h:selectOneMenu id="idSelSponsor" value="#{testBean.selectedSponsor}">
+            <f:selectItem itemLabel="-- Select --" itemValue="" />
+            <f:selectItem itemLabel="Sponsor A" itemValue="A" />
+            <f:selectItem itemLabel="Sponsor B" itemValue="B" />
+            <f:ajax listener="#{testBean.onSponsorChange}"
+                    render="panelMessage outputDebug"
+                    execute="@this" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:panelGroup id="panelMessage" layout="block" style="margin-top:20px">
+        <h:outputText value="Sponsor Selected: #{testBean.selectedSponsor}" rendered="#{not empty testBean.selectedSponsor}" />
+    </h:panelGroup>
+
+    <h:panelGroup id="outputDebug" layout="block" style="margin-top:10px; color:gray;">
+        <h:outputText value="View ID: #{facesContext.viewRoot.viewId}" />
+    </h:panelGroup>
+
+</h:form>
+
+</h:body>
+</html>
+```
+
+---
+
+### ✅ Backing Bean (`TestBean.java`)
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import javax.faces.event.AjaxBehaviorEvent;
+import java.io.Serializable;
+
+@ManagedBean(name = "testBean")
+@ViewScoped
+public class TestBean implements Serializable {
+
+    private String selectedSponsor;
+
+    public String getSelectedSponsor() {
+        return selectedSponsor;
+    }
+
+    public void setSelectedSponsor(String selectedSponsor) {
+        this.selectedSponsor = selectedSponsor;
+    }
+
+    public void onSponsorChange(AjaxBehaviorEvent event) {
+        // Just for testing: you could add logging here if needed
+    }
+}
+```
+
+> ✅ Confirm your project is configured for **JSF 2.2+**, and this test does **not use RichFaces**.
+
+---
+
+### 🧪 How to Use It
+
+1. Deploy this page as `sponsor_test.xhtml`.
+2. Visit it in WAS 9.
+3. Open browser **Dev Tools > Network**, and monitor AJAX calls.
+4. Select "Sponsor A" or "Sponsor B" — the `panelMessage` block should update.
+5. If it **works**, your JSF config and `@ViewScoped` bean are OK.
+6. If it **fails**, JSF lifecycle is still broken → check `javax.faces.STATE_SAVING_METHOD` and scope handling.
+
+---
+
+Would you like me to create a version of this that logs values in the server console for further inspection?
