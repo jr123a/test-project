@@ -1,0 +1,79 @@
+This is a significant finding. Here's what the comparison reveals:
+
+---
+
+### 🔍 `javax.faces.partial.execute` Analysis
+
+| Environment | `javax.faces.partial.execute`                      |
+| ----------- | -------------------------------------------------- |
+| **WAS 8.5** | `@component idSelSponsor`, `@component idSelEmail` |
+| **WAS 9**   | Only `@component` (no component ID) ❌              |
+
+---
+
+### 🧨 Root Problem Identified
+
+In **WAS 9**, the AJAX request is missing the actual component ID to execute (i.e., process during JSF lifecycle). The value is just `@component`, which is **ambiguous** or **invalid in some JSF implementations** (especially stricter ones like Mojarra in WAS 9).
+
+JSF expects something like:
+
+```
+javax.faces.partial.execute=idSelSponsor
+```
+
+or
+
+```
+javax.faces.partial.execute=@this
+```
+
+But `@component` **doesn’t resolve properly unless explicitly understood by the implementation** — this could be the cause of:
+
+* **`selectedSponsor` not being updated**
+* **Managed bean not getting values**
+* **Subsequent AJAX calls failing silently**
+
+---
+
+### ✅ What to Fix
+
+In your `sponsor_emails.xhtml`, inside `<a4j:ajax>`, change:
+
+```xhtml
+<a4j:ajax event="valueChange"
+          listener="#{bean.selectSponsor}"
+          render="editorPanel,..."
+          execute="@component" />
+```
+
+to:
+
+```xhtml
+<a4j:ajax event="valueChange"
+          listener="#{bean.selectSponsor}"
+          render="editorPanel,..."
+          execute="@this" />
+```
+
+Or even better, **explicitly reference** the dropdown ID:
+
+```xhtml
+<a4j:ajax event="valueChange"
+          listener="#{bean.selectSponsor}"
+          render="editorPanel,..."
+          execute="idSelSponsor" />
+```
+
+Do this for **both sponsor and email dropdowns**.
+
+---
+
+### ✅ Summary
+
+* `@component` is breaking in WAS9 — it's too vague or deprecated.
+* Use `@this` or the actual ID like `idSelSponsor` in `execute` attributes.
+* This aligns the WAS 9 behavior with what already works in WAS 8.5.
+
+---
+
+Let me know if you want me to regenerate the corrected AJAX snippet again.
