@@ -1,0 +1,66 @@
+Got it — removing `brandLogoPanel` and `sendEmailPanel` from the `render` attribute is exactly why **those two panels aren't updating** after the AJAX event.
+
+In **JSF/RichFaces**, `render` tells the framework **which parts of the DOM to update after the server-side method runs**. If a component isn't in that list, even if `rendered="#{bean.someFlag}"` is set to `true`, **it won’t show up on the UI unless manually refreshed or the whole view is reloaded**.
+
+---
+
+### ✅ What You Should Do for Full Panel Visibility
+
+Update both AJAX event blocks to explicitly include **all three dynamic panels**:
+
+```xhtml
+<a4j:ajax event="valueChange"
+          listener="#{bean.selectSponsor}"
+          render="idSelEmail,expirationDaysPanel,editorPanel,subjectPanel,informationMessagesPanel,successPanel,brandLogoPanel,sendEmailPanel" />
+
+...
+
+<a4j:ajax event="valueChange"
+          listener="#{bean.selectEmailType}"
+          render="expirationDaysPanel,editorPanel,subjectPanel,informationMessagesPanel,successPanel,brandLogoPanel,sendEmailPanel" />
+```
+
+---
+
+### ✅ Next: Validate Your Bean Logic
+
+In your `SponsorEmailAdminBean.java`, your `selectSponsor` and `selectEmailType` methods should have:
+
+```java
+public void selectSponsor(AjaxBehaviorEvent event) {
+    // Load data as needed
+    emailBody = loadEmailBodyForSponsor(selectedSponsor);
+
+    // Toggle panel visibility
+    editorPanelVisible = true;
+    brandLogoPanelVisible = true;
+    sendEmailPanelVisible = true;
+}
+```
+
+And same idea in `selectEmailType(...)`.
+
+---
+
+### 🧪 Temporary Debug Tip
+
+To **verify quickly** that the issue is with `render=`, you can temporarily add this below your dropdown:
+
+```xhtml
+<h:outputText value="Editor Panel Visible: #{bean.editorPanelVisible}" />
+<h:outputText value="Brand Logo Panel Visible: #{bean.brandLogoPanelVisible}" />
+<h:outputText value="Send Email Panel Visible: #{bean.sendEmailPanelVisible}" />
+```
+
+If the values turn `true` after selecting a sponsor/email type, then the backend logic is fine — only the panel **DOM updates** are missing, which is a `render=` issue.
+
+---
+
+### ✅ Final Advice
+
+If your UI structure is growing and panels are conditionally rendered, it’s best to always:
+
+* Keep them **within the same form** as the triggering component
+* Reference them via `render` **explicitly** by ID
+
+Let me know if you want me to regenerate the fixed XHTML segment based on this.
