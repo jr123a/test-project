@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:ui="http://java.sun.com/jsf/facelets" 
+      xmlns:a4j="http://richfaces.org/a4j"
+      xmlns:rich="http://richfaces.org/rich">
+      
+<f:view contentType="text/html">
+
+<h:head>  
+  <title>USPS.com&#174;&#160;-&#160;<ui:insert name="browser-title"/></title>
+	
+	<base href="/"></base>
+	<script src="js/jquery-1.12.4.min.js" />
+	<script src="js/bootstrap.min.js"/>
+	<link rel="stylesheet" href="css/bootstrap.min.css"/>
+	<!-- script for session timeout modal backend logic -->
+	<script type="text/javascript" src="js/verification_session_timeout.js"></script>
+
+  <ui:include src="/includes/docheader.xhtml" /> 
+  <ui:insert name="head-add"/>
+</h:head>
+<h:body onload="#{paramOnLoad},getJSON()">
+<h:form prependId="false">
+  <!-- Header -->
+<!-- <div id="skiptomain" class="hide-fromsighted"><a href="#maincontent" tabindex="0">skip to main content</a></div> -->
+<div id="wrapper">  
+  <ui:include src="/includes/header-nologout.xhtml"/>
+  <div id="maincontentcontainer">
+    <div id="maincontent"><a name="maincontent" tabindex="3"></a>
+      <h1><ui:insert name="page-title"/></h1>
+      <div><ui:insert name="alt-top-text"/></div>
+      <ui:insert name="content"/>
+    </div> 
+  </div>
+  <!-- Footer -->
+  <ui:include src="/includes/footer.xhtml"/>
+</div>  
+</h:form>
+</h:body>
+</f:view>
+</html>
