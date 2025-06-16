@@ -1,0 +1,508 @@
+<ui:composition template="templates/main-admin.xhtml" 
+	xmlns="http://www.w3.org/1999/xhtml" 
+	xmlns:h="http://java.sun.com/jsf/html" 
+	xmlns:f="http://java.sun.com/jsf/core" 
+	xmlns:ui="http://java.sun.com/jsf/facelets" 
+	xmlns:rich="http://richfaces.org/rich" 
+	xmlns:a4j="http://richfaces.org/a4j"> 
+	<ui:define name="browser-title">
+	  	<h:outputText value="In-Person Proofing Email Configurations" escape="false" />
+	  	#{sponsorEmailsAdmin.init()}
+	</ui:define>
+	
+	<ui:define name="page-title">
+	  	<h:outputText value="In-Person Proofing Email Configurations" escape="false" />
+	</ui:define>
+
+	<ui:define name="content">
+		<ui:param name="bean" value="#{sponsorEmailsAdmin}" />
+		<div class="ips-content">
+			<h:outputLink id="formTop" tabindex="0" />
+        	
+        	<h:panelGroup id="successPanel">	
+	        	<a4j:outputPanel rendered="#{bean.isSuccess()}">
+	        		<p class="success">
+	         			<h:graphicImage value="images/iconSuccess.gif" />
+	         			<h:outputText value="Successfully updated email values!" escape="false" />
+	        		</p>
+	        	</a4j:outputPanel>
+       		</h:panelGroup>
+
+        	<h:panelGroup rendered="#{bean.isDatabaseError() || bean.isEmailError()}">
+        		<p class="error">
+       				<h:graphicImage rendered="#{bean.isDatabaseError()}" value="images/iconError.gif" />
+       				<h:outputText value="An error occurred while attempting to communicate with the database." rendered="#{bean.isDatabaseError()}" />
+       				<h:outputText value="" rendered="#{bean.isDatabaseError() and bean.isEmailError()}"><br /></h:outputText>
+       				<h:graphicImage rendered="#{bean.isEmailError()}" value="images/iconError.gif" />
+       				<h:outputText value="An error occurred while attempting to send the notification email. However, the new values have still been saved." rendered="#{bean.isEmailError()}"/>
+				</p>
+        	</h:panelGroup>
+
+        	<h:panelGroup id="confirmationMessages" rendered="#{bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isSendEmailChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}">
+        		<p class="success" style="font-size: medium;">
+       				<h:outputText value="You are changing the Brand Logo for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isLogoConfirmChange() and bean.selectedEmailType != 6}" />
+       				<h:outputText value="You are deleting the Brand Logo for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isLogoDeleteChange()}" />
+       				<h:outputText value="You are changing the Brand Logo and include logo flags for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isLogoConfirmChange() and bean.selectedEmailType == 6}" />
+       				<h:outputText value="You are changing the body and/or subject for #{bean.getSelectedSponsorName()} initial opt-in email. If this is correct, click Confirm." rendered="#{bean.isOptinInitialEmailChange()}" />
+       				<h:outputText value="You are changing the body and/or subject for #{bean.getSelectedSponsorName()} reminder opt-in email. If this is correct, click Confirm." rendered="#{bean.isOptinReminderEmailChange()}" />
+       				<h:outputText value="You are changing the body and/or subject for #{bean.getSelectedSponsorName()} passed confirmation email. If this is correct, click Confirm." rendered="#{bean.isConfirmationPassedEmailChange()}" />
+       				<h:outputText value="You are changing the body and/or subject for #{bean.getSelectedSponsorName()} failed confirmation email. If this is correct, click Confirm." rendered="#{bean.isConfirmationFailedEmailChange()}" />
+       				<h:outputText value="You are changing the opt-in barcode expiration days value for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isBarcodeExpirationChange()}" />
+       				<h:outputText value="You are changing the confirmation activation code expiration days value for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isActivationCodeExpirationChange()}" />
+        			<h:outputText value="You are changing the opt-in send email flag for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isSendEmailChange() and bean.selectedEmailType == 1}" />
+        			<h:outputText value="You are changing the confirmation send email flag for #{bean.getSelectedSponsorName()}. If this is correct, click Confirm." rendered="#{bean.isSendEmailChange() and bean.selectedEmailType == 3}" />
+        			<h:outputText value="You are changing the body and/or subject for #{bean.getSelectedSponsorName()} IAL-2 confirmation email. If this is correct, click Confirm." rendered="#{bean.isIAL2EmailChange()}" />       			
+        			<h:outputText value="You are changing the greeting, body, closing, postscript, and/or subject for #{bean.getSelectedSponsorName()} IAL-2 confirmation letter. If this is correct, click Confirm." rendered="#{bean.isIAL2LetterChange()}" />
+        		</p>
+        	</h:panelGroup>
+        	
+        	<h:panelGroup id="informationMessagesPanel">
+        		<a4j:outputPanel rendered="#{(bean.selectedSponsor != 1 and (!bean.isBrandExists() || !bean.isEmailExists() || !bean.isSubjectExists())) || (bean.selectedEmailType == 3 and !bean.isActivationCodeExpirationExists() and bean.selectedSponsor != 1) || (bean.selectedEmailType == 1 and !bean.isBarcodeExpirationExists()) || (bean.selectedEmailType == 6 and (!bean.isGreetingExists() || !bean.isClosingExists() || !bean.isPostscriptExists()))}">
+        			<p style="font-size: small;">
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{!bean.isBrandExists() and bean.selectedSponsor != 1}" style="width: 15px;" />
+        				<h:outputText value="A brand logo does not exist for the chosen sponsor and email type." rendered="#{bean.selectedSponsor != 1 and !bean.isBrandExists()}" />
+        				<h:outputText value="" rendered="#{bean.selectedSponsor != 1 and !bean.isBrandExists()}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{!bean.isEmailExists() and bean.selectedSponsor != 1}" style="width: 15px;" />
+        				<h:outputText value="A body does not exist for chosen sponsor and email type." rendered="#{bean.selectedSponsor != 1 and !bean.isEmailExists()}" />
+        				<h:outputText value="" rendered="#{bean.selectedSponsor != 1 and !bean.isEmailExists() and (!bean.isSubjectExists() || !bean.isGreetingExists())}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{!bean.isSubjectExists() and bean.selectedSponsor != 1}" style="width: 15px;" />
+        				<h:outputText value="A subject does not exist for the chosen sponsor and email type." rendered="#{bean.selectedSponsor != 1 and !bean.isSubjectExists()}" />
+        				<h:outputText value="" rendered="#{bean.selectedSponsor != 1 and !bean.isSubjectExists()}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{!bean.isBarcodeExpirationExists() and bean.selectedEmailType == 1}" style="width: 15px;" />
+        				<h:outputText value="An opt-in barcode expiration value does not exist for the selected sponsor." rendered="#{!bean.isBarcodeExpirationExists() and bean.selectedEmailType == 1}" />
+        				<h:outputText value="" rendered="#{bean.selectedEmailType == 1 and !bean.isBarcodeExpirationExists()}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{!bean.isActivationCodeExpirationExists() and bean.selectedEmailType == 3 and bean.selectedSponsor != 1}" style="width: 15px;" />
+        				<h:outputText value="A confirmation activation code expiration value does not exist for the selected sponsor." rendered="#{!bean.isActivationCodeExpirationExists() and bean.selectedEmailType == 3 and bean.selectedSponsor != 1}" />
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{bean.selectedEmailType == 6 and !bean.isGreetingExists()}" style="width: 15px;" />
+        				<h:outputText value="A greeting does not exist for the chosen sponsor and email type." rendered="#{bean.selectedEmailType == 6 and !bean.isGreetingExists()}" />
+        				<h:outputText value="" rendered="#{bean.selectedEmailType == 6 and !bean.isGreetingExists() and !bean.isClosingExists()}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{bean.selectedEmailType == 6 and !bean.isClosingExists()}" style="width: 15px;" />
+        				<h:outputText value="A closing does not exist for the chosen sponsor and email type." rendered="#{bean.selectedEmailType == 6 and !bean.isClosingExists()}" />
+        				<h:outputText value="" rendered="#{bean.selectedEmailType == 6 and !bean.isPostscriptExists() and !bean.isClosingExists()}"><br /></h:outputText>
+        				<h:graphicImage value="images/info-tooltip.png" rendered="#{bean.selectedEmailType == 6 and !bean.isPostscriptExists()}" style="width: 15px;" />
+        				<h:outputText value="A postscript does not exist for the chosen sponsor and email type." rendered="#{bean.selectedEmailType == 6 and !bean.isPostscriptExists()}" />
+        			</p>
+        		</a4j:outputPanel>
+        	</h:panelGroup>
+        	
+        	<h:panelGrid columns="1" columnClasses="sponsorColCls" width="20%" border="1">
+        		<h:outputLabel for="idSelSponsor" value="Sponsor" />
+        		<h:selectOneMenu id="idSelSponsor" styleClass="select_menu select_sponsor_width" value="#{bean.selectedSponsor}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}">
+        			<f:selectItems value="#{bean.sponsorList}" var="sp" itemValue="#{sp.sponsorId}" itemLabel="#{sp.sponsorName}" />
+        			<a4j:ajax event="valueChange" listener="#{bean.selectSponsor}" render="idSelEmail,expirationDaysPanel,editorPanel,subjectPanel,informationMessagesPanel,successPanel" />
+        		</h:selectOneMenu>
+        		<h:outputLabel for="idSelEmail" value="Email Type" />
+				<h:selectOneMenu id="idSelEmail" styleClass="select_menu select_sponsor_width" value="#{bean.selectedEmailType}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}">
+					<f:selectItems value="#{bean.emailTypeList}" itemDisabled="#{(bean.selectedSponsor == 1 || bean.selectedSponsor == 3) and (email.id == 5 || email.id == 6)}" var="email" itemValue="#{email.id}" itemLabel="#{email.idTypeDescription}" />
+					<a4j:ajax event="valueChange" listener="#{bean.selectEmailType}" render="expirationDaysPanel,editorPanel,subjectPanel,informationMessagesPanel,successPanel" />
+				</h:selectOneMenu>
+        	</h:panelGrid>
+        	
+        	<h:panelGroup id="sendEmailPanel">
+        		<a4j:outputPanel rendered="#{bean.selectedSponsor != 1 and (bean.selectedEmailType == 1 || bean.selectedEmailType == 3)}">
+        			<h3>Send Email Flag</h3>
+        			<h:graphicImage value="images/info-tooltip.png" style="width: 15px;" />
+        			<h:outputText value="Indicate whether or not the opt-in emails will be sent to the applicant." rendered="#{bean.selectedEmailType == 1}" />
+        			<h:outputText value="Indicate whether or not the confirmation emails will be sent to the applicant." rendered="#{bean.selectedEmailType == 3}" />
+        			<br />
+        			<h:selectOneRadio value="#{bean.sendEmail}" layout="pageDirection" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange()}">
+        				<f:selectItem itemValue="1" itemLabel="Yes" />
+       					<f:selectItem itemValue="0" itemLabel="No" />
+        			</h:selectOneRadio>
+        			<div class="left-buttons">
+        				<h:commandButton id="btnSaveSendEmail" value="Save" title="Save" alt="Save" tabindex="0" action="#{bean.confirmSendEmailChange()}" rendered="#{!bean.isSendEmailChange()}" disabled="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange()}" />
+						<h:commandButton id="btnConfirmSendEmail" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.saveSendEmailChange()}" rendered="#{bean.isSendEmailChange()}" />
+						<h:commandButton id="btnCancelSendEmail" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmSendEmailChange()}" rendered="#{bean.isSendEmailChange()}" />
+        			</div>
+        			<hr />
+        		</a4j:outputPanel>
+        	</h:panelGroup>
+		   	
+		   	<h:panelGroup id="brandLogoPanel">
+			   	<a4j:outputPanel rendered="#{bean.selectedSponsor != 1 and bean.selectedEmailType != 2 and bean.selectedEmailType != 4}">
+				   	<h3>Agency Logo</h3>
+				   	<h:outputLabel rendered="#{bean.selectedEmailType == 6}" for="includeUSPSLogoCheckbox" value="Include USPS Logo in Physical Letter" />
+				   	<h:selectBooleanCheckbox readonly="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" value="#{bean.includeUSPSLogo}" id="includeUSPSLogoCheckbox" rendered="#{bean.selectedEmailType == 6}" disabled="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+			   		<h:outputLabel rendered="#{bean.selectedEmailType == 6}" for="includeAgencyLogoCheckbox" value="Include Agency Logo in Physical Letter" />
+			   		<h:selectBooleanCheckbox readonly="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" value="#{bean.includeAgencyLogo}" id="includeAgencyLogoCheckbox" rendered="#{bean.selectedEmailType == 6}" disabled="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+			   		<h:outputText value="" rendered="#{bean.selectedEmailType == 6}"><br /></h:outputText>
+			   		<h:graphicImage value="images/info-tooltip.png" rendered="#{bean.selectedEmailType == 1 || bean.selectedEmailType == 3}" style="width: 15px;" />
+			   		<h:outputText value="The logo configured for the initial opt-in email will also be used for the reminder opt-in email." rendered="#{bean.selectedEmailType == 1}" />
+			   		<h:outputText value="The logo configured for the passed confirmation email will also be used for the failed confirmation email." rendered="#{bean.selectedEmailType == 3}" />
+			   		<br />
+				   	<h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" rendered="#{bean.isBrandExists()}" />
+				   	<rich:fileUpload fileUploadListener="#{bean.storeUploadImage}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" acceptedTypes=".jpg, .gif, .png" ontyperejected="alert('Only JPG, GIF or PNG files are accepted');" onsizerejected="alert('The max size allowed for a file is 20 KB');" maxFilesQuantity="1" />
+				   	<div class="left-buttons">
+						<br />
+						<h:commandButton id="btnSaveBrand" value="Save" title="Save" alt="Save" tabindex="0" action="#{bean.confirmLogoChange()}" rendered="#{!bean.isLogoConfirmChange() and !bean.isLogoDeleteChange()}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+						<h:commandButton id="btnConfirmSaveBrand" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.modifyStoredImage()}" rendered="#{bean.isLogoConfirmChange()}" />
+						<h:commandButton id="btnCancelSaveBrand" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmLogoChange()}" rendered="#{bean.isLogoConfirmChange()}" />
+						<h:commandButton id="btnDeleteBrand" value="Delete Saved Logo" action="#{bean.confirmLogoDelete()}" rendered="#{!bean.isLogoDeleteChange() and !bean.isLogoConfirmChange() and bean.isBrandExists()}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+						<h:commandButton id="btnConfirmDeleteBrand" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.modifyStoredImage()}" rendered="#{bean.isLogoDeleteChange()}" />
+						<h:commandButton id="btnCancelDeleteBrand" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmLogoDelete()}" rendered="#{bean.isLogoDeleteChange()}" />
+					</div>
+					<br />
+				</a4j:outputPanel>
+			</h:panelGroup>
+			
+			<h:panelGroup id="expirationDaysPanel">
+				<a4j:outputPanel rendered="#{bean.selectedEmailType == 1 || bean.selectedEmailType == 3}">
+					<h:outputText value="" rendered="#{bean.selectedSponsor != 1}"><hr /></h:outputText>
+					<p class="error" id="expirationError" style="display: none;">
+						<h:graphicImage value="images/iconError.gif" />
+						<h:outputText value="The opt-in barcode expiration field must be numeric and greater than 1." rendered="#{bean.selectedEmailType == 1}" />
+						<h:outputText value="The activation code expiration field must be numeric." rendered="#{bean.selectedEmailType == 3}" />
+					</p>
+					<h:outputText value="" rendered="#{bean.selectedSponsor != 1}"><br /></h:outputText>
+					<h3>
+						<h:outputText value="Opt-in Barcode Expiration Days" rendered="#{bean.selectedEmailType == 1}" />
+						<h:outputText value="Activation Code Expiration Days" rendered="#{bean.selectedEmailType != 1 and bean.selectedSponsor != 1}" />
+					</h3>
+					<h:inputText value="#{bean.expirationDays}" rendered="#{(bean.selectedSponsor == 1 and bean.selectedEmailType == 1) || (bean.selectedSponsor != 1 and (bean.selectedEmailType == 1 || bean.selectedEmailType == 3))}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isConfirmationPassedEmailChange() || bean.isOptinInitialEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange()}" id="expirationDays" />
+					<div class="left-buttons">
+						<h:outputText value="" rendered="#{(bean.selectedSponsor == 1 and bean.selectedEmailType == 1) || bean.selectedSponsor != 1}"><br /></h:outputText>
+						<h:commandButton id="btnSaveExpiration" onclick="if (!validateInputs(true)) { return false; } else { return true; }" value="Save" title="Save" alt="Save" tabindex="0" action="#{bean.confirmExpirationChange()}" rendered="#{(!bean.isBarcodeExpirationChange() and bean.selectedSponsor == 1 and bean.selectedEmailType == 1) || (!bean.isBarcodeExpirationChange() and !bean.isActivationCodeExpirationChange() and bean.selectedSponsor != 1)}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange()}" />
+						<h:commandButton id="btnConfirmExpiration" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.saveExpirationValue()}" rendered="#{bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange()}" />
+						<h:commandButton id="btnCancelExpiration" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmExpirationChange()}" rendered="#{bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange()}" />
+					</div>
+				</a4j:outputPanel>
+			</h:panelGroup>
+			
+			<h:panelGroup id="subjectPanel">
+				<a4j:outputPanel rendered="#{bean.selectedSponsor != 1}">
+					<h:outputText value="" rendered="#{bean.selectedEmailType != 2 and bean.selectedEmailType != 4}"><hr /><br /></h:outputText>
+					<p class="error" id="subjectError" style="display: none;">The Subject field can only contain letters, numbers, spaces, dashes, underscores, slashes, parentheses, and ampersand with a max character count of 100.</p>
+			   		<h3>Subject</h3>
+			   		<h:inputText id="subject" style="width: 400px;" value="#{bean.subject}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+			   		<br /><br />
+				</a4j:outputPanel>
+			</h:panelGroup>
+			
+			<h:panelGroup id="editorPanel">
+				<div id="greetingContainer" hidden="true">
+					<p class="error" id="greetingVariableError" style="display: none;"></p>
+					<p class="error" id="greetingLengthError" style="display: none;"></p>
+					<h3>Greeting</h3>
+					<rich:editor readonly="#{bean.isIAL2LetterChange() || bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange()}" id="greetingEditor" value="#{bean.greeting}" toolbar="custom">
+						<f:facet name="config">
+							toolbar_custom:
+								[
+									{ name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+					   				{ name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+					   				{ name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+					   				{ name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+					   				{ name: 'links', items: ['Link','Unlink'] },
+					   				{ name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+					   				{ name: 'colors', items: ['TextColor'] },
+					   				{ name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+					   			]
+						</f:facet>
+					</rich:editor>
+					<hr />
+				</div>
+				<div id="bodyContainer" hidden="true">
+					<h3>Body</h3>
+					<p class="error" id="bodyVariableError" style="display: none;"></p>
+					<rich:editor readonly="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" id="bodyEditor" value="#{bean.body}" toolbar="custom">
+						<f:facet name="config">
+							toolbar_custom:
+								[
+									{ name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+					   				{ name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+					   				{ name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+					   				{ name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+					   				{ name: 'links', items: ['Link','Unlink'] },
+					   				{ name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+					   				{ name: 'colors', items: ['TextColor'] },
+					   				{ name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+					   			]
+						</f:facet>
+					</rich:editor>
+				</div>				
+				<div id="closingContainer" hidden="true">
+					<hr />
+					<h3>Closing</h3>
+					<p class="error" id="closingVariableError" style="display: none;"></p>
+					<p class="error" id="closingLengthError" style="display: none;"></p>
+					<rich:editor readonly="#{bean.isIAL2LetterChange() || bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange()}" id="closingEditor" value="#{bean.closing}" toolbar="custom">
+						<f:facet name="config">
+							toolbar_custom:
+								[
+									{ name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+					   				{ name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+					   				{ name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+					   				{ name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+					   				{ name: 'links', items: ['Link','Unlink'] },
+					   				{ name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+					   				{ name: 'colors', items: ['TextColor'] },
+					   				{ name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+					   			]
+						</f:facet>
+					</rich:editor>
+					<hr />
+				</div>
+				<div id="postscriptContainer" hidden="true">
+					<h3>Postscript</h3>
+					<p class="error" id="postscriptVariableError" style="display: none;"></p>
+					<p class="error" id="postscriptLengthError" style="display: none;"></p>
+					<rich:editor readonly="#{bean.isIAL2LetterChange() || bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange()}" id="postscriptEditor" value="#{bean.postscript}" toolbar="custom">
+						<f:facet name="config">
+							toolbar_custom:
+								[
+									{ name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+					   				{ name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+					   				{ name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+					   				{ name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+					   				{ name: 'links', items: ['Link','Unlink'] },
+					   				{ name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+					   				{ name: 'colors', items: ['TextColor'] },
+					   				{ name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+					   			]
+						</f:facet>
+					</rich:editor>
+				</div>
+				<br />
+			   	<div class="left-buttons">
+					<h:commandButton id="btnSaveEmail" onclick="if (!validateInputs(false)) { return false; } else { return true; }" value="Save" title="Save" alt="Save" tabindex="0" action="#{bean.confirmEmailChange()}" rendered="#{bean.selectedSponsor != 1 and !bean.isOptinInitialEmailChange() and !bean.isOptinReminderEmailChange() and !bean.isConfirmationPassedEmailChange() and !bean.isConfirmationFailedEmailChange() and !bean.isIAL2EmailChange() and !bean.isIAL2LetterChange()}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isBarcodeExpirationChange() || bean.isLogoDeleteChange() || bean.isLogoConfirmChange() || bean.isActivationCodeExpirationChange()}" />
+					<h:commandButton id="btnConfirmEmail" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" rendered="#{bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" action="#{bean.saveEmailValues()}" />
+					<h:commandButton id="btnCancelEmail" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" rendered="#{bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" action="#{bean.confirmEmailChange()}" />
+				</div>
+				<h:panelGroup rendered="#{(bean.selectedEmailType == 1 || bean.selectedEmailType == 2) and bean.selectedSponsor != 1}">
+			   		<br /><br />
+			   		<h3>Variables</h3>
+					<h:graphicImage value="images/info-tooltip.png" style="width: 15px;" />
+         			<h:outputText value="The variable must be entered exactly as it is displayed." />
+         			<table>
+				   		<tr>
+				   			<th>Variable</th>
+				   			<th>Explanation</th>
+				   			<th>Example</th>
+				   		</tr>
+				   		<tr class="emailVariablesRows">
+				   			<td>~FIRST NAME~</td>
+				   			<td>Inserts the customer's first name.</td>
+				   			<td>John</td>
+				   		</tr>
+				   		<tr class="emailVariablesRows">
+				   			<td>~LAST NAME~</td>
+				   			<td>Inserts the customer's last name.</td>
+				   			<td>Doe</td>
+				   		</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~STREET~</td>
+			   				<td>Inserts the customer's street address.</td>
+			   				<td>123 Main Street</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~TOWN STATE ZIP~</td>
+			   				<td>Inserts the customer's town, state and zip code.</td>
+			   				<td>Some Town, Some State, 12345(-6789)</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~BARCODE~</td>
+			   				<td>Inserts the image of the generated barcode.</td>
+			   				<td>N/A</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~ENROLLMENT CODE~</td>
+			   				<td>Inserts the enrollment code.</td>
+			   				<td>0000000000000000</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~BARCODE EXPIRATION DATE~</td>
+			   				<td>Inserts the date the barcode is no longer valid in MM/dd/yyyy format.</td>
+			   				<td>01/01/1970</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~BARCODE VALIDATION DAYS~</td>
+			   				<td>Inserts the number of days the barcode is valid for.</td>
+			   				<td>30</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~LOGO~</td>
+			   				<td>Inserts the sponsor's logo.</td>
+			   				<td>
+			   					<h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" rendered="#{bean.isBrandExists()}" />
+			   					<h:outputText value="N/A" rendered="#{!bean.isBrandExists()}"/>
+			   				</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~USPS LOGO~</td>
+			   				<td>Inserts the USPS logo.</td>
+			   				<td><h:graphicImage value="images/Email-Logo.jpg" /></td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID1~</td>
+			   				<td>Inserts the image and description for State Driver's License.</td>
+			   				<td><h:graphicImage width="140" height="90" value="images/driverLicense.png" /><br />State Driver's License</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID1 DESC~</td>
+			   				<td>Inserts only the description for State Driver's License.</td>
+			   				<td>State Driver's License</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID2~</td>
+			   				<td>Inserts the image and description for State Non-Driver's Identification Card.</td>
+			   				<td><h:graphicImage width="140" height="90" value="images/stateID.png" /><br />State Non-Driver's Identification Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID2 DESC~</td>
+			   				<td>Inserts only the description for State Non-Driver's Identification Card.</td>
+			   				<td>State Non-Driver's Identification Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID3~</td>
+			   				<td>Inserts the image and description for Uniformed Services Identification Card.</td>
+			   				<td><h:graphicImage width="140" height="90" value="images/UniformService.png" /><br />Uniformed Services Identification Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID3 DESC~</td>
+			   				<td>Inserts only the description for Uniformed Services Identification Card.</td>
+			   				<td>Uniformed Services Identification Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID4~</td>
+			   				<td>Inserts the image and description for US Passport.</td>
+			   				<td><h:graphicImage width="100" height="120" value="images/passport.png" /><br />US Passport (always requires secondary form of ID)</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~PRIMARY ID4 DESC~</td>
+			   				<td>Inserts only the description for US Passport.</td>
+			   				<td>US Passport (always requires secondary form of ID)</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID1~</td>
+			   				<td>Inserts the image and description for Lease, Mortgage or Deed of Trust.</td>
+			   				<td><h:graphicImage width="125" height="120" value="images/mortgage.png" /><br />Lease, Mortgage or Deed of Trust</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID1 DESC~</td>
+			   				<td>Inserts only the description for Lease, Mortgage or Deed of Trust.</td>
+			   				<td>Lease, Mortgage or Deed of Trust</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID2~</td>
+			   				<td>Inserts the image and description for Voter or Vehicle Registration Card.</td>
+			   				<td><h:graphicImage width="125" height="120" value="images/vehicleRegistration.png" /><br />Voter or Vehicle Registration Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID2 DESC~</td>
+			   				<td>Inserts only the description for Voter or Vehicle Registration Card.</td>
+			   				<td>Voter or Vehicle Registration Card</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID3~</td>
+			   				<td>Inserts the image and description for Home or Vehicle Insurance Policy.</td>
+			   				<td><h:graphicImage width="175" height="100" value="images/insurancePolicy.png" /><br />Home or Vehicle Insurance Policy</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~SECONDARY ID3 DESC~</td>
+			   				<td>Inserts only the description for Home or Vehicle Insurance Policy.</td>
+			   				<td>Home or Vehicle Insurance Policy</td>
+			   			</tr>
+			   			<tr>
+			   				<td>~LOCATIONS~</td>
+			   				<td>Inserts the generated list of facilities for In-Person verification.</td>
+			   				<td>N/A</td>
+			   			</tr>
+				   	</table>
+         		</h:panelGroup>
+         			
+         		<h:panelGroup rendered="#{(bean.selectedEmailType == 3 || bean.selectedEmailType == 4 || bean.selectedEmailType == 5 || bean.selectedEmailType == 6) and bean.selectedSponsor != 1}">
+        			<table>
+			   			<tr>
+			   				<th>Variable</th>
+			   				<th>Explanation</th>
+			   				<th>Example</th>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~FIRST NAME~</td>
+			   				<td>Inserts the customer's first name.</td>
+			   				<td>John</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~LAST NAME~</td>
+			   				<td>Inserts the customer's last name.</td>
+			   				<td>Doe</td>
+			   			</tr>
+			   			<h:outputText value="" rendered="#{bean.selectedEmailType != 6}">
+			   			<tr class="emailVariablesRows">
+			   				<td>~LOGO~</td>
+			   				<td>Inserts the sponsor's logo.</td>
+			   				<td>
+			   					<h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" rendered="#{bean.isBrandExists()}" />
+			   					<h:outputText value="N/A" rendered="#{!bean.isBrandExists()}"/>
+			   				</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~USPS LOGO~</td>
+			   				<td>Inserts the USPS logo.</td>
+			   				<td><h:graphicImage value="images/Email-Logo.jpg" /></td>
+			   			</tr>
+			   			</h:outputText>
+			   			<tr class="emailVariablesRows">
+			   				<td>~ENROLLMENT CODE~</td>
+			   				<td>Inserts the enrollment code.</td>
+			   				<td>0000000000000000</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~ACTIVATION CODE~</td>
+			   				<td>Inserts the activation code.</td>
+			   				<td>123456789</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~ACTIVATION CODE VALIDATION DAYS~</td>
+			   				<td>Inserts the number of days the activation code is valid for.</td>
+			   				<td>60</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~ACTIVATION CODE EXPIRATION DATE~</td>
+			   				<td>Inserts the date the activation code is no longer valid in MM/dd/yyyy format.</td>
+			   				<td>01/01/1970</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~TRANSACTION DATE~</td>
+			   				<td>Inserts the date for when the transaction took place in a MM/dd/yyyy.</td>
+			   				<td>01/01/1970</td>
+			   			</tr>
+			   			<tr class="emailVariablesRows">
+			   				<td>~FACILITY NAME~</td>
+			   				<td>Inserts the name of the facility.</td>
+			   				<td>CENTREVILLE</td>
+			   			</tr>
+			   			<tr>
+			   				<td>~FACILITY CITY STATE~</td>
+			   				<td>Inserts the city and state of the facility.</td>
+			   				<td>CENTREVILLE, VA</td>
+			   			</tr>
+			   		</table>
+         		</h:panelGroup>
+			</h:panelGroup>
+		   		
+			<hr />
+				
+			<div class="left-buttons">
+				<p class="error" id="emailPreviewError" style="display: none;">
+					<h:graphicImage value="images/iconError.gif" />
+      				An invalid email address was entered.
+				</p>
+				<p class="error" id="emailNotSentError" style="display: none;">
+					<h:graphicImage value="images/iconError.gif" />
+					The preview cannot be sent until the errors above are fixed.
+				</p>
+				<p class="error">
+					<h:graphicImage value="images/iconError.gif" rendered="#{bean.isPreviewEmailError()}" />
+					<h:outputText value="An error occurred when attempting to send the preview email." rendered="#{bean.isPreviewEmailError()}" />
+				</p>
+				<h:graphicImage value="images/info-tooltip.png" style="width: 15px;" />
+        		<h:outputText value="Enter your email and click Preview to receive a preview of the currently selected email type. The email will use the values in the fields above." />
+        		<h:outputText value="" rendered="#{bean.selectedSponsor != 1}"><br /></h:outputText>
+        		<h:outputLabel for="emailPreview" value="Email" />
+        		<h:inputText style="width: 200px;" id="emailPreview" value="#{bean.previewEmail}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+				<h:commandButton id="btnEmailPreview" value="Preview" onclick="if (!validatePreviewEmail()) { return false; } else { return true; }" alt="Preview" title="Preview" type="submit" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" action="#{bean.sendPreviewEmail()}" />
+				<img id="emailPreviewLoader" src="images/loader.gif" style="display: none; background: transparent;" />
+			</div>
+         </div>
+	</ui:define>
+</ui:composition>
