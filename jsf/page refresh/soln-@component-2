@@ -1,0 +1,73 @@
+Thanks for testing that — since updating `execute="@this"` or `execute="idSelSponsor"` didn’t resolve the issue, but we’ve confirmed that:
+
+* In **WAS 8.5**, the execute value is `@component idSelSponsor`, which works fine.
+* In **WAS 9**, the execute value is just `@component`, and breaks the chain after the first request.
+* You already confirmed the correct use of `<h:form>`, and we verified your layout template wraps content correctly.
+* Switching to `@SessionScoped` worsened behavior, which also hints the JSF lifecycle is getting blocked earlier than expected.
+
+---
+
+### 🧠 Updated Theory: RichFaces 4 + JSF 2.2+ Compatibility Mismatch in WAS 9
+
+In WAS 9, your app is likely running with a **stricter JSF 2.2+ implementation**, and RichFaces 4 (if that's what you’re using) is **incompatible** or behaves unpredictably with JSF 2.2+ — especially around partial state saving, component tree resolution (`@component`, `@form`, etc.), and AJAX lifecycle.
+
+This is a **well-documented problem** with RichFaces apps migrating from JSF 2.0/2.1 (as in WAS 8.5) to JSF 2.2+ (in WAS 9), where:
+
+* `@component` is deprecated or unsupported
+* ViewState or component tree lookups fail during partial lifecycle
+* AJAX stops updating after the first request due to **invalid JSF context resolution**
+
+---
+
+### ✅ Recommended Actions Now
+
+#### ✅ 1. Switch to explicit `execute="@this"` **and** ensure your `h:selectOneMenu` has `id` set and is inside the same `h:form`.
+
+We validated this is done already — good.
+
+---
+
+#### ✅ 2. Add `<a4j:log level="ALL" popup="false" />` to trace AJAX behavior **in the browser**
+
+Place it at the bottom of your template or test page:
+
+```xhtml
+<a4j:log level="ALL" popup="false" />
+```
+
+This will allow you to watch what RichFaces is doing with `execute`, `render`, and if it encounters partial processing errors even when the browser console is silent.
+
+---
+
+#### ✅ 3. Force full form execution temporarily
+
+In both `<a4j:ajax>` blocks, try:
+
+```xhtml
+execute="@form"
+```
+
+Instead of `@this` or component ID. This ensures **the entire form** is processed — if this works, it confirms that **WAS 9's stricter JSF runtime needs full tree evaluation**.
+
+---
+
+#### ✅ 4. Temporarily remove `rendered="#{bean.flag}"` from `editorPanel` and others
+
+Try removing `rendered=...` from panels temporarily and just see if the DOM is updated. If that works, it confirms the **flags aren’t being updated due to a broken AJAX lifecycle**, not because rendering is wrong.
+
+---
+
+#### ✅ 5. (If urgent) Replace `<a4j:ajax>` with `<f:ajax>` temporarily to isolate RichFaces behavior
+
+```xhtml
+<f:ajax event="valueChange"
+        listener="#{bean.selectSponsor}"
+        render="editorPanel,subjectPanel"
+        execute="@this" />
+```
+
+This lets you confirm if the **problem lies specifically with RichFaces’ AJAX handling in WAS 9**.
+
+---
+
+Would you like me to build you a minimal reproducible test page (one form, one dropdown, one panel) using `<f:ajax>` so you can isolate JSF behavior apart from RichFaces?
