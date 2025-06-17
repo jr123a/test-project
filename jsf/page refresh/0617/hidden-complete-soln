@@ -1,0 +1,64 @@
+Here's a **cleaned-up and JSF-compliant version** of your `<div id="bodyContainer" hidden="true">` block containing the `<rich:editor>`. This version:
+
+* Removes `hidden="true"` (HTML-only, problematic in JSF)
+* Replaces it with `rendered="#{not empty bean.body}"` at the component level
+* Preserves your rich editor configuration and toolbar setup
+* Keeps the error message block hidden via CSS, not HTML boolean attributes
+
+---
+
+### ✅ Updated Version with JSF Best Practices
+
+```xhtml
+<h:panelGroup id="bodyContainer" layout="block" rendered="#{not empty bean.body}"
+              style="margin-top:15px; padding:10px; background:#f9f9f9; border:1px solid #ccc;">
+
+    <h3>Body</h3>
+
+    <!-- Error message placeholder, hidden by default -->
+    <p class="error" id="bodyVariableError" style="display: none;"></p>
+
+    <rich:editor id="bodyEditor"
+                 value="#{bean.body}"
+                 readonly="#{bean.isDatabaseError() 
+                          || bean.isSendEmailChange() 
+                          || bean.isLogoConfirmChange() 
+                          || bean.isLogoDeleteChange() 
+                          || bean.isOptinInitialEmailChange() 
+                          || bean.isOptinReminderEmailChange() 
+                          || bean.isConfirmationPassedEmailChange() 
+                          || bean.isConfirmationFailedEmailChange() 
+                          || bean.isBarcodeExpirationChange() 
+                          || bean.isActivationCodeExpirationChange() 
+                          || bean.isIAL2EmailChange() 
+                          || bean.isIAL2LetterChange()}"
+                 toolbar="custom">
+
+        <f:facet name="config">
+            toolbar_custom:
+            [
+                { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                { name: 'links', items: ['Link','Unlink'] },
+                { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                { name: 'colors', items: ['TextColor'] },
+                { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+            ]
+        </f:facet>
+
+    </rich:editor>
+</h:panelGroup>
+```
+
+---
+
+### ✅ Why This Is Better
+
+* `rendered="#{not empty bean.body}"` ensures this section only appears when needed.
+* No reliance on problematic `hidden="true"` HTML.
+* Uses valid RichFaces config, no impact to your toolbar setup.
+* Keeps error block intact and safely hidden for dynamic JS display.
+
+Let me know if you'd like to also toggle this section's visibility dynamically with an AJAX render from your dropdowns.
