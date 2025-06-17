@@ -1,0 +1,132 @@
+Here’s the **clean and safe version** of your JSF blocks for:
+
+* ✅ `greetingContainer`
+* ✅ `closingContainer`
+* ✅ `postscriptContainer`
+
+Each panel:
+
+* Uses `rendered=` instead of problematic `hidden="true"` or HTML comments
+* Includes a `<rich:editor>` with full toolbar setup
+* Avoids initializing CKEditor unless necessary
+* Works reliably in WAS 9 + RichFaces
+
+---
+
+### ✅ `greetingContainer`
+
+```xhtml
+<h:panelGroup id="greetingContainer" layout="block" rendered="#{not empty bean.greeting}">
+    <h3>Greeting</h3>
+
+    <p class="error" id="greetingVariableError" style="display: none;"></p>
+
+    <rich:editor id="greetingEditor"
+                 value="#{bean.greeting}"
+                 readonly="#{bean.isEditorReadOnly}"
+                 toolbar="custom">
+        <f:facet name="config">
+            toolbar_custom:
+            [
+                { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                { name: 'links', items: ['Link','Unlink'] },
+                { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                { name: 'colors', items: ['TextColor'] },
+                { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+            ]
+        </f:facet>
+    </rich:editor>
+</h:panelGroup>
+```
+
+---
+
+### ✅ `closingContainer`
+
+```xhtml
+<h:panelGroup id="closingContainer" layout="block" rendered="#{not empty bean.closing}">
+    <h3>Closing</h3>
+
+    <p class="error" id="closingVariableError" style="display: none;"></p>
+
+    <rich:editor id="closingEditor"
+                 value="#{bean.closing}"
+                 readonly="#{bean.isEditorReadOnly}"
+                 toolbar="custom">
+        <f:facet name="config">
+            toolbar_custom:
+            [
+                { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                { name: 'links', items: ['Link','Unlink'] },
+                { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                { name: 'colors', items: ['TextColor'] },
+                { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+            ]
+        </f:facet>
+    </rich:editor>
+</h:panelGroup>
+```
+
+---
+
+### ✅ `postscriptContainer`
+
+```xhtml
+<h:panelGroup id="postscriptContainer" layout="block" rendered="#{not empty bean.postscript}">
+    <h3>Postscript</h3>
+
+    <p class="error" id="postscriptVariableError" style="display: none;"></p>
+
+    <rich:editor id="postscriptEditor"
+                 value="#{bean.postscript}"
+                 readonly="#{bean.isEditorReadOnly}"
+                 toolbar="custom">
+        <f:facet name="config">
+            toolbar_custom:
+            [
+                { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                { name: 'links', items: ['Link','Unlink'] },
+                { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                { name: 'colors', items: ['TextColor'] },
+                { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+            ]
+        </f:facet>
+    </rich:editor>
+</h:panelGroup>
+```
+
+---
+
+### 💡 Optional: Backing Bean Method
+
+If you want to centralize the read-only logic:
+
+```java
+public boolean isEditorReadOnly() {
+    return isDatabaseError()
+        || isSendEmailChange()
+        || isLogoConfirmChange()
+        || isLogoDeleteChange()
+        || isOptinInitialEmailChange()
+        || isOptinReminderEmailChange()
+        || isConfirmationPassedEmailChange()
+        || isConfirmationFailedEmailChange()
+        || isBarcodeExpirationChange()
+        || isActivationCodeExpirationChange()
+        || isIAL2EmailChange()
+        || isIAL2LetterChange();
+}
+```
+
+---
+
+Let me know if you want to group all three in a parent container with unified logic or shared conditionals.
