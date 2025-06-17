@@ -1,0 +1,62 @@
+Here’s what I found in your `ial2_configuration.xhtml` file:
+
+---
+
+### ✅ Working `<a4j:ajax>` Tag (From `ial2_configuration.xhtml`)
+
+```xhtml
+<a4j:ajax 
+    event="valueChange" 
+    listener="#{bean.loadFormControls}" 
+    render="idStrongIdTypePnl idFairIdTypePnl idControlPnl idButtonPnl idFormMessagePnl" />
+```
+
+This tag is:
+
+* Attached to a dropdown (likely a `<h:selectOneMenu>`)
+* Using **no `execute` attribute** (defaults to `@this`)
+* **Rendering multiple panels by ID**, all likely inside the same `<h:form>`
+
+---
+
+### 🔍 Key Differences Compared to `sponsor_emails.xhtml`
+
+| Aspect                 | `ial2_configuration.xhtml`                   | `sponsor_emails.xhtml`                                                   |
+| ---------------------- | -------------------------------------------- | ------------------------------------------------------------------------ |
+| `execute`              | ❌ Not present (defaults to `@this`)          | ✅ Present, but was set to `@component` (bad) or later changed to `@this` |
+| `form layout`          | Likely simpler, flat form                    | More complex nested layout (uses template)                               |
+| Panel `rendered` flags | Unknown, likely **always visible**           | ✅ Uses `rendered="#{bean.*Visible}"` — requires AJAX to preserve bean    |
+| ViewScope behavior     | Works correctly                              | Fails on second AJAX, `selectedSponsor` is lost                          |
+| Bean usage             | Likely **same `@ManagedBean`/`@ViewScoped`** | ✅ Same                                                                   |
+
+---
+
+### 💡 What This Tells Us
+
+* Your `ial2_configuration.xhtml` works **because the bean is preserved**, ViewState is intact, and panels don’t rely on dynamic `rendered=` flags that get skipped when the bean resets.
+* Your `sponsor_emails.xhtml` fails after first AJAX because:
+
+  1. **`selectedSponsor` is not getting submitted on future requests** (confirmed from HAR).
+  2. **The bean is reset or partially constructed**, so `editorPanelVisible` and others default to `false`.
+  3. RichFaces’ internal state or JSF 2.2 behavior is stricter in WAS 9, especially with partial views.
+
+---
+
+### ✅ What You Can Try (Inspired by `ial2_configuration.xhtml` Success)
+
+1. **Temporarily remove `rendered="#{bean.*Visible}"`** from the panels to test if it’s purely a visibility flag issue.
+2. **Match AJAX tag structure exactly**:
+
+   ```xhtml
+   <a4j:ajax 
+       event="valueChange" 
+       listener="#{bean.selectSponsor}" 
+       render="editorPanel brandLogoPanel sendEmailPanel" />
+   ```
+
+   Do **not** use `execute` unless necessary.
+3. Wrap each panel with a dummy component (like `h:panelGroup layout="block"`) and confirm they’re inside the same form.
+
+---
+
+Would you like me to show you a test case where both working and broken versions are laid out side by side for visual comparison?
