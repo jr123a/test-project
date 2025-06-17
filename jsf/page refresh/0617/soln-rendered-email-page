@@ -1,0 +1,84 @@
+Here’s what the comparison between the **production** and **local (WAS 9)** rendered HTML files reveals:
+
+---
+
+### 🔍 Key Findings
+
+| Check                               | Production | Local |
+| ----------------------------------- | ---------- | ----- |
+| `javax.faces.ViewState` present?    | ❌ No       | ❌ No  |
+| Number of `<form>` elements         | 1          | 1     |
+| Elements missing in local (vs prod) | None       |       |
+| Elements missing in prod (vs local) | None       |       |
+
+---
+
+### ⚠️ Critical Issue: No ViewState Rendered in Either Page
+
+> **Both environments are missing the hidden `<input name="javax.faces.ViewState" ...>` field.**
+
+That’s a problem because **without `ViewState`**, the JSF lifecycle cannot:
+
+* Preserve `@ViewScoped` beans
+* Maintain AJAX state
+* Restore UI tree for partial updates
+
+---
+
+### ✅ What to Do Immediately
+
+#### 1. **Manually Confirm `<h:form>` Exists Around Page Body**
+
+Even though both HTML files have 1 `<form>`, confirm the JSF markup is:
+
+```xhtml
+<h:form id="mainForm">
+  ...
+  <a4j:ajax ... />
+  ...
+</h:form>
+```
+
+If you're using Facelets templates, the `<h:form>` might be inside the template, and JSF components placed outside of it will **not render ViewState**.
+
+---
+
+#### 2. **Ensure `<h:head>` and `<h:body>` Are Used**
+
+Only these tags ensure correct rendering of `ViewState` and resources:
+
+```xhtml
+<html xmlns:...>
+  <h:head>...</h:head>
+  <h:body>...</h:body>
+</html>
+```
+
+Using plain `<head>` or `<body>` (instead of `h:`) can break `ViewState`.
+
+---
+
+#### 3. **Verify JSF Servlet Mappings and Load Order**
+
+In `web.xml`:
+
+```xml
+<servlet-mapping>
+  <servlet-name>Faces Servlet</servlet-name>
+  <url-pattern>*.xhtml</url-pattern>
+</servlet-mapping>
+```
+
+Also ensure:
+
+```xml
+<servlet>
+  <servlet-name>Faces Servlet</servlet-name>
+  <servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+  <load-on-startup>1</load-on-startup>
+</servlet>
+```
+
+---
+
+### Would You Like Me to Generate a Minimal XHTML Template With Correct `ViewState` Rendering to Test This?
