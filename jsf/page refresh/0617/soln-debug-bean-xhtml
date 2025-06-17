@@ -1,0 +1,244 @@
+Here’s a **side-by-side test case** that compares the working pattern from `ial2_configuration.xhtml` with the problematic setup in `sponsor_emails.xhtml`. This will help you isolate the **AJAX lifecycle**, **panel rendering**, and **bean state retention**.
+
+---
+
+## ✅ Working Pattern (Inspired by `ial2_configuration.xhtml`)
+
+```xhtml
+<h:form id="workingForm">
+    <h:panelGrid columns="1">
+        <h:outputLabel value="Working Sponsor" for="workingSponsor" />
+        <h:selectOneMenu id="workingSponsor" value="#{testBean.workingValue}">
+            <f:selectItem itemLabel="-- Select --" itemValue="" />
+            <f:selectItem itemLabel="Sponsor A" itemValue="A" />
+            <f:selectItem itemLabel="Sponsor B" itemValue="B" />
+            <a4j:ajax event="valueChange"
+                      listener="#{testBean.onWorkingChange}"
+                      render="workingPanel" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:panelGroup id="workingPanel" layout="block" style="margin-top:10px">
+        <h:outputText value="Working selection: #{testBean.workingValue}" />
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## ❌ Broken Pattern (Like `sponsor_emails.xhtml`)
+
+```xhtml
+<h:form id="brokenForm">
+    <h:panelGrid columns="1">
+        <h:outputLabel value="Broken Sponsor" for="brokenSponsor" />
+        <h:selectOneMenu id="brokenSponsor" value="#{testBean.brokenValue}">
+            <f:selectItem itemLabel="-- Select --" itemValue="" />
+            <f:selectItem itemLabel="Sponsor X" itemValue="X" />
+            <f:selectItem itemLabel="Sponsor Y" itemValue="Y" />
+            <a4j:ajax event="valueChange"
+                      listener="#{testBean.onBrokenChange}"
+                      execute="@component"
+                      render="brokenPanel" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:panelGroup id="brokenPanel" layout="block" style="margin-top:10px"
+                  rendered="#{testBean.panelVisible}">
+        <h:outputText value="Broken selection: #{testBean.brokenValue}" />
+    </h:panelGroup>
+</h:form>
+```
+
+---
+
+## 🔧 Matching Backing Bean (`TestBean.java`)
+
+```java
+@ManagedBean(name = "testBean")
+@ViewScoped
+public class TestBean implements Serializable {
+
+    private String workingValue;
+    private String brokenValue;
+    private boolean panelVisible = false;
+
+    public String getWorkingValue() { return workingValue; }
+    public void setWorkingValue(String val) { this.workingValue = val; }
+
+    public String getBrokenValue() { return brokenValue; }
+    public void setBrokenValue(String val) { this.brokenValue = val; }
+
+    public boolean isPanelVisible() { return panelVisible; }
+
+    public void onWorkingChange(AjaxBehaviorEvent e) {
+        // Just change value; no visibility control
+    }
+
+    public void onBrokenChange(AjaxBehaviorEvent e) {
+        this.panelVisible = true;
+    }
+}
+```
+
+---
+
+### 🔍 What to Observe
+
+| Test Case | Behavior                                                       |
+| --------- | -------------------------------------------------------------- |
+| ✅ Working | Value updates, panel always renders                            |
+| ❌ Broken  | First click works, then AJAX stops working or panel disappears |
+
+---
+
+### ✅ Suggested Fixes for Your Real Page
+
+To bring `sponsor_emails.xhtml` in line with the working one:
+
+* Avoid `execute="@component"` — just let it default to `@this` or explicitly use `@this`.
+* Test without `rendered="#{bean.editorPanelVisible}"` to see if the panel renders at all.
+* If panel shows up without `rendered=`, the issue is bean state loss.
+* Add diagnostic `<h:outputText>` showing current bean values and `ViewId`.
+
+---
+
+Would you like me to wrap this into a deployable `sponsor_debug.xhtml` test page so you can try it locally in WAS 9?
+
+
+
+--------------------
+Here is a fully deployable `sponsor_debug.xhtml` test page to help you debug the AJAX issue in WAS 9. This will allow you to isolate JSF lifecycle behavior, ViewState retention, and `rendered=` logic with side-by-side working and broken cases.
+
+---
+
+## ✅ File: `sponsor_debug.xhtml`
+
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:a4j="http://richfaces.org/a4j">
+<h:head>
+    <title>JSF AJAX Debug - Sponsor Panel Comparison</title>
+</h:head>
+<h:body>
+
+<h:form id="debugForm">
+
+    <h2>✅ WORKING PANEL (NO rendered=, NO execute)</h2>
+    <h:panelGrid columns="1">
+        <h:outputLabel value="Working Sponsor" for="workingSponsor" />
+        <h:selectOneMenu id="workingSponsor" value="#{debugBean.workingValue}">
+            <f:selectItem itemLabel="-- Select --" itemValue="" />
+            <f:selectItem itemLabel="Sponsor A" itemValue="A" />
+            <f:selectItem itemLabel="Sponsor B" itemValue="B" />
+            <a4j:ajax event="valueChange"
+                      listener="#{debugBean.onWorkingChange}"
+                      render="workingPanel workingStatus" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:panelGroup id="workingPanel" layout="block" style="margin-top:10px">
+        <h:outputText value="Working selection: #{debugBean.workingValue}" />
+    </h:panelGroup>
+
+    <h:outputText id="workingStatus" value="Working ViewID: #{facesContext.viewRoot.viewId}" style="color:gray"/>
+
+    <hr/>
+
+    <h2>❌ BROKEN PANEL (With rendered= and problematic execute)</h2>
+    <h:panelGrid columns="1">
+        <h:outputLabel value="Broken Sponsor" for="brokenSponsor" />
+        <h:selectOneMenu id="brokenSponsor" value="#{debugBean.brokenValue}">
+            <f:selectItem itemLabel="-- Select --" itemValue="" />
+            <f:selectItem itemLabel="Sponsor X" itemValue="X" />
+            <f:selectItem itemLabel="Sponsor Y" itemValue="Y" />
+            <a4j:ajax event="valueChange"
+                      listener="#{debugBean.onBrokenChange}"
+                      render="brokenPanel brokenStatus"
+                      execute="@component" />
+        </h:selectOneMenu>
+    </h:panelGrid>
+
+    <h:panelGroup id="brokenPanel" layout="block" style="margin-top:10px"
+                  rendered="#{debugBean.panelVisible}">
+        <h:outputText value="Broken selection: #{debugBean.brokenValue}" />
+    </h:panelGroup>
+
+    <h:outputText id="brokenStatus" value="Broken ViewID: #{facesContext.viewRoot.viewId}" style="color:gray"/>
+
+</h:form>
+
+<a4j:log level="ALL" popup="false" />
+
+</h:body>
+</html>
+```
+
+---
+
+## ✅ File: `DebugBean.java`
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import javax.faces.event.AjaxBehaviorEvent;
+import java.io.Serializable;
+
+@ManagedBean(name = "debugBean")
+@ViewScoped
+public class DebugBean implements Serializable {
+
+    private String workingValue;
+    private String brokenValue;
+    private boolean panelVisible = false;
+
+    public String getWorkingValue() {
+        return workingValue;
+    }
+
+    public void setWorkingValue(String workingValue) {
+        this.workingValue = workingValue;
+    }
+
+    public String getBrokenValue() {
+        return brokenValue;
+    }
+
+    public void setBrokenValue(String brokenValue) {
+        this.brokenValue = brokenValue;
+    }
+
+    public boolean isPanelVisible() {
+        return panelVisible;
+    }
+
+    public void onWorkingChange(AjaxBehaviorEvent e) {
+        // Simulate no-op AJAX
+    }
+
+    public void onBrokenChange(AjaxBehaviorEvent e) {
+        this.panelVisible = true;
+    }
+}
+```
+
+---
+
+## 🧪 Deployment Instructions
+
+1. Place `sponsor_debug.xhtml` in your JSF views directory.
+2. Add `DebugBean.java` to your backing bean package.
+3. Rebuild and deploy your app to WAS 9.
+4. Navigate to `/sponsor_debug.xhtml` and test both dropdowns.
+
+---
+
+Let me know the behavior of each section — if **Working** behaves correctly and **Broken** fails after one change, the problem is now 100% isolated to:
+
+* ViewScope not being preserved due to `@component`
+* or `rendered=` flags depending on bean state that's reset in WAS 9
+
+I can help optimize the real app from here.
