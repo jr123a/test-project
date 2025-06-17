@@ -1,0 +1,94 @@
+You're describing a classic JSF/RichFaces failure pattern, and based on everything you've shared (screenshots, HTML structure, console logs, and WAS behavior), here’s what’s very likely happening:
+
+---
+
+### ⚠️ Root Cause: **JSF View Tree Corruption Due to Partial Lifecycle + RichFaces Editor**
+
+> Once the JSF component tree gets corrupted during **one AJAX render**, subsequent renders silently fail — **even if the UI code was working before**.
+
+---
+
+### 🔄 Why Your Behavior Makes Sense
+
+| Step                                               | What Happened                                                                                                                                            |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ **Added `bodyContainer` only**                   | CKEditor initializes properly — editor shows up                                                                                                          |
+| ❌ **Added greeting/closing/postscript containers** | One of them **silently breaks the JSF partial view tree**, likely due to bad `rendered`, invalid EL expression, or corrupted editor init                 |
+| ✅ **Removed broken containers**                    | You expected `bodyContainer` to work again, **but it still doesn't**                                                                                     |
+| 💥 **Reality**                                     | JSF **keeps a broken state in ViewRoot**. Once it’s corrupted mid-AJAX, **subsequent rendering logic collapses** — even if you “undo” the damage in code |
+
+---
+
+### 🔍 What’s Likely Going Wrong Technically
+
+1. **One of the removed panels (e.g., `greetingEditor`) introduced a `null`, corrupt toolbar config, or failed EL**
+2. During partial render, CKEditor fails to initialize → JS error in browser
+3. JSF still tries to encode that component tree → it fails silently
+4. Partial response is **incomplete or malformed**, and **`ViewState` is out of sync**
+5. Even after removing the broken panels, the **JSF ViewRoot in memory is already damaged**
+
+---
+
+### ✅ How to Fix and Break the Cycle
+
+To "recover" from this state and ensure clean rendering:
+
+#### ✅ 1. **Do a full page reload** (not AJAX)
+
+* Clear ViewState and component tree.
+* Avoid re-triggering a partial submit until everything is healthy.
+
+#### ✅ 2. **Comment out all editor containers temporarily**
+
+* `greetingEditor`, `closingEditor`, `postscriptEditor`, even `bodyEditor`.
+* Start with **no editors**, and ensure full render completes cleanly.
+
+#### ✅ 3. **Add editors back one by one**
+
+* Add only `bodyEditor` → test full reload
+* Then add `greetingEditor` → test again
+* If **any one** addition breaks it, that’s your culprit.
+
+#### ✅ 4. **Guard every `<rich:editor>` with strict `rendered=`**
+
+Make sure:
+
+```xhtml
+<rich:editor ... rendered="#{not empty bean.body}" />
+```
+
+or
+
+```xhtml
+<h:panelGroup rendered="#{not empty bean.body}">
+    <rich:editor ... />
+</h:panelGroup>
+```
+
+#### ✅ 5. **Avoid `hidden`, `display:none`, and never load multiple editors unless you’re 100% sure all data is initialized**
+
+---
+
+### 🧪 Optional Diagnostic
+
+Wrap the editors with outputText diagnostics like:
+
+```xhtml
+<h:outputText value="Greeting length: #{bean.greeting != null ? bean.greeting.length() : 'null'}" />
+```
+
+It’ll expose `null` values that could silently crash `ckeditor.config` evaluation.
+
+---
+
+### ✅ TL;DR – What You Should Do Right Now
+
+1. Restart the app or reload `/sponsor_emails.xhtml` with **no AJAX**
+2. Temporarily **comment out all editor containers**
+3. Reintroduce **only `bodyContainer`**
+4. Add **1 editor per deploy**, checking behavior each time
+5. Watch browser console and WAS logs for **first sign of re-break**
+
+---
+
+Let me know once you reintroduce `bodyEditor` only, and I’ll walk with you through validating the next editor.
