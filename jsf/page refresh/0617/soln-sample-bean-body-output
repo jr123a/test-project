@@ -1,0 +1,4 @@
+<h:panelGroup id="bodyDebugPanel" layout="block" style="margin-top:20px; padding:10px; border:1px solid #ccc; background:#f9f9f9;">
+    <h:outputLabel value="Email Body Content:" style="font-weight:bold;" />
+    <h:outputText value="#{bean.body}" escape="false" style="display:block; white-space:pre-wrap;" />
+</h:panelGroup>
