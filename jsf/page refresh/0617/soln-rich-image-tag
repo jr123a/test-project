@@ -1,0 +1,188 @@
+Great debugging step — this is a **critical clue**.
+
+Removing the following two tags from `sponsor_emails.xhtml` caused the **selectSponsor dropdown to work again**:
+
+```xhtml
+<h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}"
+                rendered="#{bean.isBrandExists()}" />
+
+<rich:fileUpload fileUploadListener="#{bean.storeUploadImage}" 
+                 ... />
+```
+
+Let’s break down exactly **why these might be breaking the JSF AJAX lifecycle in WAS 9**:
+
+---
+
+## 🔍 1. `h:graphicImage` with dynamic Base64 `value=...`
+
+```xhtml
+<h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" 
+                rendered="#{bean.isBrandExists()}" />
+```
+
+### ✅ What this does:
+
+* Renders an inline base64 image dynamically based on backing bean content.
+
+### ❌ Why it can break:
+
+* If `bean.imageBase64String` is large or null/invalid, JSF can:
+
+  * Fail to serialize the component tree
+  * Trigger a **partial response encoding error**
+* In JSF 2.2+ (WAS 9), partial view rendering is **stricter** — malformed attributes (like a broken base64 string) can **abort the AJAX response silently**
+
+### ✅ Fix:
+
+Wrap it in a more robust guard:
+
+```xhtml
+<h:panelGroup rendered="#{bean.isBrandExists()}">
+    <h:graphicImage rendered="#{not empty bean.imageBase64String}" 
+                    value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" />
+</h:panelGroup>
+```
+
+Or verify in the bean that you never return `null` or a corrupt string for `imageBase64String`.
+
+---
+
+## 🔍 2. `<rich:fileUpload>` with JSF lifecycle interference
+
+### ❌ Why it's problematic:
+
+* `rich:fileUpload` adds **multipart encoding** to the form
+* If this component is rendered on an AJAX request (or present in the DOM even if not used), JSF may:
+
+  * Expect `multipart/form-data`, even for standard `application/x-www-form-urlencoded` AJAX posts
+  * Trigger JSF view state loss or input decoding failures
+* Also, if it’s not inside a conditional guard (`rendered=false` when not needed), it bloats the component tree unnecessarily
+
+### ✅ Fix:
+
+Move it inside a render guard:
+
+```xhtml
+<rich:fileUpload fileUploadListener="#{bean.storeUploadImage}"
+                 rendered="#{bean.allowImageUpload}"
+                 ... />
+```
+
+In your bean, define:
+
+```java
+public boolean isAllowImageUpload() {
+    return !isDatabaseError() && !isSendEmailChange() && !isLogoConfirmChange() && ...;
+}
+```
+
+Also, make sure `maxRequestSize` in `web.xml` supports the upload:
+
+```xml
+<context-param>
+  <param-name>org.richfaces.fileUpload.maxRequestSize</param-name>
+  <param-value>2000000</param-value> <!-- or more -->
+</context-param>
+```
+
+---
+
+## ✅ What’s Actually Happening
+
+* JSF AJAX tries to render a delta view (partial HTML updates)
+* These components either:
+
+  * Fail during **encode** (e.g., base64 image is invalid)
+  * Mismatch the **form encoding type**
+  * Inflate the component tree and cause ViewState serialization issues
+* This breaks `javax.faces.partial.execute` handling silently, causing dropdown values like `selectedSponsor` not to reach the server
+
+---
+
+## 🛠️ Final Recommendation
+
+Wrap both components with safe conditional rendering:
+
+```xhtml
+<h:panelGroup rendered="#{bean.isBrandExists()}">
+    <h:graphicImage rendered="#{not empty bean.imageBase64String}"
+                    value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" />
+</h:panelGroup>
+
+<h:panelGroup rendered="#{bean.allowImageUpload}">
+    <rich:fileUpload fileUploadListener="#{bean.storeUploadImage}"
+                     acceptedTypes=".jpg, .gif, .png"
+                     ... />
+</h:panelGroup>
+```
+
+Would you like me to give you a complete, fixed version of that block from your `sponsor_emails.xhtml`?
+--------------------------------------------------------------------------------------
+
+
+Here’s a **fully revised and safe version** of the problematic block from your `sponsor_emails.xhtml`, designed to work reliably in **WAS 9 with JSF 2.2+ and RichFaces**:
+
+---
+
+### ✅ Safe Version: Image Display + File Upload Panel
+
+```xhtml
+<!-- Brand Logo Display Panel -->
+<h:panelGroup id="brandLogoPanel" layout="block" rendered="#{bean.isBrandExists()}">
+    <h:outputLabel value="Current Logo:" style="font-weight:bold;" />
+    
+    <!-- Render image only if valid base64 string is present -->
+    <h:graphicImage 
+        value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" 
+        rendered="#{not empty bean.imageBase64String}"
+        style="max-height:100px; max-width:200px; display:block; margin-top:10px;" />
+</h:panelGroup>
+
+<!-- File Upload Panel -->
+<h:panelGroup id="fileUploadPanel" layout="block" rendered="#{bean.allowImageUpload}">
+    <h:outputLabel value="Upload New Logo:" style="font-weight:bold;" />
+
+    <rich:fileUpload 
+        fileUploadListener="#{bean.storeUploadImage}"
+        acceptedTypes=".jpg,.gif,.png"
+        maxFilesQuantity="1"
+        ontyperejected="alert('Only JPG, GIF or PNG files are accepted');"
+        onsizerejected="alert('The max size allowed for a file is 20 KB');"
+        disabled="#{not bean.allowImageUpload}" />
+</h:panelGroup>
+```
+
+---
+
+### ✅ Backing Bean Adjustments
+
+Add this method to your bean:
+
+```java
+public boolean isAllowImageUpload() {
+    return !isDatabaseError()
+        && !isSendEmailChange()
+        && !isLogoConfirmChange()
+        && !isLogoDeleteChange()
+        && !isOptinInitialEmailChange()
+        && !isConfirmationPassedEmailChange()
+        && !isBarcodeExpirationChange()
+        && !isActivationCodeExpirationChange()
+        && !isIAL2EmailChange()
+        && !isIAL2LetterChange();
+}
+```
+
+---
+
+### 🔍 Why This Fix Works
+
+* Prevents `<rich:fileUpload>` from being part of the component tree unless explicitly allowed.
+* Avoids `h:graphicImage` breaking partial renders when `imageBase64String` is missing/null.
+* Uses `rendered=` guards for both **performance and lifecycle safety** in AJAX/JSF 2.2 environments.
+
+Let me know if you'd like this panel wrapped into your working AJAX render chain too.
+
+
+
