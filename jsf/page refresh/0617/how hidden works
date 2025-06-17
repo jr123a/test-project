@@ -1,0 +1,98 @@
+Yes, I understand how the `hidden` attribute works under the hood — and why it might behave differently between **WAS 8.5** (where it works) and **WAS 9 + Spring JTA** (where it doesn't). Let’s break it down technically:
+
+---
+
+### 🔍 What `hidden="true"` Does (HTML Perspective)
+
+```html
+<div id="bodyContainer" hidden="true"> ... </div>
+```
+
+* In **HTML5**, the presence of `hidden` — regardless of its value (`true`, `false`, or blank) — makes the element **invisible**.
+* That means **`hidden="false"` is still hidden**. It’s a **boolean attribute**, like `checked`, `disabled`, etc.
+* So unless it is **completely removed**, the element will not be visible.
+
+---
+
+### ✅ Why It “Works” in WAS 8.5 (Production)
+
+In WebSphere 8.5:
+
+* **RichFaces/JSF version** likely rendered this:
+
+  ```html
+  <div id="bodyContainer"> ... </div> <!-- no 'hidden' -->
+  ```
+
+  or only rendered `hidden` when `bean.body` is empty.
+
+* This is probably due to:
+
+  * **JSF 2.0** or an older implementation being more lenient
+  * `<div hidden="#{condition}">` interpreted like `rendered=`, where `false` **actually omits the attribute**
+  * The component tree being partially rebuilt manually, allowing attribute removal
+
+---
+
+### ❌ Why It Fails in WAS 9 (Your Local)
+
+In WebSphere 9 (with newer **JSF 2.2+** and different lifecycle rules):
+
+* JSF **does not dynamically remove static HTML attributes** like `hidden="true"` — it just passes them through.
+* So even if `bean.body` is populated, this:
+
+  ```xhtml
+  <div id="bodyContainer" hidden="#{not empty bean.body}" />
+  ```
+
+  becomes:
+
+  ```html
+  <div id="bodyContainer" hidden="true"> ... </div>
+  ```
+
+  which keeps the div hidden — even when it shouldn’t be.
+
+---
+
+### ✅ The Under-the-Hood Difference
+
+| WAS 8.5                                                                   | WAS 9                                                                 |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| JSF lifecycle possibly stripped `hidden` attribute based on EL evaluation | JSF 2.2+ **renders boolean HTML attributes literally** if bound to EL |
+| `hidden="#{...}"` worked more like `rendered=`                            | Now it **only controls the value**, not attribute presence            |
+| Legacy RichFaces may have manually adjusted DOM rendering                 | Newer RichFaces or JSF lets `hidden` through as-is                    |
+
+---
+
+### 🔧 Why `rendered=` or `style="display:none"` Are the Proper Alternatives
+
+Because:
+
+* `rendered=...` **excludes the component from the DOM completely**.
+* `style="display:none"` **visually hides it but keeps it in the DOM**, useful if you plan to show it via JavaScript.
+
+---
+
+### ✅ Bottom Line
+
+In **WAS 8.5**, you benefited from looser JSF behavior where:
+
+```xhtml
+<div hidden="#{not empty bean.body}"> ... </div>
+```
+
+behaved more like:
+
+```xhtml
+<h:panelGroup rendered="#{not empty bean.body}"> ... </h:panelGroup>
+```
+
+But in **WAS 9**, `hidden` is treated literally:
+
+* If the attribute exists, the browser hides the element.
+* JSF doesn’t remove it unless you explicitly use `rendered=`.
+
+---
+
+Let me know if you want help **scanning your entire page for similar hidden="..." traps** and replacing them with the correct `rendered` or `style` logic.
