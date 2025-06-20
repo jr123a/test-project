@@ -1,0 +1,121 @@
+You're hitting a set of **RichFaces/CKEditor resource loading failures** that are generating `FileNotFoundException` logs in WebSphere. These are affecting stylesheets and scripts used by the `<rich:editor>` component.
+
+---
+
+### 🔥 Root Errors (From Log)
+
+```
+SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /skins/richfaces/editor.ecss
+...
+File not found: /contents.css
+...
+File not found: /plugins/styles/styles/default.js
+```
+
+---
+
+### ❓Why This Happens
+
+These static resource paths are usually loaded via:
+
+* RichFaces resource servlet
+* JSF resource handler
+* CKEditor plugin/resource mapping
+
+In WAS 9, **if these are not routed correctly**, JSF tries to load them as if they’re physical files under `/webapp`, which results in `SRVE0190E` (file not found) errors.
+
+---
+
+### ✅ Fix 1: Ensure RichFaces Resource Servlet Is Defined
+
+In your `web.xml`, confirm you have:
+
+```xml
+<servlet>
+  <servlet-name>Resource Servlet</servlet-name>
+  <servlet-class>org.richfaces.webapp.ResourceServlet</servlet-class>
+</servlet>
+
+<servlet-mapping>
+  <servlet-name>Resource Servlet</servlet-name>
+  <url-pattern>/org.richfaces.resources/*</url-pattern>
+</servlet-mapping>
+```
+
+This servlet is responsible for serving:
+
+* RichFaces skins (e.g., `editor.ecss`)
+* CKEditor scripts/styles
+
+---
+
+### ✅ Fix 2: Verify `<h:head>` and `<h:body>` Are Used
+
+In `sponsor_emails.xhtml`, ensure your root template uses:
+
+```xhtml
+<html ...>
+  <h:head>
+    ...
+  </h:head>
+  <h:body>
+    ...
+  </h:body>
+</html>
+```
+
+✅ This allows JSF to properly inject resources and `<script src="...">` tags.
+
+---
+
+### ✅ Fix 3: Resource References Must Use `#{resource}` or JSF Mapping
+
+If you manually referenced resources like:
+
+```html
+<link href="/skins/richfaces/editor.ecss" />
+```
+
+You must instead use:
+
+```xhtml
+<h:outputStylesheet name="skins/richfaces/editor.ecss" library="org.richfaces" />
+```
+
+Or let RichFaces handle it automatically (usually happens when `<rich:editor>` is working correctly).
+
+---
+
+### ✅ Fix 4: BrowserCacheHandlerFilter (Optional)
+
+If the filter `BrowserCacheHandlerFilter` is your custom filter, it may be intercepting resource requests and incorrectly throwing errors when files like `/contents.css` don’t exist physically.
+
+You should:
+
+1. Exclude RichFaces/JSF resources in that filter:
+
+```java
+if (request.getRequestURI().contains("/org.richfaces.resources/") || 
+    request.getRequestURI().contains("javax.faces.resource")) {
+    chain.doFilter(request, response);
+    return;
+}
+```
+
+2. Or bypass for requests ending in `.css`, `.js`, `.ecss`, etc.
+
+---
+
+### ✅ Summary Checklist
+
+| Area                 | Fix                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `web.xml`            | Add `Resource Servlet` for RichFaces                                                                                                |
+| Page Layout          | Ensure `<h:head>` and `<h:body>` are used                                                                                           |
+| File references      | Use `h:outputScript`, `h:outputStylesheet`, or RichFaces resource loading                                                           |
+| Custom filters       | Bypass resource paths in `BrowserCacheHandlerFilter`                                                                                |
+| Deployment structure | Confirm that `org.richfaces.resources` is available inside the WAR’s `/resources/` folder (or RichFaces jars are bundled correctly) |
+
+---
+
+Let me know if you'd like me to inspect your `BrowserCacheHandlerFilter` logic or if you want me to generate a test XHTML page that verifies proper RichFaces resource loading.
