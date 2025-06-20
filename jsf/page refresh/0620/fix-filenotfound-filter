@@ -1,0 +1,93 @@
+Thanks for the photo — you've shared the `BrowserCacheHandlerFilter` implementation, and yes, **it needs to be improved** to avoid interfering with RichFaces and JSF static resources.
+
+---
+
+### 🔍 Current Problem with Your Filter
+
+The filter currently checks only these extensions:
+
+```java
+String[] validFileExtensions = new String[] {
+    ".xhtml", ".css", ".js", ".png", ".jpg", ".gif", ".xml", ".htc"
+};
+```
+
+That’s too limited.
+
+---
+
+### ❗What It’s Missing
+
+You’re not accounting for:
+
+* JSF-managed resources like:
+
+  * `/javax.faces.resource/...`
+* RichFaces resources like:
+
+  * `/org.richfaces.resources/...`
+* Custom plugin or CKEditor paths like:
+
+  * `/plugins/styles/...`, `/skins/richfaces/editor.ecss`
+
+These are getting intercepted and failing with `FileNotFoundException`.
+
+---
+
+### ✅ Recommended Fix to the Filter
+
+Update your `doFilter()` logic like this:
+
+```java
+public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+
+    String requestURI = ((HttpServletRequest) request).getRequestURI();
+
+    // Allow all JSF and RichFaces static resources
+    if (requestURI.contains("/javax.faces.resource/")
+        || requestURI.contains("/org.richfaces.resources/")
+        || requestURI.contains("/plugins/")
+        || requestURI.contains("/skins/")) {
+        chain.doFilter(request, response);
+        return;
+    }
+
+    // Existing logic for regular static files
+    String[] validFileExtensions = new String[] {
+        ".xhtml", ".css", ".js", ".png", ".jpg", ".gif", ".xml", ".htc"
+    };
+
+    boolean isValidFileExtension = false;
+    for (String extension : validFileExtensions) {
+        if (requestURI.endsWith(extension)) {
+            isValidFileExtension = true;
+            break;
+        }
+    }
+
+    if (isValidFileExtension) {
+        HttpServletResponse resp = (HttpServletResponse) response;
+        resp.addHeader("Pragma", "no-cache");
+        resp.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        resp.addHeader("Expires", "Wed, 08 Aug 2006 10:00:00 GMT");
+        resp.addHeader("X-Content-Type-Options", "nosniff");
+    }
+
+    chain.doFilter(request, response);
+}
+```
+
+---
+
+### ✅ What This Will Fix
+
+* ✅ RichFaces CSS like `editor.ecss`
+* ✅ CKEditor plugin styles/scripts
+* ✅ `/javax.faces.resource/` requests that load component styles and scripts
+* ✅ Prevents `FileNotFoundException` in your logs
+* ✅ Unblocks `<rich:editor>` and other JSF/CKEditor integrations
+
+---
+
+Let me know when you've updated the filter — I can help you verify if RichFaces resources now load without errors.
