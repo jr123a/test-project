@@ -1,0 +1,620 @@
+[6/20/25 10:34:56:272 PDT] 0000016b HtmlLabelRend W   Attribute 'for' of label component with id j_id_3f is not defined
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O -----------------------------------------------------
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O selectSponsor::6
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O Loaded body::<p>	Thanks for opting in</p>
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O Loaded greeting::
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O Loaded closing::
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O Loaded postscript::
+[6/20/25 10:35:17:221 PDT] 00000160 SystemOut     O Loaded subject::Susan IAL2 sponsor opt-in email
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded expirationDays::30
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded includeUSPSLogo::true
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded includeAgencyLogo::true
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded EmailType::1
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded EmailTypeList::[com.ips.entity.RefEmailType@26df3874, com.ips.entity.RefEmailType@32716da9, com.ips.entity.RefEmailType@b66a00bd, com.ips.entity.RefEmailType@3d0e0bfb, com.ips.entity.RefEmailType@c2102610, com.ips.entity.RefEmailType@2f72c119]
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded SponsorList::[com.ips.entity.RefSponsor@b4063e9a, com.ips.entity.RefSponsor@b4063e9a, com.ips.entity.RefSponsor@81054ecc, com.ips.entity.RefSponsor@a5bfd1f8, com.ips.entity.RefSponsor@e85dd745, com.ips.entity.RefSponsor@821f820c, com.ips.entity.RefSponsor@66599dfc, com.ips.entity.RefSponsor@b3ce3d67, com.ips.entity.RefSponsor@4ee36671, com.ips.entity.RefSponsor@e39aac17, com.ips.entity.RefSponsor@bdc3ab0d, com.ips.entity.RefSponsor@6311e63e, com.ips.entity.RefSponsor@927f841c, com.ips.entity.RefSponsor@56a47bb2, com.ips.entity.RefSponsor@5fd47d6e, com.ips.entity.RefSponsor@de9960f3]
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded PreviewEmail::null
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded SendEmail::1
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded StoredTempImage::null
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded ImageBase64String::
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O Loaded ImageExt::
+[6/20/25 10:35:17:222 PDT] 00000160 SystemOut     O -----------------------------------------------------
+[6/20/25 10:35:17:228 PDT] 00000160 HtmlLabelRend W   Attribute 'for' of label component with id j_id_3f is not defined
+[6/20/25 10:35:17:258 PDT] 00000160 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /skins/richfaces/editor.ecss
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+	at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+	at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+	at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[6/20/25 10:35:17:289 PDT] 0000016b filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /contents.css
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+	at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+	at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+	at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[6/20/25 10:35:17:372 PDT] 000000f6 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /plugins/styles/styles/default.js
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+	at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+	at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+	at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+	at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[6/20/25 10:35:42:086 PDT] 000000f6 eclipselink   W   Exception [EclipseLink-4002] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.DatabaseException
+Internal Exception: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+Error Code: 1403
+Call: INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?)
+	bind => [, null, 2025-06-20 10:35:42.042, 6, 2025-06-20 10:35:42.042, 13]
+Query: InsertObjectQuery(com.ips.entity.RpAdmin@ae96e5dc)
+[6/20/25 10:35:42:087 PDT] 000000f6 RegisteredSyn E   WTRN0074E: Exception caught from before_completion synchronization operation: javax.persistence.PersistenceException: Exception [EclipseLink-4002] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.DatabaseException
+Internal Exception: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+Error Code: 1403
+Call: INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?)
+	bind => [, null, 2025-06-20 10:35:42.042, 6, 2025-06-20 10:35:42.042, 13]
+Query: InsertObjectQuery(com.ips.entity.RpAdmin@ae96e5dc)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl$1.handleException(EntityManagerSetupImpl.java:769)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.handleException(AbstractSynchronizationListener.java:275)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:170)
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68)
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291)
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153)
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450)
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633)
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040)
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974)
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798)
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439)
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191)
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307)
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:743)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:711)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:654)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:407)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241)
+	at com.sun.proxy.$Proxy585.logAdminEvent(Unknown Source)
+	at com.ips.service.AdminServiceImpl.ippEmailsAdminNotification(AdminServiceImpl.java:1152)
+	at com.ips.bean.SponsorEmailAdminBean.modifyStoredImage(SponsorEmailAdminBean.java:948)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55)
+	at java.lang.reflect.Method.invoke(Method.java:508)
+	at org.apache.el.parser.AstValue.invoke(AstValue.java:245)
+	at org.apache.el.MethodExpressionImpl.invoke(MethodExpressionImpl.java:267)
+	at org.jboss.weld.util.el.ForwardingMethodExpression.invoke(ForwardingMethodExpression.java:40)
+	at org.jboss.weld.el.WeldMethodExpression.invoke(WeldMethodExpression.java:50)
+	at org.apache.myfaces.view.facelets.el.ContextAwareTagMethodExpression.invoke(ContextAwareTagMethodExpression.java:96)
+	at org.apache.myfaces.application.ActionListenerImpl.processAction(ActionListenerImpl.java:74)
+	at javax.faces.component.UICommand.broadcast(UICommand.java:120)
+	at javax.faces.component.UIViewRoot._broadcastAll(UIViewRoot.java:1172)
+	at javax.faces.component.UIViewRoot.broadcastEvents(UIViewRoot.java:365)
+	at javax.faces.component.UIViewRoot._process(UIViewRoot.java:1658)
+	at javax.faces.component.UIViewRoot.processApplication(UIViewRoot.java:862)
+	at org.apache.myfaces.lifecycle.InvokeApplicationExecutor.execute(InvokeApplicationExecutor.java:42)
+	at org.apache.myfaces.lifecycle.LifecycleImpl.executePhase(LifecycleImpl.java:196)
+	at org.apache.myfaces.lifecycle.LifecycleImpl.execute(LifecycleImpl.java:143)
+	at javax.faces.webapp.FacesServlet.service(FacesServlet.java:198)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.service(ServletWrapper.java:1235)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:779)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:478)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapperImpl.handleRequest(ServletWrapperImpl.java:179)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+	at com.ips.servlet.filter.AdminSessionFilter.doFilter(AdminSessionFilter.java:64)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+	at com.ibm.ws.webcontainer.servlet.CacheServletWrapper.handleRequest(CacheServletWrapper.java:82)
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:966)
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+Caused by: Exception [EclipseLink-4002] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.DatabaseException
+Internal Exception: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+Error Code: 1403
+Call: INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?)
+	bind => [, null, 2025-06-20 10:35:42.042, 6, 2025-06-20 10:35:42.042, 13]
+Query: InsertObjectQuery(com.ips.entity.RpAdmin@ae96e5dc)
+	at org.eclipse.persistence.exceptions.DatabaseException.sqlException(DatabaseException.java:331)
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeDirectNoSelect(DatabaseAccessor.java:911)
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeNoSelect(DatabaseAccessor.java:973)
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.basicExecuteCall(DatabaseAccessor.java:633)
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeCall(DatabaseAccessor.java:560)
+	at org.eclipse.persistence.internal.sessions.AbstractSession.basicExecuteCall(AbstractSession.java:2070)
+	at org.eclipse.persistence.sessions.server.ClientSession.executeCall(ClientSession.java:310)
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:262)
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:248)
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.insertObject(DatasourceCallQueryMechanism.java:415)
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:179)
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:194)
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.insertObjectForWrite(DatabaseQueryMechanism.java:498)
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommit(InsertObjectQuery.java:82)
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommitWithChangeSet(InsertObjectQuery.java:92)
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.executeWriteWithChangeSet(DatabaseQueryMechanism.java:310)
+	at org.eclipse.persistence.queries.WriteObjectQuery.executeDatabaseQuery(WriteObjectQuery.java:58)
+	at org.eclipse.persistence.queries.DatabaseQuery.execute(DatabaseQuery.java:910)
+	at org.eclipse.persistence.queries.DatabaseQuery.executeInUnitOfWork(DatabaseQuery.java:809)
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWorkObjectLevelModifyQuery(ObjectLevelModifyQuery.java:108)
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWork(ObjectLevelModifyQuery.java:85)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.internalExecuteQuery(UnitOfWorkImpl.java:2900)
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1866)
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1848)
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1799)
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitNewObjectsForClassWithChangeSet(CommitManager.java:227)
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitAllObjectsWithChangeSet(CommitManager.java:126)
+	at org.eclipse.persistence.internal.sessions.AbstractSession.writeAllObjectsWithChangeSet(AbstractSession.java:4297)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabase(UnitOfWorkImpl.java:1445)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabaseWithChangeSet(UnitOfWorkImpl.java:1535)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.issueSQLbeforeCompletion(UnitOfWorkImpl.java:3172)
+	at org.eclipse.persistence.internal.sessions.RepeatableWriteUnitOfWork.issueSQLbeforeCompletion(RepeatableWriteUnitOfWork.java:355)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:158)
+	... 72 more
+Caused by: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:509)
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:461)
+	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1104)
+	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:550)
+	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:268)
+	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:655)
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:270)
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:91)
+	at oracle.jdbc.driver.T4CPreparedStatement.executeForRows(T4CPreparedStatement.java:970)
+	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1205)
+	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3666)
+	at oracle.jdbc.driver.T4CPreparedStatement.executeInternal(T4CPreparedStatement.java:1426)
+	at oracle.jdbc.driver.OraclePreparedStatement.executeLargeUpdate(OraclePreparedStatement.java:3756)
+	at oracle.jdbc.driver.OraclePreparedStatement.executeUpdate(OraclePreparedStatement.java:3736)
+	at oracle.jdbc.driver.OraclePreparedStatementWrapper.executeUpdate(OraclePreparedStatementWrapper.java:1063)
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.pmiExecuteUpdate(WSJdbcPreparedStatement.java:1304)
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.executeUpdate(WSJdbcPreparedStatement.java:845)
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeDirectNoSelect(DatabaseAccessor.java:901)
+	... 103 more
+Caused by: Error : 1403, Position : 0, Sql = INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (:1 , :2 , :3 , :4 , :5 , :6 ), OriginalSql = INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?), Error Msg = ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:513)
+	... 120 more
+
+[6/20/25 10:35:42:172 PDT] 000000f6 SystemOut     O 10:35:42.104 [WebContainer : 0] ERROR  - com.ips.service.AdminServiceImpl->  ippEmailsAdminNotification-> Error occurred while sending email notification ipp email change. [UnexpectedRollbackException]
+org.springframework.transaction.UnexpectedRollbackException: JTA transaction unexpectedly rolled back (maybe due to a timeout); nested exception is javax.transaction.RollbackException
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1038) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:743) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:711) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:654) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:407) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-5.3.33.jar:5.3.33]
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186) ~[spring-aop-5.3.33.jar:5.3.33]
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241) ~[spring-aop-5.3.33.jar:5.3.33]
+	at com.sun.proxy.$Proxy585.logAdminEvent(Unknown Source) ~[?:?]
+	at com.ips.service.AdminServiceImpl.ippEmailsAdminNotification(AdminServiceImpl.java:1152) [classes/:?]
+	at com.ips.bean.SponsorEmailAdminBean.modifyStoredImage(SponsorEmailAdminBean.java:948) [classes/:?]
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:1.8.0]
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90) ~[?:1.8.0]
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55) ~[?:1.8.0]
+	at java.lang.reflect.Method.invoke(Method.java:508) ~[?:1.8.0]
+	at org.apache.el.parser.AstValue.invoke(AstValue.java:245) [com.ibm.ws.webcontainer.jar:?]
+	at org.apache.el.MethodExpressionImpl.invoke(MethodExpressionImpl.java:267) [com.ibm.ws.webcontainer.jar:?]
+	at org.jboss.weld.util.el.ForwardingMethodExpression.invoke(ForwardingMethodExpression.java:40) [com.ibm.ws.org.jboss.weld.2.4.8_1.0.23.jar:2.4.8.Final]
+	at org.jboss.weld.el.WeldMethodExpression.invoke(WeldMethodExpression.java:50) [com.ibm.ws.org.jboss.weld.2.4.8_1.0.23.jar:2.4.8.Final]
+	at org.apache.myfaces.view.facelets.el.ContextAwareTagMethodExpression.invoke(ContextAwareTagMethodExpression.java:96) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.application.ActionListenerImpl.processAction(ActionListenerImpl.java:74) [com.ibm.ws.jsf.myfaces.jar:?]
+	at javax.faces.component.UICommand.broadcast(UICommand.java:120) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot._broadcastAll(UIViewRoot.java:1172) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot.broadcastEvents(UIViewRoot.java:365) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot._process(UIViewRoot.java:1658) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot.processApplication(UIViewRoot.java:862) [javax.j2ee.jsf.jar:?]
+	at org.apache.myfaces.lifecycle.InvokeApplicationExecutor.execute(InvokeApplicationExecutor.java:42) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.lifecycle.LifecycleImpl.executePhase(LifecycleImpl.java:196) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.lifecycle.LifecycleImpl.execute(LifecycleImpl.java:143) [com.ibm.ws.jsf.myfaces.jar:?]
+	at javax.faces.webapp.FacesServlet.service(FacesServlet.java:198) [javax.j2ee.jsf.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.service(ServletWrapper.java:1235) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:779) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:478) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapperImpl.handleRequest(ServletWrapperImpl.java:179) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96) [com.ibm.ws.webcontainer.jar:?]
+	at com.ips.servlet.filter.AdminSessionFilter.doFilter(AdminSessionFilter.java:64) [classes/:?]
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90) [com.ibm.ws.webcontainer.jar:?]
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62) [Common-25.1.2-SNAPSHOT.jar:?]
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.CacheServletWrapper.handleRequest(CacheServletWrapper.java:82) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:966) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909) [com.ibm.ws.runtime.jar:?]
+Caused by: javax.transaction.RollbackException
+	at com.ibm.tx.jta.impl.TransactionImpl.stage3CommitProcessing(TransactionImpl.java:1283) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1053) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307) ~[com.ibm.ws.runtime.jar:?]
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035) ~[spring-tx-5.3.33.jar:5.3.33]
+	... 60 more
+Caused by: javax.persistence.PersistenceException: Exception [EclipseLink-4002] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.DatabaseException
+Internal Exception: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+Error Code: 1403
+Call: INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?)
+	bind => [, null, 2025-06-20 10:35:42.042, 6, 2025-06-20 10:35:42.042, 13]
+Query: InsertObjectQuery(com.ips.entity.RpAdmin@ae96e5dc)
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl$1.handleException(EntityManagerSetupImpl.java:769) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.handleException(AbstractSynchronizationListener.java:275) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:170) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307) ~[com.ibm.ws.runtime.jar:?]
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035) ~[spring-tx-5.3.33.jar:5.3.33]
+	... 60 more
+Caused by: org.eclipse.persistence.exceptions.DatabaseException: 
+Internal Exception: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+Error Code: 1403
+Call: INSERT INTO rp_admin (USER_ID, APP_ID, CREATE_DATE, SPONSOR_ID, UPDATE_DATE, ADMIN_EVENT_ID) VALUES (?, ?, ?, ?, ?, ?)
+	bind => [, null, 2025-06-20 10:35:42.042, 6, 2025-06-20 10:35:42.042, 13]
+Query: InsertObjectQuery(com.ips.entity.RpAdmin@ae96e5dc)
+	at org.eclipse.persistence.exceptions.DatabaseException.sqlException(DatabaseException.java:331) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeDirectNoSelect(DatabaseAccessor.java:911) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeNoSelect(DatabaseAccessor.java:973) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.basicExecuteCall(DatabaseAccessor.java:633) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeCall(DatabaseAccessor.java:560) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.basicExecuteCall(AbstractSession.java:2070) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.sessions.server.ClientSession.executeCall(ClientSession.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:262) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:248) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.insertObject(DatasourceCallQueryMechanism.java:415) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:179) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:194) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.insertObjectForWrite(DatabaseQueryMechanism.java:498) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommit(InsertObjectQuery.java:82) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommitWithChangeSet(InsertObjectQuery.java:92) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.executeWriteWithChangeSet(DatabaseQueryMechanism.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.WriteObjectQuery.executeDatabaseQuery(WriteObjectQuery.java:58) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.execute(DatabaseQuery.java:910) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.executeInUnitOfWork(DatabaseQuery.java:809) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWorkObjectLevelModifyQuery(ObjectLevelModifyQuery.java:108) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWork(ObjectLevelModifyQuery.java:85) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.internalExecuteQuery(UnitOfWorkImpl.java:2900) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1866) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1848) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1799) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitNewObjectsForClassWithChangeSet(CommitManager.java:227) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitAllObjectsWithChangeSet(CommitManager.java:126) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.writeAllObjectsWithChangeSet(AbstractSession.java:4297) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabase(UnitOfWorkImpl.java:1445) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabaseWithChangeSet(UnitOfWorkImpl.java:1535) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.issueSQLbeforeCompletion(UnitOfWorkImpl.java:3172) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.RepeatableWriteUnitOfWork.issueSQLbeforeCompletion(RepeatableWriteUnitOfWork.java:355) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:158) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307) ~[com.ibm.ws.runtime.jar:?]
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035) ~[spring-tx-5.3.33.jar:5.3.33]
+	... 60 more
+Caused by: java.sql.SQLException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:509) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:461) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1104) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:550) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:268) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:655) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:270) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:91) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.executeForRows(T4CPreparedStatement.java:970) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1205) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3666) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.executeInternal(T4CPreparedStatement.java:1426) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeLargeUpdate(OraclePreparedStatement.java:3756) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeUpdate(OraclePreparedStatement.java:3736) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatementWrapper.executeUpdate(OraclePreparedStatementWrapper.java:1063) ~[ojdbc8.jar:19.3.0.0.0]
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.pmiExecuteUpdate(WSJdbcPreparedStatement.java:1304) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.executeUpdate(WSJdbcPreparedStatement.java:845) ~[com.ibm.ws.runtime.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeDirectNoSelect(DatabaseAccessor.java:901) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeNoSelect(DatabaseAccessor.java:973) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.basicExecuteCall(DatabaseAccessor.java:633) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeCall(DatabaseAccessor.java:560) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.basicExecuteCall(AbstractSession.java:2070) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.sessions.server.ClientSession.executeCall(ClientSession.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:262) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:248) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.insertObject(DatasourceCallQueryMechanism.java:415) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:179) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:194) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.insertObjectForWrite(DatabaseQueryMechanism.java:498) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommit(InsertObjectQuery.java:82) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommitWithChangeSet(InsertObjectQuery.java:92) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.executeWriteWithChangeSet(DatabaseQueryMechanism.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.WriteObjectQuery.executeDatabaseQuery(WriteObjectQuery.java:58) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.execute(DatabaseQuery.java:910) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.executeInUnitOfWork(DatabaseQuery.java:809) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWorkObjectLevelModifyQuery(ObjectLevelModifyQuery.java:108) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWork(ObjectLevelModifyQuery.java:85) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.internalExecuteQuery(UnitOfWorkImpl.java:2900) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1866) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1848) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1799) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitNewObjectsForClassWithChangeSet(CommitManager.java:227) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitAllObjectsWithChangeSet(CommitManager.java:126) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.writeAllObjectsWithChangeSet(AbstractSession.java:4297) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabase(UnitOfWorkImpl.java:1445) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabaseWithChangeSet(UnitOfWorkImpl.java:1535) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.issueSQLbeforeCompletion(UnitOfWorkImpl.java:3172) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.RepeatableWriteUnitOfWork.issueSQLbeforeCompletion(RepeatableWriteUnitOfWork.java:355) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:158) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307) ~[com.ibm.ws.runtime.jar:?]
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035) ~[spring-tx-5.3.33.jar:5.3.33]
+	... 60 more
+Caused by: oracle.jdbc.OracleDatabaseException: ORA-01403: no data found
+ORA-06512: at "IPS_OWN.AUDIT_RP_ADMIN", line 25
+ORA-04088: error during execution of trigger 'IPS_OWN.AUDIT_RP_ADMIN'
+
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:513) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:461) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4C8Oall.processError(T4C8Oall.java:1104) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:550) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:268) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4C8Oall.doOALL(T4C8Oall.java:655) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:270) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.doOall8(T4CPreparedStatement.java:91) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.executeForRows(T4CPreparedStatement.java:970) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OracleStatement.doExecuteWithTimeout(OracleStatement.java:1205) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeInternal(OraclePreparedStatement.java:3666) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.T4CPreparedStatement.executeInternal(T4CPreparedStatement.java:1426) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeLargeUpdate(OraclePreparedStatement.java:3756) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatement.executeUpdate(OraclePreparedStatement.java:3736) ~[ojdbc8.jar:19.3.0.0.0]
+	at oracle.jdbc.driver.OraclePreparedStatementWrapper.executeUpdate(OraclePreparedStatementWrapper.java:1063) ~[ojdbc8.jar:19.3.0.0.0]
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.pmiExecuteUpdate(WSJdbcPreparedStatement.java:1304) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.rsadapter.jdbc.WSJdbcPreparedStatement.executeUpdate(WSJdbcPreparedStatement.java:845) ~[com.ibm.ws.runtime.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeDirectNoSelect(DatabaseAccessor.java:901) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeNoSelect(DatabaseAccessor.java:973) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.basicExecuteCall(DatabaseAccessor.java:633) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.databaseaccess.DatabaseAccessor.executeCall(DatabaseAccessor.java:560) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.basicExecuteCall(AbstractSession.java:2070) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.sessions.server.ClientSession.executeCall(ClientSession.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:262) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.executeCall(DatasourceCallQueryMechanism.java:248) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatasourceCallQueryMechanism.insertObject(DatasourceCallQueryMechanism.java:415) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:179) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.StatementQueryMechanism.insertObject(StatementQueryMechanism.java:194) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.insertObjectForWrite(DatabaseQueryMechanism.java:498) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommit(InsertObjectQuery.java:82) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.InsertObjectQuery.executeCommitWithChangeSet(InsertObjectQuery.java:92) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.queries.DatabaseQueryMechanism.executeWriteWithChangeSet(DatabaseQueryMechanism.java:310) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.WriteObjectQuery.executeDatabaseQuery(WriteObjectQuery.java:58) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.execute(DatabaseQuery.java:910) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.DatabaseQuery.executeInUnitOfWork(DatabaseQuery.java:809) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWorkObjectLevelModifyQuery(ObjectLevelModifyQuery.java:108) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.queries.ObjectLevelModifyQuery.executeInUnitOfWork(ObjectLevelModifyQuery.java:85) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.internalExecuteQuery(UnitOfWorkImpl.java:2900) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1866) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1848) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.executeQuery(AbstractSession.java:1799) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitNewObjectsForClassWithChangeSet(CommitManager.java:227) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.CommitManager.commitAllObjectsWithChangeSet(CommitManager.java:126) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.AbstractSession.writeAllObjectsWithChangeSet(AbstractSession.java:4297) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabase(UnitOfWorkImpl.java:1445) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabaseWithChangeSet(UnitOfWorkImpl.java:1535) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.issueSQLbeforeCompletion(UnitOfWorkImpl.java:3172) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.internal.sessions.RepeatableWriteUnitOfWork.issueSQLbeforeCompletion(RepeatableWriteUnitOfWork.java:355) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:158) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68) ~[com.ibm.ws.jpa.eclipselink.jar:?]
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439) ~[com.ibm.ws.runtime.jar:?]
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191) ~[com.ibm.tx.jta.jar:?]
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307) ~[com.ibm.ws.runtime.jar:?]
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035) ~[spring-tx-5.3.33.jar:5.3.33]
+	... 60 more
+[6/20/25 10:35:42:181 PDT] 000000f6 SystemOut     O 10:35:42.180 [WebContainer : 0] ERROR  - com.ips.bean.SponsorEmailAdminBean->  modifyStoredImage-> Exception occurred when sending admin logo notification change [IPSException]
+com.ips.exception.IPSException: JTA transaction unexpectedly rolled back (maybe due to a timeout); nested exception is javax.transaction.RollbackException
+	at com.ips.service.AdminServiceImpl.ippEmailsAdminNotification(AdminServiceImpl.java:1159) ~[classes/:?]
+	at com.ips.bean.SponsorEmailAdminBean.modifyStoredImage(SponsorEmailAdminBean.java:948) [classes/:?]
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[?:1.8.0]
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90) ~[?:1.8.0]
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55) ~[?:1.8.0]
+	at java.lang.reflect.Method.invoke(Method.java:508) ~[?:1.8.0]
+	at org.apache.el.parser.AstValue.invoke(AstValue.java:245) [com.ibm.ws.webcontainer.jar:?]
+	at org.apache.el.MethodExpressionImpl.invoke(MethodExpressionImpl.java:267) [com.ibm.ws.webcontainer.jar:?]
+	at org.jboss.weld.util.el.ForwardingMethodExpression.invoke(ForwardingMethodExpression.java:40) [com.ibm.ws.org.jboss.weld.2.4.8_1.0.23.jar:2.4.8.Final]
+	at org.jboss.weld.el.WeldMethodExpression.invoke(WeldMethodExpression.java:50) [com.ibm.ws.org.jboss.weld.2.4.8_1.0.23.jar:2.4.8.Final]
+	at org.apache.myfaces.view.facelets.el.ContextAwareTagMethodExpression.invoke(ContextAwareTagMethodExpression.java:96) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.application.ActionListenerImpl.processAction(ActionListenerImpl.java:74) [com.ibm.ws.jsf.myfaces.jar:?]
+	at javax.faces.component.UICommand.broadcast(UICommand.java:120) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot._broadcastAll(UIViewRoot.java:1172) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot.broadcastEvents(UIViewRoot.java:365) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot._process(UIViewRoot.java:1658) [javax.j2ee.jsf.jar:?]
+	at javax.faces.component.UIViewRoot.processApplication(UIViewRoot.java:862) [javax.j2ee.jsf.jar:?]
+	at org.apache.myfaces.lifecycle.InvokeApplicationExecutor.execute(InvokeApplicationExecutor.java:42) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.lifecycle.LifecycleImpl.executePhase(LifecycleImpl.java:196) [com.ibm.ws.jsf.myfaces.jar:?]
+	at org.apache.myfaces.lifecycle.LifecycleImpl.execute(LifecycleImpl.java:143) [com.ibm.ws.jsf.myfaces.jar:?]
+	at javax.faces.webapp.FacesServlet.service(FacesServlet.java:198) [javax.j2ee.jsf.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.service(ServletWrapper.java:1235) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:779) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:478) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.ServletWrapperImpl.handleRequest(ServletWrapperImpl.java:179) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96) [com.ibm.ws.webcontainer.jar:?]
+	at com.ips.servlet.filter.AdminSessionFilter.doFilter(AdminSessionFilter.java:64) [classes/:?]
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90) [com.ibm.ws.webcontainer.jar:?]
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:62) [Common-25.1.2-SNAPSHOT.jar:?]
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.servlet.CacheServletWrapper.handleRequest(CacheServletWrapper.java:82) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:966) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382) [com.ibm.ws.webcontainer.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905) [com.ibm.ws.runtime.jar:?]
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909) [com.ibm.ws.runtime.jar:?]
+[6/20/25 10:35:42:195 PDT] 000000f6 HtmlLabelRend W   Attribute 'for' of label component with id j_id_3f is not defined
