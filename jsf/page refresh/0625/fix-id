@@ -1,0 +1,89 @@
+Exactly — you're thinking in the right direction.
+
+JSF builds the **component tree on the server**, and components rendered conditionally based on `#{bean.logic}` can cause **missing references or EL resolution errors** if:
+
+* The input field isn't in the tree when `<h:outputLabel for="...">` tries to bind to it
+* The `rendered=...` flags aren’t consistently applied to both the label **and** the target input
+* The logic in the bean returns different results **between postback and render phases**
+
+---
+
+### 🛠 How to Troubleshoot Conditional `rendered=` Issues
+
+#### ✅ 1. **Ensure Matching `rendered` Flags on Label + Target**
+
+Bad:
+
+```xhtml
+<h:outputLabel for="emailField" value="Email:" />
+<h:inputText id="emailField" rendered="#{bean.showEmail}" />
+```
+
+✅ Good:
+
+```xhtml
+<h:panelGroup rendered="#{bean.showEmail}">
+    <h:outputLabel for="emailField" value="Email:" />
+    <h:inputText id="emailField" />
+</h:panelGroup>
+```
+
+This guarantees the label is only rendered if the input is.
+
+---
+
+#### ✅ 2. **Log EL State in Bean During Lifecycle**
+
+Temporarily add logging in the bean to see what flags are evaluated when:
+
+```java
+public boolean isShowEmail() {
+    System.out.println("Evaluating showEmail: " + someCondition);
+    return someCondition;
+}
+```
+
+Use this to correlate with logs like:
+
+```
+Attribute 'for' of label component with id j_id_xyz is not defined
+```
+
+---
+
+#### ✅ 3. **Use Unique IDs and Avoid Dynamic ID Conflicts**
+
+JSF uses predictable ID patterns like `j_id_3f` when:
+
+* You don't explicitly assign `id` to components
+* Components are nested in repeaters or templates
+
+Always assign IDs explicitly when using `for=`.
+
+---
+
+#### ✅ 4. **Temporarily Render All Content for Debugging**
+
+If you're stuck, try temporarily disabling `rendered=...` on **all components** and allow the full tree to be built. This can help surface hidden ID mismatches.
+
+---
+
+#### ✅ 5. **Use JSF Development Mode to Dump Tree**
+
+In `web.xml`:
+
+```xml
+<context-param>
+  <param-name>javax.faces.PROJECT_STAGE</param-name>
+  <param-value>Development</param-value>
+</context-param>
+```
+
+Then:
+
+* View source → search for `j_id_3f`
+* You can see what component is failing
+
+---
+
+If you upload your `main-admin.xhtml` or other included files, I can scan those for label mismatches too. Want to proceed with that?
