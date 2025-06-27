@@ -1,0 +1,90 @@
+<ui:composition template="/templates/main-admin.xhtml"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:h="http://java.sun.com/jsf/html"
+    xmlns:f="http://java.sun.com/jsf/core"
+    xmlns:ui="http://java.sun.com/jsf/facelets"
+    xmlns:rich="http://richfaces.org/rich"
+    xmlns:a4j="http://richfaces.org/a4j">
+
+    <ui:define name="body">
+
+        <h:panelGrid columns="1" styleClass="formSection">
+
+            <!-- Sponsor Selection -->
+            <h:outputLabel for="idSelSponsor" value="Sponsor" />
+            <h:selectOneMenu id="idSelSponsor" value="#{bean.selectedSponsor}">
+                <f:selectItems value="#{bean.sponsorList}" var="sp"
+                               itemValue="#{sp.sponsorId}" itemLabel="#{sp.sponsorName}" />
+                <a4j:ajax event="valueChange" listener="#{bean.selectSponsor}"
+                          render="idSelEmail editorPanel subjectPanel messageInfoPanel bodyPanel logoPanel uploadForm" />
+            </h:selectOneMenu>
+
+            <!-- Email Type Selection -->
+            <h:outputLabel for="idSelEmail" value="Email Type" />
+            <h:selectOneMenu id="idSelEmail" value="#{bean.selectedEmailType}">
+                <f:selectItems value="#{bean.emailTypeList}" var="et"
+                               itemValue="#{et.id}" itemLabel="#{et.idTypeDescription}" />
+                <a4j:ajax event="valueChange" listener="#{bean.selectEmailType}"
+                          render="editorPanel subjectPanel messageInfoPanel bodyPanel logoPanel uploadForm" />
+            </h:selectOneMenu>
+
+            <!-- Subject Panel -->
+            <h:panelGroup id="subjectPanel" rendered="#{not empty bean.subject}">
+                <h:outputLabel for="emailSubject" value="Subject" />
+                <h:inputText id="emailSubject" value="#{bean.subject}" style="width: 90%;" />
+            </h:panelGroup>
+
+            <!-- Message Info Panel -->
+            <h:panelGroup id="messageInfoPanel">
+                <h:messages globalOnly="true" layout="table" />
+            </h:panelGroup>
+
+            <!-- Editor Panel -->
+            <h:panelGroup id="editorPanel" rendered="#{not empty bean.body}">
+                <h3>Body</h3>
+                <rich:editor id="bodyEditor" value="#{bean.body}" toolbar="custom"
+                             readonly="#{bean.editorReadOnly}">
+                    <f:facet name="config">
+                        toolbar_custom:
+                        [
+                            { name: 'clipboard', items: ['Cut','Copy','Paste','Undo','Redo'] },
+                            { name: 'basicstyles', items: ['Bold','Italic','Underline'] },
+                            { name: 'paragraph', items: ['NumberedList','BulletedList','JustifyLeft','JustifyRight'] },
+                            { name: 'links', items: ['Link','Unlink'] },
+                            { name: 'styles', items: ['Font','FontSize'] },
+                            { name: 'colors', items: ['TextColor'] },
+                            { name: 'insert', items: ['Image','Table'] }
+                        ]
+                    </f:facet>
+                </rich:editor>
+            </h:panelGroup>
+
+            <!-- Logo Display -->
+            <h:panelGroup id="logoPanel" rendered="#{bean.brandExists}">
+                <h:outputLabel value="Current Logo" />
+                <h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}"
+                                rendered="#{not empty bean.imageBase64String}" />
+            </h:panelGroup>
+
+            <!-- File Upload (Isolated Multipart Form) -->
+            <h:panelGroup rendered="#{bean.allowImageUpload}">
+                <h:form id="uploadForm" enctype="multipart/form-data">
+                    <rich:fileUpload fileUploadListener="#{bean.storeUploadImage}"
+                                     acceptedTypes=".jpg,.png,.gif"
+                                     maxFilesQuantity="1"
+                                     onsizerejected="alert('Max 20 KB allowed')"
+                                     ontyperejected="alert('Only JPG, PNG, GIF allowed')" />
+                    <h:commandButton value="Upload" action="#{bean.finalizeUpload}" />
+                </h:form>
+            </h:panelGroup>
+
+            <!-- Action Buttons -->
+            <h:panelGroup>
+                <h:commandButton value="Save" action="#{bean.save}" />
+                <h:commandButton value="Cancel" immediate="true" action="#{bean.cancel}" />
+            </h:panelGroup>
+
+        </h:panelGrid>
+
+    </ui:define>
+</ui:composition>
