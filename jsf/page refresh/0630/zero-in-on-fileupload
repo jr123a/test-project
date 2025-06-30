@@ -1,0 +1,61 @@
+<h:panelGroup id="brandLogoPanel">
+			   	<a4j:outputPanel rendered="#{bean.selectedSponsor != 1 and bean.selectedEmailType != 2 and bean.selectedEmailType != 4}">
+				   	<h3>Agency Logo</h3>
+				   	<h:outputLabel rendered="#{bean.selectedEmailType == 6}" for="includeUSPSLogoCheckbox" value="Include USPS Logo in Physical Letter" />
+				   	<h:selectBooleanCheckbox readonly="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" value="#{bean.includeUSPSLogo}" id="includeUSPSLogoCheckbox" rendered="#{bean.selectedEmailType == 6}" disabled="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+			   		<h:outputLabel rendered="#{bean.selectedEmailType == 6}" for="includeAgencyLogoCheckbox" value="Include Agency Logo in Physical Letter" />
+			   		<h:selectBooleanCheckbox readonly="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" value="#{bean.includeAgencyLogo}" id="includeAgencyLogoCheckbox" rendered="#{bean.selectedEmailType == 6}" disabled="#{bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+			   		<h:outputText value="" rendered="#{bean.selectedEmailType == 6}"><br /></h:outputText>
+			   		<h:graphicImage value="images/info-tooltip.png" rendered="#{bean.selectedEmailType == 1 || bean.selectedEmailType == 3}" style="width: 15px;" />
+			   		<h:outputText value="The logo configured for the initial opt-in email will also be used for the reminder opt-in email." rendered="#{bean.selectedEmailType == 1}" />
+			   		<h:outputText value="The logo configured for the passed confirmation email will also be used for the failed confirmation email." rendered="#{bean.selectedEmailType == 3}" />
+			   		<br />
+					<h:panelGroup rendered="#{bean.isBrandExists()}">
+						<h:graphicImage rendered="#{not empty bean.imageBase64String}"
+										value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" />
+					</h:panelGroup>
+
+					<h:panelGroup id="fileUploadPanel" layout="block" rendered="#{bean.allowImageUpload}">
+						<h:outputLabel value="Upload New Logo:" style="font-weight:bold;" />
+
+						<rich:fileUpload
+								fileUploadListener="#{bean.storeUploadImage}"
+								id="uploadFile"
+								acceptedTypes=".jpg,.gif,.png"
+								maxFilesQuantity="1"
+								ontyperejected="alert('Only JPG, GIF or PNG files are accepted');"
+								onsizerejected="alert('The max size allowed for a file is 20 KB');"
+								immediateUpload="true"
+								autoclear="true"
+								 />
+					</h:panelGroup>
+
+				   	<div class="left-buttons">
+						<br />
+						<h:commandButton id="btnSaveBrand" value="Save" title="Save" alt="Save" tabindex="0" action="#{bean.confirmLogoChange()}" rendered="#{!bean.isLogoConfirmChange() and !bean.isLogoDeleteChange()}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+						<h:commandButton id="btnConfirmSaveBrand" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.modifyStoredImage()}" rendered="#{bean.isLogoConfirmChange()}" />
+						<h:commandButton id="btnCancelSaveBrand" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmLogoChange()}" rendered="#{bean.isLogoConfirmChange()}" />
+						<h:commandButton id="btnDeleteBrand" value="Delete Saved Logo" action="#{bean.confirmLogoDelete()}" rendered="#{!bean.isLogoDeleteChange() and !bean.isLogoConfirmChange() and bean.isBrandExists()}" disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isOptinInitialEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}" />
+						<h:commandButton id="btnConfirmDeleteBrand" value="Confirm" title="Confirm" alt="Confirm" tabindex="0" action="#{bean.modifyStoredImage()}" rendered="#{bean.isLogoDeleteChange()}" />
+						<h:commandButton id="btnCancelDeleteBrand" value="Cancel" title="Cancel" alt="Cancel" tabindex="0" action="#{bean.confirmLogoDelete()}" rendered="#{bean.isLogoDeleteChange()}" />
+					</div>
+					<br />
+				</a4j:outputPanel>
+			</h:panelGroup>
+
+
+--------------------------------------------------------
+managed bean
+
+public boolean isAllowImageUpload() {
+		return !isDatabaseError()
+				&& !isSendEmailChange()
+				&& !isLogoConfirmChange()
+				&& !isLogoDeleteChange()
+				&& !isOptinInitialEmailChange()
+				&& !isConfirmationPassedEmailChange()
+				&& !isBarcodeExpirationChange()
+				&& !isActivationCodeExpirationChange()
+				&& !isIAL2EmailChange()
+				&& !isIAL2LetterChange();
+	}
