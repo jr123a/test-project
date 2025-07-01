@@ -1,0 +1,106 @@
+✅ Here’s a **complete, clean, and production-safe replacement code block** for your **file upload + logo save workflow**. This will eliminate the multipart + AJAX conflict and stabilize the lifecycle.
+
+---
+
+### 🚀 **Drop-in XHTML Replacement**
+
+```xhtml
+<h:panelGroup id="brandLogoPanel">
+    <a4j:outputPanel rendered="#{bean.selectedSponsor != 1 and bean.selectedEmailType != 2 and bean.selectedEmailType != 4}">
+
+        <h3>Agency Logo</h3>
+
+        <!-- Display existing logo -->
+        <h:panelGroup rendered="#{bean.brandExists}">
+            <h:outputLabel value="Current Logo:" style="font-weight:bold;" />
+            <h:graphicImage value="data:image/#{bean.imageExt};base64,#{bean.imageBase64String}" 
+                            rendered="#{not empty bean.imageBase64String}" 
+                            style="max-height: 100px; max-width: 200px;" />
+        </h:panelGroup>
+
+        <!-- Isolated file upload form -->
+        <h:form id="uploadForm" enctype="multipart/form-data" rendered="#{bean.allowImageUpload}">
+            <h:panelGroup id="fileUploadPanel" layout="block">
+                <h:outputLabel value="Upload New Logo:" style="font-weight:bold;" />
+
+                <rich:fileUpload
+                    fileUploadListener="#{bean.storeUploadImage}"
+                    acceptedTypes=".jpg,.gif,.png"
+                    maxFilesQuantity="1"
+                    ontyperejected="alert('Only JPG, GIF or PNG files are accepted');"
+                    onsizerejected="alert('The max size allowed for a file is 20 KB');" />
+
+                <!-- Dedicated button to confirm file upload -->
+                <h:commandButton value="Save Logo" action="#{bean.confirmLogoChange}" />
+            </h:panelGroup>
+        </h:form>
+
+        <!-- Separate button panel for non-upload actions -->
+        <h:panelGroup layout="block" style="margin-top: 10px;">
+            <h:commandButton id="btnConfirmSaveBrand" value="Confirm" title="Confirm" 
+                             action="#{bean.modifyStoredImage}"
+                             rendered="#{bean.isLogoConfirmChange}" />
+
+            <h:commandButton id="btnCancelSaveBrand" value="Cancel" title="Cancel"
+                             action="#{bean.confirmLogoChange}"
+                             rendered="#{bean.isLogoConfirmChange}" />
+
+            <h:commandButton id="btnDeleteBrand" value="Delete Saved Logo"
+                             action="#{bean.confirmLogoDelete}"
+                             rendered="#{!bean.isLogoDeleteChange and !bean.isLogoConfirmChange and bean.brandExists}"
+                             disabled="#{bean.isDatabaseError or bean.isSendEmailChange or bean.isOptinInitialEmailChange or bean.isConfirmationPassedEmailChange or bean.isBarcodeExpirationChange or bean.isActivationCodeExpirationChange or bean.isIAL2EmailChange or bean.isIAL2LetterChange}" />
+
+            <h:commandButton id="btnConfirmDeleteBrand" value="Confirm Delete" title="Confirm Delete"
+                             action="#{bean.modifyStoredImage}"
+                             rendered="#{bean.isLogoDeleteChange}" />
+
+            <h:commandButton id="btnCancelDeleteBrand" value="Cancel Delete" title="Cancel Delete"
+                             action="#{bean.confirmLogoDelete}"
+                             rendered="#{bean.isLogoDeleteChange}" />
+        </h:panelGroup>
+
+    </a4j:outputPanel>
+</h:panelGroup>
+```
+
+---
+
+### ✅ **What This Fixes**
+
+✅ Upload is handled in a fully isolated multipart form — no more AJAX + multipart conflict
+✅ Main form (or template form) remains clean for dropdowns, editors, and other AJAX actions
+✅ The Save button (`Save Logo`) explicitly triggers logo confirmation
+✅ ViewState and RichFaces lifecycle stay intact
+
+---
+
+### 🛠 **Additional Note**
+
+➡ In your `web.xml`, make sure you have:
+
+```xml
+<servlet>
+  <servlet-name>Resource Servlet</servlet-name>
+  <servlet-class>org.richfaces.webapp.ResourceServlet</servlet-class>
+</servlet>
+
+<servlet-mapping>
+  <servlet-name>Resource Servlet</servlet-name>
+  <url-pattern>/org.richfaces.resources/*</url-pattern>
+</servlet-mapping>
+```
+
+➡ This ensures RichFaces file upload scripts load properly.
+
+---
+
+### ⚡ **Final Tip**
+
+If your **Save Logo** button is also inside the upload form, that’s safe — just ensure your other page actions (like dropdowns, email type selection) **never submit that upload form**.
+
+---
+
+✅ **Ready to try this? Let me know if you'd like the bean-side adjustments as well!**
+
+
+-------------------------------------------------------------------------------------------------------
