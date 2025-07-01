@@ -1,0 +1,104 @@
+✅ **Great question — let’s address this carefully so your solution is complete and production-stable.**
+
+---
+
+### 🎯 **Do You Need Bean-Side Adjustments?**
+
+➡ Since we’re isolating the file upload into its own form:
+
+* The file upload (`storeUploadImage`) and the file save/confirm (`confirmLogoChange`) are now separate requests
+* There is no longer an implicit link between uploading the file and persisting it — you explicitly control both
+
+✅ Therefore **yes, slight bean-side adjustments are recommended** to:
+
+* Track that an upload occurred
+* Ensure `confirmLogoChange` doesn’t fail if no file was uploaded yet
+* Ensure the Save Logo button only works after a file is uploaded
+
+---
+
+### 🚀 **Suggested Bean Adjustments**
+
+Here’s what to add to your `SponsorEmailAdminBean`:
+
+```java
+// Tracks if an upload happened during this view
+private boolean fileUploaded = false;
+
+// Existing getter/setter or add them
+public boolean isFileUploaded() {
+    return fileUploaded;
+}
+
+public void setFileUploaded(boolean fileUploaded) {
+    this.fileUploaded = fileUploaded;
+}
+
+// File upload listener
+public void storeUploadImage(FileUploadEvent event) {
+    try {
+        // Example: process file, e.g. read to byte array
+        byte[] content = event.getUploadedFile().getData();
+        this.imageBase64String = Base64.getEncoder().encodeToString(content);
+        this.imageExt = extractExtension(event.getUploadedFile().getName());
+        this.fileUploaded = true;
+
+        // Optional: log or debug
+        System.out.println("File uploaded: " + event.getUploadedFile().getName());
+
+    } catch (Exception e) {
+        // Log and handle
+        e.printStackTrace();
+        FacesContext.getCurrentInstance().addMessage(null, 
+            new FacesMessage(FacesMessage.SEVERITY_ERROR, 
+                             "File upload failed", e.getMessage()));
+    }
+}
+
+// Called on Save Logo button
+public String confirmLogoChange() {
+    if (!fileUploaded) {
+        FacesContext.getCurrentInstance().addMessage(null,
+            new FacesMessage(FacesMessage.SEVERITY_WARN, 
+                             "No file uploaded", "Please upload a logo before saving."));
+        return null; // Stay on same page
+    }
+
+    // Proceed with save logic (e.g., persist logo to DB or filesystem)
+    persistLogo();
+
+    // Reset flag
+    fileUploaded = false;
+
+    // Optionally redirect or return outcome
+    return null;
+}
+
+// Utility to extract file extension
+private String extractExtension(String fileName) {
+    int dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex > 0 && dotIndex < fileName.length() - 1) {
+        return fileName.substring(dotIndex + 1).toLowerCase();
+    }
+    return "";
+}
+```
+
+---
+
+### ✅ **What This Bean Logic Does**
+
+* Ensures `confirmLogoChange` is meaningful — only processes if a file was uploaded
+* Handles file data cleanly (converts to base64, extracts extension)
+* Prevents accidental empty save
+
+---
+
+### ⚡ **Extra Tip**
+
+➡ You can use `rendered="#{bean.fileUploaded}"` on your Save button to **disable Save until upload happens** if you want to guide the user.
+
+---
+
+✅ **This ensures your JSF + RichFaces + Spring JTA + WAS9 app behaves cleanly under this new structure.**
+Let me know if you want help integrating this into your actual class!
