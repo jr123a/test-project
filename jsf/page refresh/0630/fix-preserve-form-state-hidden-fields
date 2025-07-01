@@ -1,0 +1,96 @@
+✅ **Excellent focus — let’s break this down clearly and then I’ll give you the full implementation you can drop in.**
+
+---
+
+## 🎯 **Your Goal**
+
+➡ Ensure that when your **file upload form triggers a full POST**, the selected sponsor + email type (and any other critical state) is **preserved** so the page doesn't reset dropdowns or other fields.
+
+---
+
+## 🔍 **Why Hidden Fields Are the Right Solution**
+
+➡ The file upload form is isolated → its POST does not include the main form's state (like selected sponsor/email type).
+➡ Adding **hidden fields inside the upload form** binds those values so they're submitted alongside the file.
+
+➡ This ensures:
+✅ Your managed bean retains the correct state
+✅ The view renders with correct selections after the upload POST
+
+---
+
+## 🚀 **Clean, Complete Solution**
+
+### Main AJAX Form: sponsor + email type selection (already correct)
+
+```xhtml
+<h:panelGrid columns="1" columnClasses="sponsorColCls" width="20%" border="1">
+    <h:outputLabel for="idSelSponsor" value="Sponsor" />
+    <h:selectOneMenu id="idSelSponsor" styleClass="select_menu select_sponsor_width"
+                     value="#{bean.selectedSponsor}"
+                     disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}">
+        <f:selectItems value="#{bean.sponsorList}" var="sp"
+                       itemValue="#{sp.sponsorId}" itemLabel="#{sp.sponsorName}" />
+        <f:ajax event="valueChange"
+                listener="#{bean.selectSponsor}"
+                render="idSelEmail,expirationDaysPanel,editorPanel,subjectPanel,brandLogoPanel,informationMessagesPanel,sendEmailPanel,successPanel"
+                execute="@this" />
+    </h:selectOneMenu>
+
+    <h:outputLabel for="idSelEmail" value="Email Type" />
+    <h:selectOneMenu id="idSelEmail" styleClass="select_menu select_sponsor_width"
+                     value="#{bean.selectedEmailType}"
+                     disabled="#{bean.isDatabaseError() || bean.isSendEmailChange() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange() || bean.isOptinInitialEmailChange() || bean.isOptinReminderEmailChange() || bean.isConfirmationPassedEmailChange() || bean.isConfirmationFailedEmailChange() || bean.isBarcodeExpirationChange() || bean.isActivationCodeExpirationChange() || bean.isIAL2EmailChange() || bean.isIAL2LetterChange()}">
+        <f:selectItems value="#{bean.emailTypeList}" var="email"
+                       itemValue="#{email.id}" itemLabel="#{email.idTypeDescription}"
+                       itemDisabled="#{(bean.selectedSponsor == 1 || bean.selectedSponsor == 3) and (email.id == 5 || email.id == 6)}" />
+        <f:ajax event="valueChange"
+                listener="#{bean.selectEmailType}"
+                render="expirationDaysPanel,editorPanel,subjectPanel,brandLogoPanel,informationMessagesPanel,sendEmailPanel,successPanel"
+                execute="@this" />
+    </h:selectOneMenu>
+</h:panelGrid>
+```
+
+---
+
+### File Upload Form: includes hidden fields to preserve state
+
+```xhtml
+<h:form id="uploadForm" enctype="multipart/form-data" rendered="#{bean.allowImageUpload}">
+    <h:inputHidden value="#{bean.selectedSponsor}" />
+    <h:inputHidden value="#{bean.selectedEmailType}" />
+
+    <h:outputLabel value="Upload New Logo:" style="font-weight:bold;" />
+
+    <rich:fileUpload
+        fileUploadListener="#{bean.storeUploadImage}"
+        acceptedTypes=".jpg,.gif,.png"
+        maxFilesQuantity="1"
+        ontyperejected="alert('Only JPG, GIF or PNG files are accepted');"
+        onsizerejected="alert('The max size allowed for a file is 20 KB');" />
+
+    <h:commandButton value="Save Logo" action="#{bean.confirmLogoChange}" />
+</h:form>
+```
+
+---
+
+## ✅ **Why This Works**
+
+* When you upload a file:
+
+  * The `selectedSponsor` and `selectedEmailType` values go with the POST
+  * Your bean keeps those values during view rebuild
+* Your dropdowns + fields display as expected after upload
+
+---
+
+## ⚡ **Final Notes**
+
+➡ The hidden fields solution is **sufficient** — no extra JSF config or fancy workarounds needed.
+➡ Make sure your bean doesn’t reset `selectedSponsor`/`selectedEmailType` to defaults on POST.
+
+---
+
+Would you like me to generate a minimal managed bean method example to ensure those values stick after the POST?
