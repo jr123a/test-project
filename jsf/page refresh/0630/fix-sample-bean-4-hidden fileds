@@ -1,0 +1,126 @@
+✅ **Here’s a minimal, production-safe bean-side pattern** to ensure your values **persist across file upload POSTs** and that the UI stays in sync after page refresh. This complements the hidden field solution perfectly.
+
+---
+
+### 🚀 **Managed Bean Snippet**
+
+```java
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ViewScoped;
+import java.io.Serializable;
+
+@ManagedBean(name = "bean")
+@ViewScoped
+public class SponsorEmailAdminBean implements Serializable {
+
+    private Integer selectedSponsor;
+    private Integer selectedEmailType;
+    private String subject;
+
+    private boolean allowImageUpload = true;  // Example flag
+    private boolean fileUploaded = false;
+
+    // Getters & Setters
+    public Integer getSelectedSponsor() {
+        return selectedSponsor;
+    }
+
+    public void setSelectedSponsor(Integer selectedSponsor) {
+        this.selectedSponsor = selectedSponsor;
+    }
+
+    public Integer getSelectedEmailType() {
+        return selectedEmailType;
+    }
+
+    public void setSelectedEmailType(Integer selectedEmailType) {
+        this.selectedEmailType = selectedEmailType;
+    }
+
+    public String getSubject() {
+        return subject;
+    }
+
+    public void setSubject(String subject) {
+        this.subject = subject;
+    }
+
+    public boolean isAllowImageUpload() {
+        return allowImageUpload;
+    }
+
+    public void setAllowImageUpload(boolean allowImageUpload) {
+        this.allowImageUpload = allowImageUpload;
+    }
+
+    public boolean isFileUploaded() {
+        return fileUploaded;
+    }
+
+    public void setFileUploaded(boolean fileUploaded) {
+        this.fileUploaded = fileUploaded;
+    }
+
+    // File upload listener
+    public void storeUploadImage(org.richfaces.event.FileUploadEvent event) {
+        // Process the file (save temp, convert to base64, etc.)
+        System.out.println("File uploaded: " + event.getUploadedFile().getName());
+        this.fileUploaded = true;
+    }
+
+    // Save logo (called from Save Logo button)
+    public String confirmLogoChange() {
+        if (!fileUploaded) {
+            javax.faces.context.FacesContext.getCurrentInstance().addMessage(null,
+                new javax.faces.application.FacesMessage(
+                    javax.faces.application.FacesMessage.SEVERITY_WARN,
+                    "Please upload a file before saving.",
+                    null));
+            return null;
+        }
+
+        // Proceed to save the logo
+        System.out.println("Saving logo for sponsor: " + selectedSponsor + ", email type: " + selectedEmailType);
+
+        // Reset flag
+        fileUploaded = false;
+
+        return null; // Stay on the same page
+    }
+
+    // AJAX handlers for dropdowns
+    public void selectSponsor() {
+        System.out.println("Sponsor selected: " + selectedSponsor);
+        // Load related data as needed
+    }
+
+    public void selectEmailType() {
+        System.out.println("Email type selected: " + selectedEmailType);
+        // Load related data as needed
+    }
+}
+```
+
+---
+
+### ✅ **What This Does**
+
+* Keeps `selectedSponsor`, `selectedEmailType`, `subject` alive during file upload POST (thanks to hidden fields + ViewScoped bean)
+* Logs or processes file upload without resetting your page state
+* Confirms file uploaded before allowing logo save
+* Provides clean hooks for your dropdown AJAX
+
+---
+
+### ⚡ **Summary**
+
+👉 ✅ This minimal bean + hidden field solution ensures your **dropdown selections persist across file uploads**, no state loss.
+👉 ✅ Works with separate upload form + main AJAX form.
+👉 ✅ Keeps user experience clean.
+
+---
+
+If you’d like, I can help:
+
+* Tie this in with your actual model types (e.g., `RefSponsor`, `RefEmailType`)
+* Or generate the full XHTML + bean pairing ready for drop-in. Just say the word!
