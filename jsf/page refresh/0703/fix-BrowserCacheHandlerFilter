@@ -1,0 +1,89 @@
+✅ **Here’s the full, ready-to-use `BrowserCacheHandlerFilter` class** with the updated logic that will allow all the resource types you need and prevent those 404s. You can paste this directly into your codebase.
+
+---
+
+## 🚀 **Updated `BrowserCacheHandlerFilter.java`**
+
+```java
+package com.ips.servlet.filter;
+
+import java.io.IOException;
+import java.io.Serializable;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+public class BrowserCacheHandlerFilter implements Filter, Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    public void init(FilterConfig cfg) throws ServletException {
+        // Initialize filter params if needed
+    }
+
+    public void doFilter(ServletRequest request, ServletResponse response,
+                         FilterChain chain) throws IOException, ServletException {
+
+        HttpServletRequest httpReq = (HttpServletRequest) request;
+        HttpServletResponse httpResp = (HttpServletResponse) response;
+        String requestURI = httpReq.getRequestURI();
+
+        // Debug: Log each request URI (can remove after testing)
+        System.out.println("BrowserCacheHandlerFilter processing: " + requestURI);
+
+        // Allow JSF/RichFaces/static resources to pass without modification
+        if (requestURI.contains("/javax.faces.resource/")
+            || requestURI.contains("/org.richfaces.resources/")
+            || requestURI.contains("/plugins/")
+            || requestURI.contains("/skins/")
+            || requestURI.contains("/ckeditor/")
+            || requestURI.contains("/resources/")
+            || requestURI.matches(".*(\\.js|\\.css|\\.ecss|\\.png|\\.jpg|\\.gif)(\\?.*)?$")) {
+
+            System.out.println("BrowserCacheHandlerFilter allowing: " + requestURI);
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // Apply cache control headers for other requests
+        httpResp.addHeader("Pragma", "no-cache");
+        httpResp.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        httpResp.addHeader("Expires", "Mon, 8 Aug 2006 10:00:00 GMT");
+        httpResp.addHeader("X-Content-Type-Options", "nosniff");
+
+        chain.doFilter(request, response);
+    }
+
+    public void destroy() {
+        // Cleanup resources if needed
+    }
+}
+```
+
+---
+
+## ✅ **Why This Works**
+
+* ✅ Allows all RichFaces, JSF, plugin, and static files including versioned resources
+* ✅ No more 404 on `editor.ecss`, `contents.css`, or `default.js`
+* ✅ You get clean server delivery of necessary static assets
+* ✅ Debug logs help confirm what’s passing through
+
+---
+
+## 📝 **Next Steps**
+
+1️⃣ Replace your filter class with this version
+2️⃣ Deploy to SET
+3️⃣ Check Network tab → confirm 200s for all static resources
+4️⃣ Remove debug `System.out.println` after verifying
+
+---
+
+👉 **If you'd like, I can help you draft the exact `web.xml` filter-mapping or update your deployment instructions for testers. Let me know! 🚀**
