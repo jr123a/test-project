@@ -1,0 +1,81 @@
+package com.ips.servlet.filter;
+
+import java.io.IOException;
+import java.io.Serializable;
+
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.ips.common.common.CustomLogger;
+
+public class BrowserCacheHandlerFilter implements Filter, Serializable {
+
+    /**
+     * 
+     */
+    private static final long serialVersionUID = 1L;
+
+    public void init(FilterConfig cfg) throws ServletException {
+        // If you have any <init-param> in web.xml, then you could get them
+        // here by config.getInitParameter("name") and assign it as field.
+    }
+
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
+        String requestURI = ((HttpServletRequest) request).getRequestURI();
+
+        // Allow all JSF and RichFaces static resources
+        if (requestURI.contains("/javax.faces.resource/")
+                || requestURI.contains("/org.richfaces.resources/")
+                || requestURI.contains("/plugins/")
+                || requestURI.contains("/skins/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+
+        boolean isValidFileExtension = false;
+        
+        String[] validFileExtensions = {
+            ".xhtml",
+            ".css",
+            ".js",
+            ".png",
+            ".jpg",
+            ".gif",
+            ".xml",
+            ".htc"
+        };
+        
+        for (String extension : validFileExtensions) {
+            if (requestURI.endsWith(extension)) {
+                isValidFileExtension = true;
+                break;
+            }
+        }
+        
+        if (isValidFileExtension == true) {
+            HttpServletResponse resp = (HttpServletResponse) response;
+            resp.addHeader("Pragma", "no-cache");
+            resp.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            // some date in the past
+            resp.addHeader("Expires", "Mon, 8 Aug 2006 10:00:00 GMT");
+            resp.addHeader("X-Content-Type-Options", "nosniff");
+        }
+        
+        chain.doFilter(request, response);
+    }
+
+    @Override
+    public void destroy() {
+        CustomLogger.enter(this.getClass());
+        // If you have assigned any expensive resources as field of
+        // this Filter class, then you could clean/close them here.
+    }
+}
