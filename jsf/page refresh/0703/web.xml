@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
+	version="3.0">
+	<display-name>IVSAdmin</display-name>
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/application-context.xml</param-value>
+	</context-param>
+	<context-param>
+		<param-name>org.apache.myfaces.SERIALIZE_STATE_IN_SESSION</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>org.apache.myfaces.SUPPORT_MANAGED_BEANS</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>org.apache.myfaces.annotation.USE_CDI_FOR_ANNOTATION_SCANNING</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>org.apache.myfaces.CDI_MANAGED</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<listener>
+		<listener-class>org.apache.myfaces.webapp.StartupServletContextListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>
+			org.springframework.web.util.IntrospectorCleanupListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>
+			org.springframework.web.context.request.RequestContextListener</listener-class>
+	</listener>
+	<listener>
+		<listener-class>com.ips.jaxrs.ServletContextHolder</listener-class>
+	</listener>
+	<context-param>
+		<description>
+		The location where state information is saved.
+Valid values are 'server' (typically saved in HttpSession) and 'client' (typically
+saved as a hidden field in the form.
+Default is server.</description>
+		<param-name>javax.faces.STATE_SAVING_METHOD</param-name>
+		<param-value>server</param-value>
+	</context-param>
+	<context-param>
+		<description>
+		Comma-delimited list of context-relative resource paths under which the JSF implementation
+will look for application configuration resources, before loading a configuration resource
+named /WEB-INF/faces-config.xml (if such a resource exists).</description>
+		<param-name>javax.faces.CONFIG_FILES</param-name>
+		<param-value></param-value>
+	</context-param>
+	<context-param>
+		<description>
+		The default suffix for extension-mapped resources that contain JSF components.
+Default is '.jsp'.</description>
+		<param-name>javax.faces.DEFAULT_SUFFIX</param-name>
+		<param-value>.xhtml</param-value>
+	</context-param>
+	<context-param>
+		<description>
+		A human readable string describing where this particular JSF application is
+in the software development lifecycle.
+Valid values are 'Development', 'UnitTest', 'SystemTest' and 'Production'.
+Default is 'Production'.
+This parameter is not available in JSF 1.x.</description>
+		<param-name>javax.faces.PROJECT_STAGE</param-name>
+		<param-value>Production</param-value>
+	</context-param>
+	<context-param>
+		<description>
+		Monitors Faces JSP files for modifications and synchronizes a running server with
+the changes without restarting the server. If this parameter is set to false or
+removed from the deployment descriptor, any changes made to Faces JSP files may
+not be seen by the server until it is restarted. This parameter is usually set
+to true while the Faces JSP files are being developed and debugged in order to
+improve the performance of the development environment.</description>
+		<param-name>com.ibm.ws.jsf.JSP_UPDATE_CHECK</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<description>
+		Load JSF runtime when the application server starts up. If this parameter is set to false or removed,
+JSF runtime will be loaded and initialized when the first JSF request is processed.
+This may disable custom JSF extensions, such as factories defined in the project.</description>
+		<param-name>com.ibm.ws.jsf.LOAD_FACES_CONFIG_AT_STARTUP</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<description>
+			The max file size (in bytes) accepted by the richfaces file upload element.
+		</description>
+		<param-name>org.richfaces.fileUpload.maxRequestSize</param-name>
+		<param-value>2000000</param-value>
+	</context-param>
+	<context-param>
+		<description>
+			Boolean attribute which defines whether the uploaded files are stored in temporary files or available in the listener directly as byte[] data.
+		</description>
+		<param-name>org.richfaces.fileUpload.createTempFiles</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>org.richfaces.push.jms.disable</param-name>
+		<param-value>true</param-value>
+	</context-param>
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/application-context.xml</param-value>
+	</context-param>
+	<servlet>
+		<servlet-name>Resource Servlet</servlet-name>
+		<servlet-class>org.richfaces.webapp.ResourceServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Resource Servlet</servlet-name>
+		<url-pattern>/org.richfaces.resources/*</url-pattern>
+	</servlet-mapping>
+	<servlet>
+		<servlet-name>Faces Servlet</servlet-name>
+		<servlet-class>javax.faces.webapp.FacesServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+		<enabled>true</enabled>
+		<async-supported>false</async-supported>
+	</servlet>
+	<servlet>
+		<description>JAX-RS Tools Generated - Do not modify</description>
+		<servlet-name>JAX-RS Servlet</servlet-name>
+		<servlet-class>com.ibm.websphere.jaxrs.server.IBMRestServlet</servlet-class>
+		<init-param>
+			<param-name>javax.ws.rs.core.Application</param-name>
+			<param-value>com.ips.jaxrs.AdminRestApplication</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+		<enabled>true</enabled>
+		<async-supported>false</async-supported>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Faces Servlet</servlet-name>
+		<url-pattern>*.faces</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>Faces Servlet</servlet-name>
+		<url-pattern>*.xhtml</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>JAX-RS Servlet</servlet-name>
+		<url-pattern>/resources/*</url-pattern>
+	</servlet-mapping>
+	<!--<filter>
+		<filter-name>BrowserCacheHandlerFilter</filter-name>
+		<filter-class>com.ips.servlet.filter.BrowserCacheHandlerFilter</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>BrowserCacheHandlerFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>-->
+	<filter>
+		<filter-name>AdminSessionFilter</filter-name>
+		<filter-class>com.ips.servlet.filter.AdminSessionFilter</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>AdminSessionFilter</filter-name>
+		<url-pattern>/analytics_admin.faces</url-pattern>
+		<url-pattern>/analytics_admin.xhtml</url-pattern>
+		<url-pattern>/application_workflows.faces</url-pattern>
+		<url-pattern>/application_workflows.xhtml</url-pattern>
+		<url-pattern>/barcode_scan_limit.faces</url-pattern>
+		<url-pattern>/barcode_scan_limit.xhtml</url-pattern>
+		<url-pattern>/correct_facility_admin.faces</url-pattern>
+		<url-pattern>/correct_facility_admin.xhtml</url-pattern>
+		<url-pattern>/device_reputation.faces</url-pattern>
+		<url-pattern>/device_reputation.xhtml</url-pattern>
+		<url-pattern>/external_agency_api.faces</url-pattern>
+		<url-pattern>/external_agency_api.xhtml</url-pattern>
+		<url-pattern>/external_agency_id_config.faces</url-pattern>
+		<url-pattern>/external_agency_id_config.xhtml</url-pattern>
+		<url-pattern>/holdmail_workflow.faces</url-pattern>
+		<url-pattern>/holdmail_workflow.xhtml</url-pattern>
+		<url-pattern>/home.faces</url-pattern>
+		<url-pattern>/home.xhtml</url-pattern>
+		<url-pattern>/ial2_configuration.faces</url-pattern>
+		<url-pattern>/ial2_configuration.xhtml</url-pattern>
+		<url-pattern>/ial2_confirmation_config.faces</url-pattern>
+		<url-pattern>/ial2_confirmation_config.xhtml</url-pattern>
+		<url-pattern>/ial2_vendor_configuration.faces</url-pattern>
+		<url-pattern>/ial2_vendor_configuration.xhtml</url-pattern>
+		<url-pattern>/ipp_facilities_admin.faces</url-pattern>
+		<url-pattern>/ipp_facilities_admin.xhtml</url-pattern>
+		<url-pattern>/ipp_facilities_admin2.faces</url-pattern>
+		<url-pattern>/ipp_facilities_admin2.xhtml</url-pattern>
+		<url-pattern>/ipp_id_validation.faces</url-pattern>
+		<url-pattern>/ipp_id_validation.xhtml</url-pattern>
+		<url-pattern>/ipp_primary_ids.faces</url-pattern>
+		<url-pattern>/ipp_primary_ids.xhtml</url-pattern>
+		<url-pattern>/ipp_rest_identity_verification.faces</url-pattern>
+		<url-pattern>/ipp_rest_identity_verification.xhtml</url-pattern>
+		<url-pattern>/ipp_secondary_ids.faces</url-pattern>
+		<url-pattern>/ipp_secondary_ids.xhtml</url-pattern>
+		<url-pattern>/remote_rest_identity_verification.faces</url-pattern>
+		<url-pattern>/remote_rest_identity_verification.xhtml</url-pattern>
+		<url-pattern>/sponsor_app_config.faces</url-pattern>
+		<url-pattern>/sponsor_app_config.xhtml</url-pattern>
+		<url-pattern>/sponsor_configurations.faces</url-pattern>
+		<url-pattern>/sponsor_configurations.xhtml</url-pattern>
+		<url-pattern>/sponsor_emails.faces</url-pattern>
+		<url-pattern>/sponsor_emails.xhtml</url-pattern>
+		<url-pattern>/sponsor_facilities.faces</url-pattern>
+		<url-pattern>/sponsor_facilities.xhtml</url-pattern>
+		<url-pattern>/sponsor_reports.faces</url-pattern>
+		<url-pattern>/sponsor_reports.xhtml</url-pattern>
+		<url-pattern>/unit_testing_portal.faces</url-pattern>
+		<url-pattern>/unit_testing_portal.xhtml</url-pattern>
+	</filter-mapping>
+	<error-page>
+		<exception-type>javax.faces.application.ViewExpiredException</exception-type>
+		<location>/login.xhtml</location>
+	</error-page>
+	<welcome-file-list>
+		<welcome-file>login.xhtml</welcome-file>
+	</welcome-file-list>
+</web-app>
