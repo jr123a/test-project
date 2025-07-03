@@ -1,0 +1,114 @@
+✅ **Great! Let’s walk through the clean managed bean modifications you’ll need to support the separate logo upload page flow.**
+👉 The good news is: you can reuse most of your existing logic with just small additions to handle navigation + context.
+
+---
+
+## 🚀 **Your Goals**
+
+✅ Allow navigation between `sponsor_emails.xhtml` and `logoUpload.xhtml`
+✅ Preserve sponsor/email type selections
+✅ Make `storeUploadImage` + `confirmLogoChange` work normally
+✅ Optionally restore state on return
+
+---
+
+## 💡 **Managed Bean Additions**
+
+### 🌟 1️⃣ Add simple navigation actions
+
+```java
+public String goToLogoUpload() {
+    // Optional: log or prep any data needed before navigation
+    System.out.println("Navigating to logo upload for sponsor: " + selectedSponsor + ", emailType: " + selectedEmailType);
+    return "logoUpload?faces-redirect=true";
+}
+
+public String goBackToEmailConfig() {
+    // Optional: reload or reset as needed
+    System.out.println("Returning to email config page");
+    return "sponsor_emails?faces-redirect=true";
+}
+```
+
+➡ These can be tied to buttons like:
+
+```xhtml
+<h:commandButton value="Upload Logo" action="#{bean.goToLogoUpload}" />
+<h:commandButton value="Back to Email Config" action="#{bean.goBackToEmailConfig}" />
+```
+
+---
+
+### 🌟 2️⃣ Optionally support restoring state via URL params
+
+➡ If you pass sponsor/emailType as query params:
+
+```java
+import javax.annotation.PostConstruct;
+import javax.faces.context.FacesContext;
+import java.util.Map;
+
+@PostConstruct
+public void init() {
+    Map<String, String> params = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap();
+    if (params.containsKey("sponsor")) {
+        try {
+            selectedSponsor = Integer.valueOf(params.get("sponsor"));
+        } catch (NumberFormatException e) {
+            // Handle or log
+        }
+    }
+    if (params.containsKey("emailType")) {
+        try {
+            selectedEmailType = Integer.valueOf(params.get("emailType"));
+        } catch (NumberFormatException e) {
+            // Handle or log
+        }
+    }
+    System.out.println("Initialized with sponsor: " + selectedSponsor + ", emailType: " + selectedEmailType);
+}
+```
+
+✅ This ensures when user returns, the page state is restored
+
+---
+
+### 🌟 3️⃣ Existing methods stay the same
+
+➡ No changes needed for:
+
+```java
+public void storeUploadImage(FileUploadEvent event) { ... }
+public String confirmLogoChange() { ... }
+```
+
+✅ These work as they do now because `logoUpload.xhtml` has a clean multipart form
+
+---
+
+## ⚡ **Summary of Managed Bean Changes**
+
+✅ Add `goToLogoUpload()` and `goBackToEmailConfig()` for clean navigation
+✅ (Optional) Enhance `init()` or create a URL param handler for state restoration
+✅ Existing file upload + confirm methods stay unchanged
+
+---
+
+## 🚀 **Example Usage**
+
+➡ In `sponsor_emails.xhtml`:
+
+```xhtml
+<h:commandButton value="Upload Logo" action="#{bean.goToLogoUpload}" />
+```
+
+➡ In `logoUpload.xhtml`:
+
+```xhtml
+<h:commandButton value="Back to Email Config"
+                 action="#{bean.goBackToEmailConfig}" />
+```
+
+---
+
+✅ **If you'd like, I can generate the exact updated managed bean class with these changes applied. Want me to?** 🚀
