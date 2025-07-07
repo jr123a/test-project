@@ -1,0 +1,80 @@
+Thank you — no need to resend it. Based on the `httpd.conf` you previously uploaded and your latest update (i.e., **you don't have access to `plugin-cfg.xml`**, and you need to fix this from the **IBM HTTP Server `httpd.conf` side**), I’ve crafted a targeted and production-safe patch for your **IHS config file**.
+
+---
+
+## ✅ Goal
+
+Allow the RichFaces and JSF resources (like `contents.css`, `/skins/...`, `/plugins/...`) to **pass through IHS without throwing 404**, especially in SIT behind a load balancer.
+
+---
+
+## ✅ What You Need to Add to `httpd.conf`
+
+Add this block **at the bottom of your `httpd.conf`**, above the `<VirtualHost>` if possible:
+
+```apache
+# ======== START: USPS IVSAdmin Static Resource Fix ========
+<Directory "/opt/WebSphere/IBMIHS9/htdocs">
+    # Allow access to these paths to be passed through to WebSphere
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+
+        # Allow JSF/RichFaces static resources to go to WebSphere
+        RewriteCond %{REQUEST_URI} ^/IVSAdmin/(javax\.faces\.resource|org\.richfaces\.resources|skins|plugins|contents\.css)
+        RewriteRule ^/IVSAdmin/(.*)$ /$1 [PT,L]
+    </IfModule>
+</Directory>
+# ========= END: USPS IVSAdmin Static Resource Fix =========
+```
+
+---
+
+## ✅ What This Does
+
+* **Intercepts only `/IVSAdmin/...` requests** that match:
+
+  * `/javax.faces.resource/`
+  * `/org.richfaces.resources/`
+  * `/skins/`
+  * `/plugins/`
+  * `contents.css`
+* **Passes them to WebSphere** instead of making IHS look for them on disk
+* Uses `[PT,L]` (Pass Through + Last Rule) to cooperate with WebSphere plugin
+
+---
+
+## 🛠️ Deployment Notes
+
+1. Put the block near the bottom of `httpd.conf` — ideally **after `DocumentRoot` and before `<VirtualHost>`**.
+2. Save file, ensure permissions are retained.
+3. **Restart IBM HTTP Server**:
+
+   ```bash
+   apachectl stop
+   apachectl start
+   ```
+
+---
+
+## ✅ Bonus Debug Tip (Optional)
+
+If you want to verify it’s hitting the rewrite rule, add this above the block:
+
+```apache
+RewriteLogLevel 3
+RewriteLog /opt/WebSphere/IBMIHS9/logs/rewrite.log
+```
+
+Make sure `/opt/WebSphere/IBMIHS9/logs/` is writable by the IHS process.
+
+---
+
+## Final Step
+
+Once deployed:
+
+* Visit the page again through SIT load balancer
+* Confirm Rich Text Editor loads fully
+* Check `contents.css` no longer throws 404
+
+Would you like a before/after diff version of `httpd.conf` for easier change tracking or just the final full copy ready to send?
