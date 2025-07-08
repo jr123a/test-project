@@ -1,0 +1,331 @@
+# ServerRoot: The top of the directory tree under which the server's
+# configuration, error, and log files are kept.
+ServerRoot "/opt/WebSphere/IBMIHS9"
+
+# LoadModule foo_module modules/mod_foo.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule include_module modules/mod_include.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule env_module modules/mod_env.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule alias_module modules/mod_alias.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule ibm_ssl_module modules/mod_ibm_ssl.so
+LoadModule mpm_worker_module modules/mod_mpm_worker.so
+LoadModule mpmstats_module modules/debug/mod_mpmstats.so
+LoadModule backtrace_module modules/debug/mod_backtrace.so
+LoadModule whatkilledus_module modules/debug/mod_whatkilledus.so
+LoadModule unixd_module modules/mod_unixd.so
+LoadModule was_ap24_module /opt/WebSphere/Plugin9/bin/64bits/mod_was_ap24_http.so
+LoadModule reqtimeout_module modules/mod_reqtimeout.so
+
+# PidFile: The file in which the server should record its process
+# identification number when it starts.
+PidFile logs/httpd.pid
+
+# Timeout: The number of seconds before receives and sends time out.
+Timeout 300
+
+# KeepAlive: Whether or not to allow persistent connections (more than
+# one request per connection). Set to "Off" to deactivate.
+KeepAlive On
+
+# MaxKeepAliveRequests: The maximum number of requests to allow
+# during a persistent connection.
+MaxKeepAliveRequests 100
+
+# KeepAliveTimeout: Number of seconds to wait for the next request from the
+# same client on the same connection.
+KeepAliveTimeout 180
+
+# worker MPM
+ThreadLimit         25
+ServerLimit         80
+StartServers         2
+MaxClients        2000
+MinSpareThreads      5
+MaxSpareThreads     50
+ThreadsPerChild     25
+MaxRequestsPerChild  0
+
+# Listen: Allows you to bind the web server to specific IP addresses 
+# and/or ports, in addition to the default.
+#
+# disable non-ssl port 9080 to be BOD 18-01 compliant (06/25/2020)
+#Listen eagnmncom0bb2:9080
+Listen eagnmncom0bb2:9443
+
+KeyFile /opt/WebSphere/IBMIHS9/ssl/key.kdb 
+
+# If you wish httpd to run as a different user or group, you must run
+# httpd as root initially and it will switch.  
+User wsadmin
+Group wsadmin
+
+# ServerAdmin: Your address, where problems with the server should be
+# e-mailed.
+ServerAdmin ECSMiddleware@usps.gov
+
+# ServerName gives the name and port that the server uses to identify itself.
+ServerName eagnmncom0bb2:9443
+
+# UseCanonicalName: Determines how the web server constructs self-
+# referencing URLs and the SERVER_NAME and SERVER_PORT variables.
+UseCanonicalName Off
+
+# DocumentRoot: The directory out of which you will serve your
+# documents. 
+DocumentRoot "/opt/WebSphere/IBMIHS9/htdocs"
+
+# First, we configure the server root to be very restrictive
+<Directory />
+   Options None
+   AllowOverride None
+   Require all denied
+</Directory>
+
+# This should be changed to whatever you set DocumentRoot to.
+<Directory "/opt/WebSphere/IBMIHS9/htdocs">
+   <LimitExcept GET POST OPTIONS>
+      Require all denied
+   </LimitExcept>
+   Options None
+   AllowOverride None
+</Directory>
+
+# DirectoryIndex: sets the file that the web server will serve if a 
+# directory is requested.
+DirectoryIndex index.html index.html.var
+
+# AccessFileName: The name of the file to look for in each directory
+# for additional configuration directives.
+AccessFileName .htaccess
+
+# The following lines prevent .htaccess and .htpasswd files from being 
+# viewed by Web clients. 
+<FilesMatch "^\.ht">
+      Require all denied
+</FilesMatch>
+
+
+# TypesConfig describes where the mime.types file (or equivalent) is
+# to be found.
+TypesConfig conf/mime.types
+
+# The mod_mime_magic module allows the server to use various hints from the
+# contents of the file itself to determine its type.
+<IfModule mod_mime_magic.c>
+    MIMEMagicFile conf/magic
+</IfModule>
+
+# HostnameLookups: Log the names of clients or just their IP addresses
+HostnameLookups Off
+
+# EnableSendfile: Control whether the sendfile kernel support is
+# used  to deliver files (assuming that the OS supports it).
+EnableSendfile off
+
+# ErrorLog: The location of the error log file.
+ErrorLog "|/opt/WebSphere/IBMIHS9/bin/rotatelogs -l /opt/WebSphere/IBMIHS9/logs/errors.%Y%m%d%H%M 86400"
+
+# LogLevel: Control the number of messages logged to the error log.
+LogLevel notice
+
+# The following directives define some format nicknames for use with
+# a CustomLog directive (see below).
+LogFormat "\"%{NS-Client-IP}i\" %h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+LogFormat "%{NS-Client-IP}i" client
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+LogFormat "%{Referer}i -> %U" referer
+LogFormat "%{User-agent}i" agent
+
+# The location and format of the access logfile (Common Logfile Format).
+CustomLog "|/opt/WebSphere/IBMIHS9/bin/rotatelogs -l /opt/WebSphere/IBMIHS9/logs/access.%Y%m%d%H%M 86400" combined
+
+# This directive provides a means to enable or disable ServerHeader values.
+AddServerHeader Off
+
+# This directive configures what you return as the Server HTTP response
+# Header. 
+ServerTokens Prod
+
+# Optionally add a line containing the server version and virtual host
+# name to server-generated pages 
+ServerSignature Off
+
+# AddEncoding allows you to have certain browsers (Mosaic/X 2.1+) uncompress
+# information on the fly.
+AddEncoding x-compress Z
+AddEncoding x-gzip gz tgz
+
+# AddType allows you to add to or override the MIME configuration
+# file mime.types for specific file types.
+AddType application/x-tar .tgz
+AddType image/x-icon .ico
+
+# Customizable error responses come in three flavors:
+ErrorDocument 404 "https://www.usps.com/root/global/server_responses/anyapp_outage_apology.htm"
+ErrorDocument 500 "https://www.usps.com/root/global/server_responses/anyapp_outage_apology.htm"
+
+# The following directives modify normal HTTP response behavior to
+# handle known problems with browser implementations.
+BrowserMatch "Mozilla/2" nokeepalive
+BrowserMatch "MSIE 4\.0b2;" nokeepalive downgrade-1.0 force-response-1.0
+BrowserMatch "RealPlayer 4\.0" force-response-1.0
+BrowserMatch "Java/1\.0" force-response-1.0
+BrowserMatch "JDK/1\.0" force-response-1.0
+
+# The following directive disables redirects on non-GET requests for
+# a directory that does not include the trailing slash. 
+BrowserMatch "Microsoft Data Access Internet Publishing Provider" redirect-carefully
+BrowserMatch "^WebDrive" redirect-carefully
+BrowserMatch "^WebDAVFS/1.[012]" redirect-carefully
+BrowserMatch "^gnome-vfs" redirect-carefully
+
+
+# mod_mpmstats logs statistics about server activity to the main
+# error log.  No records are written while the server is idle.
+<IfModule mod_mpmstats.c>
+   ReportInterval 600
+   TrackModules On
+</IfModule>
+
+# EnableExceptionHook allows modules such as mod_backtrace and
+# mod_whatkilledus to run after a crash and gather additional
+# diagnostic information.
+EnableExceptionHook On
+
+# mod_net_trace will record actual data sent/received from the client
+# and on proxy connections, even for SSL connections.
+<IfModule mod_net_trace.c>
+   NetTraceFile /tmp/nettrace
+   NetTrace client * dest file event senddata=65535 event recvdata=65535
+</IfModule>
+ 
+#---------- IHS vulnerability remediation - BEGIN ----------
+SetEnvIf Range (?:,.*?){5,5} bad-range=1
+RequestHeader unset Range env=bad-range
+
+# We always drop Request-Range; as this is a legacy
+# dating back to MSIE3 and Netscape 2 and 3.
+RequestHeader unset Request-Range
+
+# Disable inode-based ETag generation
+FileETag MTime Size
+
+# anti-clickjacking X-Frame-Options
+Header always append X-Frame-Options SAMEORIGIN
+
+# Restrict size of HTTP request (102400 == 100K)
+#LimitRequestBody 102400
+LimitRequestBody 2147483647
+
+# Restrict the Number of Request Header Fields
+LimitRequestFields 100
+
+# Restrict the Size of HTTP Request Header
+LimitRequestFieldSize 8192
+
+# Restrict the Size of a Client’s HTTP Request Line
+LimitRequestLine 8192
+
+# DOS prevention
+<IfModule reqtimeout_module>
+   RequestReadTimeout header=20,MinRate=500 body=20,MinRate=500
+</IfModule>
+
+# Prevent malicious code and content (2017-06-11)
+Header always append Content-Security-Policy "  default-src 'self' https:; \
+                                                connect-src 'self' https:; \
+                                                font-src 'self' https: data:; \
+                                                frame-src 'self' https:; \
+                                                img-src 'self' https: data:; media-src 'self' https:; \
+                                                object-src 'self' https:; \
+                                                script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; \
+                                                style-src 'self' 'unsafe-inline' https:; "
+
+# reduce MIME types attack risk (per pentest 02/24/2020)
+Header set X-Content-Type-Options nosniff
+
+# do not disclose version  (per pentest 02/24/2020)
+Header unset X-Powered-By
+
+#---------- IHS vulnerability remediation - END ----------
+
+# disable non-ssl virtual host to be BOD 18-01 compliant (06/25/2020)
+#<VirtualHost eagnmncom0bb2:9080>
+#      RewriteEngine On
+#      # Disable Trace and Track
+#      RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
+#      RewriteRule .* - [F]
+#
+#      # restrict to HTTP 1.1
+#      RewriteCond %{THE_REQUEST} !HTTP/1\.1$
+#      RewriteRule .* - [F]
+#
+#      # deny requests by ip (allow only by name)
+#      RewriteCond %{HTTP_HOST} ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:?[0-9]*$
+#      RewriteRule .* - [F,L]
+#
+#      # Send any non-https request up to the https server
+#      #RewriteCond %{REQUEST_METHOD} !^HEAD$
+#      #RewriteCond %{HTTP_HOST} ^VIP(\.usps\.gov)?$
+#      #RewriteRule /(.*) https://VIP.USPS.GOV/$1 [L]
+#</VirtualHost>
+
+<VirtualHost eagnmncom0bb2:9443>
+      SSLEnable
+      RewriteEngine On
+
+      # Disable weak SSL & TLS protocols
+      SSLProtocolDisable SSLv2 SSLv3 TLSv1 TLSv11
+
+      # Allow strong ciphers only:
+      #(https://www.ibm.com/support/knowledgecenter/en/SSEQTJ_8.5.5/com.ibm.websphere.ihs.doc/ihs/rihs_ciphspec.html)
+      SSLCipherSpec ALL NONE 
+#      SSLCipherSpec ALL +TLS_RSA_WITH_AES_256_CBC_SHA \
+#		 	+TLS_RSA_WITH_AES_256_CBC_SHA256 \
+#			+TLS_RSA_WITH_AES_256_GCM_SHA384 
+      # PFS ciphers to prevent ROBOT vulnerability (https://robotattack.org)
+#      SSLCipherSpec ALL +TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 \
+#			+TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 \
+#			+TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 \
+#			+TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      ## revised set of ciphers 11/07/2019 (per CISO finding 11285, CWE: 319,326,327)
+      SSLCipherSpec ALL +TLS_RSA_WITH_AES_256_CBC_SHA256 \
+                        +TLS_RSA_WITH_AES_256_GCM_SHA384 \
+                        +TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 \
+                        +TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 \
+                        +TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 \
+                        +TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+
+      # Enable strict CBC padding 
+      SSLAttributeSet 471 1
+
+      # Disable Trace and Track
+      RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK)
+      RewriteRule .* - [F]
+
+      # restrict to HTTP 1.1
+      RewriteCond %{THE_REQUEST} !HTTP/1\.1$
+      RewriteRule .* - [F]
+
+      # deny requests by ip (allow only by name)
+      RewriteCond %{HTTP_HOST} ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:?[0-9]*$
+      RewriteRule .* - [F,L]
+
+      # Prevent man-in-the-middle attack (2017-06-11; 31536000 = 1yr)
+      Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+      # App-specific rewrite rules
+      #RewriteCond %{REQUEST_METHOD} !^HEAD$
+      #RewriteCond %{HTTP_HOST} ^VIP/$
+      #RewriteRule ^/$ https://VIP.USPS.GOV/CONTEXTROOT [L]
+      #RewriteCond %{HTTP_HOST} ^VIP.USPS.GOV/$
+      #RewriteRule ^/$ https://VIP.USPS.GOV/CONTEXTROOT [L]
+</VirtualHost>
+
+WebSpherePluginConfig /opt/WebSphere/Plugin9/config/eagnmncom0bb2-web/plugin-cfg.xml
