@@ -1,0 +1,66 @@
+Thanks for sharing your `web.xml`. After thoroughly reviewing it, here's the **root issue**:
+
+---
+
+## 🔴 Root Cause
+
+Your `web.xml` is **missing** the required `org.ajax4jsf.Filter` (aka **RichFaces filter**), which is **mandatory** for `rich:fileUpload` to parse multipart/form-data properly.
+
+Without this filter:
+
+* The multipart request is never intercepted and decoded by RichFaces.
+* The file data is not processed and the **"Request prolog cannot be read"** error is triggered by `MultipartRequestParser`.
+
+---
+
+## ✅ Solution: Add the RichFaces Filter
+
+Add this block **near the other filters** in `web.xml`:
+
+```xml
+<filter>
+  <filter-name>richfaces</filter-name>
+  <filter-class>org.ajax4jsf.Filter</filter-class>
+</filter>
+
+<filter-mapping>
+  <filter-name>richfaces</filter-name>
+  <servlet-name>Faces Servlet</servlet-name>
+  <dispatcher>REQUEST</dispatcher>
+  <dispatcher>FORWARD</dispatcher>
+  <dispatcher>INCLUDE</dispatcher>
+</filter-mapping>
+```
+
+---
+
+## 📌 Additional Recommendations
+
+1. **Place this above** your `Faces Servlet` mapping to ensure it runs first.
+2. Make sure you're using `<h:form enctype="multipart/form-data">` in your XHTML (as you already are).
+3. You can leave your `rich:fileUpload` settings unchanged if this filter is added.
+
+---
+
+## ✅ Why This Works
+
+RichFaces' `FileUpload` relies on this `Filter` to:
+
+* Parse the multipart boundary
+* Make uploaded files available in the JSF lifecycle
+* Prevent raw access to the input stream (which is what triggers your current exception)
+
+---
+
+## 🧪 Test After Adding
+
+After updating `web.xml`, **restart the server**, then:
+
+* Try uploading a file in **both your isolated upload page** and
+* The **full `sponsor_emails.xhtml` page**
+
+It should now pass through without triggering `MultipartRequestParser.readProlog` errors.
+
+---
+
+Would you like me to generate a fully patched version of your `web.xml` with the RichFaces filter inserted correctly?
