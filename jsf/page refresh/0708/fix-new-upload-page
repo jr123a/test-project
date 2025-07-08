@@ -1,0 +1,112 @@
+Thanks for the complete HTML page source. Based on the structure, here’s a deep dive into the **file upload issue** (especially the “Request prolog cannot be read” error) and **why it’s not working**:
+
+---
+
+### 🔍 Root Cause Analysis
+
+1. **Two `<form>` tags on the same page**:
+
+   * ✅ **Correct approach** since RichFaces `fileUpload` must be in a `multipart/form-data` form.
+   * ❌ **But problematic in JSF**: because both forms submit to the *same JSF view state* and JSF doesn't support multiple `<form>`s on the same page cleanly unless managed very carefully.
+
+2. **Main Form** (`#mainForm`):
+
+   * Uses standard `application/x-www-form-urlencoded` enctype.
+   * Handles all AJAX interactions, RTE content, dropdowns, etc.
+
+3. **Upload Form** (`#uploadForm`):
+
+   * Uses `multipart/form-data` as required.
+   * However, it **shares the same JSF view state** as the main form (`javax.faces.ViewState`).
+
+4. **What's likely going wrong**:
+
+   * When `uploadForm` submits a multipart request, RichFaces tries to read the prolog (headers) but hits conflict:
+
+     * If the `FacesServlet` or a filter (like `BrowserCacheHandlerFilter`) **pre-consumes or blocks the input stream**, JSF can’t parse the multipart content.
+     * Shared `ViewState` across two unrelated forms causes view restoration issues.
+     * Some JSF AJAX handlers may be triggered unexpectedly due to `id` collisions or shared component tree.
+
+---
+
+### ✅ Recommended Fix
+
+Since this dual form setup **does not work reliably**, here's a clean solution that you can implement **without modifying your template or breaking layout**:
+
+---
+
+### ✅ Approach: Navigate to a Standalone Upload Page (Ideal in Legacy Systems)
+
+1. **Navigate to a lightweight page** with only the logo upload functionality.
+2. Upload the file using `multipart/form-data` there.
+3. Use a **“Back” button** or JavaScript redirect to return to `sponsor_emails.xhtml`.
+
+---
+
+### ✅ Step-by-Step Implementation
+
+#### 1. Create `upload_logo.xhtml`
+
+```xhtml
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:rich="http://richfaces.org/rich">
+<h:head>
+    <title>Upload Logo</title>
+</h:head>
+<h:body>
+    <h:form id="uploadForm" enctype="multipart/form-data">
+        <h:outputText value="Upload Agency Logo" style="font-weight:bold;" /><br/><br/>
+
+        <rich:fileUpload 
+            fileUploadListener="#{sponsorEmailsAdmin.storeUploadImage}"
+            acceptedTypes=".jpg,.png,.gif"
+            maxFilesQuantity="1"
+            ontyperejected="alert('Only JPG, PNG, or GIF allowed');"
+            onsizerejected="alert('Max file size is 20KB');"
+        />
+        <br/><br/>
+
+        <h:commandButton value="Save" action="#{sponsorEmailsAdmin.confirmLogoChange}" />
+        <br/><br/>
+
+        <h:commandButton value="Back to Email Configs" action="sponsor_emails?faces-redirect=true" />
+    </h:form>
+</h:body>
+</html>
+```
+
+> 🎯 `storeUploadImage()` and `confirmLogoChange()` are reused here — no new managed bean logic is needed.
+
+---
+
+#### 2. Update a Link/Button in `sponsor_emails.xhtml` to Go to Upload Page
+
+```xhtml
+<h:commandLink value="Upload Logo" action="upload_logo?faces-redirect=true" />
+```
+
+---
+
+### 🔒 Additional Notes
+
+* ✅ This avoids form nesting and JSF view state clashes.
+* ✅ You don’t need to touch `main-admin.xhtml` or override the layout.
+* ✅ Keeps file upload separate — easier to test and manage.
+* ⚠️ This is **necessary for RichFaces 4**, which has known limitations with AJAX + multipart handling.
+
+---
+
+### 🧪 After You Implement
+
+Please test the `upload_logo.xhtml` independently and verify that:
+
+* The file is uploaded.
+* The `storeUploadImage()` function is invoked.
+* After saving, the logo is reflected correctly when you return to the main page.
+
+When you're ready, upload the HAR file — we can validate the network sequence and confirm.
+
+Would you like help auto-generating the `faces-config.xml` or `navigation-case` if your setup requires it?
