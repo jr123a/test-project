@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="ISO-8859-1"?><!--HTTP server plugin config file for the webserver eagnmncom0bb0Network.eagnmncom0bb2-web.eagnmncom0bb2-web generated on 2025.07.07 at 12:54:18 PM CDT-->
+<Config ASDisableNagle="false" AcceptAllContent="true" AppServerPortPreference="HostHeader" ChunkedResponse="false" FIPSEnable="false" FailoverToNext="false" HTTPMaxHeaders="300" HostVerificationStartupCheck="true" IISDisableFlushFlag="false" IISDisableNagle="false" IISPluginPriority="High" IMSecureConnectorVerification="fail" IMSecureEndpointVerification="fail" IgnoreDNSFailures="false" KillWebServerStartUpOnParseErr="true" MarkBusyDown="false" OS400ConvertQueryStringToJobCCSID="false" RefreshInterval="60" ResponseChunkSize="64" SSLConsolidate="true" SecureHostVerification="true-markdown" StrictSecurity="true" TrustedProxyEnable="false" VHostMatchingCompat="false">
+   <Log LogLevel="Error" Name="|/opt/WebSphere/IBMIHS9/bin/rotatelogs /opt/WebSphere/Plugin9/logs/eagnmncom0bb2-web/http_plugin.log.%Y%m%d%H%M 86400"/>
+   <Property Name="ESIEnable" Value="false"/>
+   <Property Name="ESIMaxCacheSize" Value="1024"/>
+   <Property Name="ESIInvalidationMonitor" Value="false"/>
+   <Property Name="ESIEnableToPassCookies" Value="false"/>
+   <Property Name="ESICacheidFull" Value="false"/>
+   <Property Name="PostSizeLimit" Value="-1"/>
+   <Property Name="PostBufferSize" Value="0"/>
+   <Property Name="PluginInstallRoot" Value="/opt/WebSphere/Plugin9/"/>
+   <Property Name="Keyfile" Value="/opt/WebSphere/Plugin9/config/eagnmncom0bb2-web/plugin-key.kdb"/>
+   <Property Name="Stashfile" Value="/opt/WebSphere/Plugin9/config/eagnmncom0bb2-web/plugin-key.sth"/>
+   <VirtualHostGroup Name="default_host">
+      <VirtualHost Name="*:9443"/>
+      <VirtualHost Name="*:443"/>
+      <VirtualHost Name="*:9444"/>
+      <VirtualHost Name="*:9045"/>
+   </VirtualHostGroup>
+   <ServerCluster CloneSeparatorChange="false" GetDWLMTable="true" IgnoreAffinityRequests="true" LoadBalance="Round Robin" Name="eagnmncom0bb0_custom_eagnmncom0bb0_Cluster" PostBufferSize="0" PostSizeLimit="-1" RemoveSpecialHeaders="true" RetryInterval="60" ServerIOTimeoutRetry="-1">
+      <Server ConnectTimeout="5" ExtendedHandshake="false" MaxConnections="-1" Name="eagnmncom0bb0_eagnmncom0bb0_custom" ServerIOTimeout="900" WaitForContinue="false">
+         <Transport ConnectionTTL="28" Hostname="eagnmncom0bb0" HostnameAlias="eagnmncom0bb0" Port="9443" Protocol="https">
+            <Property Name="keyring" Value="/opt/WebSphere/Plugin9/config/eagnmncom0bb2-web/plugin-key.kdb"/>
+            <Property Name="stashfile" Value="/opt/WebSphere/Plugin9/config/eagnmncom0bb2-web/plugin-key.sth"/>
+         </Transport>
+      </Server>
+   </ServerCluster>
+   <UriGroup Name="default_host_eagnmncom0bb0_custom_eagnmncom0bb0_Cluster_URIs">
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/DCSAFingerprinting/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IPSImages/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IdentityCapture/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/HRFingerprinting/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IDCAdmin/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/GovtScanRest/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IPSWeb/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/RemoteRest/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IPPRest/*"/>
+      <Uri AffinityCookie="JSESSIONID" AffinityURLIdentifier="jsessionid" Name="/IVSAdmin/*"/>
+   </UriGroup>
+   <Route ServerCluster="eagnmncom0bb0_custom_eagnmncom0bb0_Cluster" UriGroup="default_host_eagnmncom0bb0_custom_eagnmncom0bb0_Cluster_URIs" VirtualHostGroup="default_host"/>
+   <RequestMetrics armEnabled="false" loggingEnabled="false" rmEnabled="false" traceLevel="HOPS">
+      <filters enable="false" type="URI">
+         <filterValues enable="false" value="/snoop"/>
+         <filterValues enable="false" value="/hitcount"/>
+      </filters>
+      <filters enable="false" type="SOURCE_IP">
+         <filterValues enable="false" value="255.255.255.255"/>
+         <filterValues enable="false" value="254.254.254.254"/>
+      </filters>
+      <filters enable="false" type="JMS">
+         <filterValues enable="false" value="destination=aaa"/>
+      </filters>
+      <filters enable="false" type="WEB_SERVICES">
+         <filterValues enable="false" value="wsdlPort=aaa:op=bbb:nameSpace=ccc"/>
+      </filters>
+   </RequestMetrics>
+</Config>
