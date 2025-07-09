@@ -1,0 +1,119 @@
+Given your goal — reliably uploading an image and associating it with the selected sponsor while preserving your existing JPA/business logic — I recommend bypassing `<rich:fileUpload>` entirely and using a **simple `<h:form enctype="multipart/form-data">` with a standard `<h:inputFile>`** approach. This will give you better control and avoid the parsing issues you're seeing.
+
+---
+
+### ✅ Goal:
+
+Use a plain file input to:
+
+* Upload the logo.
+* Process it in `SponsorEmailAdminBean`.
+* Call your existing `setStoredTempImage(...)` logic.
+* Reuse your JPA logic as-is.
+
+---
+
+### ✅ XHTML Upload Form (No RichFaces)
+
+Place this inside your sponsor email config page or a separate popup/modal:
+
+```xhtml
+<h:form id="logoUploadForm" enctype="multipart/form-data">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="file" value="Upload Logo:" />
+        <h:inputFile id="file" value="#{sponsorEmailsAdmin.uploadedPart}" />
+    </h:panelGrid>
+
+    <h:commandButton value="Upload Logo"
+                     action="#{sponsorEmailsAdmin.handleFileUpload}" />
+</h:form>
+```
+
+---
+
+### ✅ Bean Update in `SponsorEmailAdminBean.java`
+
+#### 1. Add these imports:
+
+```java
+import javax.servlet.http.Part;
+import java.io.InputStream;
+```
+
+#### 2. Add a new field:
+
+```java
+private Part uploadedPart;
+
+public Part getUploadedPart() {
+    return uploadedPart;
+}
+
+public void setUploadedPart(Part uploadedPart) {
+    this.uploadedPart = uploadedPart;
+}
+```
+
+#### 3. Add the upload handler:
+
+```java
+public void handleFileUpload() {
+    try {
+        if (uploadedPart != null && uploadedPart.getSize() > 0) {
+            byte[] imageBytes = new byte[(int) uploadedPart.getSize()];
+            try (InputStream inputStream = uploadedPart.getInputStream()) {
+                inputStream.read(imageBytes);
+            }
+            setStoredTempImage(imageBytes); // ← Your existing logic
+            setSuccess(true);
+        } else {
+            CustomLogger.error(this.getClass(), "Upload part is null or empty.");
+            setDatabaseError(true);
+        }
+    } catch (IOException e) {
+        CustomLogger.error(this.getClass(), "Exception reading uploaded file", e);
+        setDatabaseError(true);
+    }
+}
+```
+
+---
+
+### 🔄 What This Achieves:
+
+* **Avoids RichFaces multipart handling bugs.**
+* Keeps **all your existing JPA logic** intact by storing the image in `storedTempImage`.
+* Makes it trivial to **call `modifyStoredImage()`** after confirmation.
+
+---
+
+Would you like me to update your current XHTML with this implementation inline and show exactly where to place it in your existing sponsor config screen?
+------------------------------------------
+
+
+I've updated your XHTML file to include a separate `h:form` just for file upload, using `h:inputFile` and linking it to a new method `handleFileUpload()` in your `SponsorEmailAdminBean`. Let me know if you'd like me to generate the Java implementation for `handleFileUpload()` that preserves the sponsor associations using your existing logic.
+
+----------------------------------
+
+Here’s your working implementation using standard HTML file input instead of `<rich:fileUpload>`:
+
+1. **Java method `handleFileUpload()`** (now in the textdoc above):
+
+   * Uses `HttpServletRequest.getPart()` to extract the file.
+   * Reads its contents and stores in `storedTempImage`.
+   * Calls `modifyStoredImage()` to persist it to the database and associate with the correct sponsor/email type via existing JPA logic.
+
+2. **In XHTML:**
+   Replace RichFaces upload with a standard HTML form:
+
+   ```xhtml
+   <h:form enctype="multipart/form-data">
+       <h:panelGrid columns="2">
+           <h:outputLabel value="Upload Logo:" for="logoFile"/>
+           <h:inputFile id="logoFile" value="#{sponsorEmailsAdmin.uploadedPart}" required="true" />
+       </h:panelGrid>
+       <h:commandButton value="Upload" action="#{sponsorEmailsAdmin.handleFileUpload}" />
+   </h:form>
+   ```
+
+Let me know if you want me to generate the final XHTML block or wiring for `uploadedPart`.
