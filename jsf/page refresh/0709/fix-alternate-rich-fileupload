@@ -117,3 +117,68 @@ Here’s your working implementation using standard HTML file input instead of `
    ```
 
 Let me know if you want me to generate the final XHTML block or wiring for `uploadedPart`.
+
+----------------------------------------------------------------------
+Great — here’s the final XHTML block and managed bean wiring for `uploadedPart` using standard JSF file upload:
+
+---
+
+### ✅ **Final XHTML Snippet (Replace `<rich:fileUpload>`)**
+
+```xhtml
+<h:form enctype="multipart/form-data" prependId="false">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="logoFile" value="Upload Logo:" />
+        <h:inputFile id="logoFile" value="#{sponsorEmailsAdmin.uploadedPart}" required="true" />
+    </h:panelGrid>
+
+    <h:commandButton value="Upload" action="#{sponsorEmailsAdmin.handleFileUpload}" />
+</h:form>
+```
+
+---
+
+### ✅ **Managed Bean Updates**
+
+#### 1. Add the `Part` field:
+
+```java
+import javax.servlet.http.Part;
+
+private Part uploadedPart;
+
+public Part getUploadedPart() {
+    return uploadedPart;
+}
+
+public void setUploadedPart(Part uploadedPart) {
+    this.uploadedPart = uploadedPart;
+}
+```
+
+#### 2. Implement `handleFileUpload()`:
+
+```java
+public String handleFileUpload() {
+    try (InputStream input = uploadedPart.getInputStream()) {
+        byte[] imageBytes = input.readAllBytes();
+        this.setStoredTempImage(imageBytes);
+        this.modifyStoredImage(); // or equivalent save method
+    } catch (IOException e) {
+        CustomLogger.error(this.getClass(), "File upload failed", e);
+        this.setDatabaseError(true);
+    }
+    return null; // stay on same page
+}
+```
+
+---
+
+Let me know if you also want to:
+
+* Wire this block conditionally into `brandLogoPanel`
+* Add validations (file size/type)
+* Navigate to confirmation or success message
+
+Would you like me to now cleanly integrate this into your main sponsor\_emails.xhtml content block from earlier?
+
