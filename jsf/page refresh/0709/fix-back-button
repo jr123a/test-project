@@ -1,0 +1,71 @@
+Great question — and yes, this behavior **is expected** when using `h:inputFile` (standard JSF file upload) with `enctype="multipart/form-data"` on the form. Here's why you're seeing that navigation (`action="sponsor_emails?faces-redirect=true"`) stop working:
+
+---
+
+### 🔍 Root Cause
+
+When a form is submitted with `enctype="multipart/form-data"`, **standard JSF navigation (`action="page?faces-redirect=true"`) often gets bypassed or broken**, depending on how the servlet handles the request.
+
+JSF processes navigation **based on the view state**, but with multipart forms:
+
+* JSF lifecycle has to **manually parse** the multipart content (usually via `Servlet 3.0 Part` APIs).
+* If your `@ManagedBean` action method is called and still returns the correct outcome (e.g., `sponsor_emails?faces-redirect=true`), but **navigation doesn’t occur**, the likely cause is:
+
+  * **View state lost**
+  * **Faces redirect logic skipped**
+  * Or **you’re not returning a valid navigation outcome** (due to the multipart nature).
+
+---
+
+### ✅ Solution Options
+
+#### ✅ 1. Use `ExternalContext.redirect()` in the bean
+
+This is the **most reliable way** to force a redirect after a multipart form submission.
+
+In your `SponsorEmailsAdminBean` (or whatever backing bean you're using):
+
+```java
+public void goBackToSponsorEmails() {
+    try {
+        FacesContext.getCurrentInstance().getExternalContext().redirect("sponsor_emails.xhtml");
+    } catch (IOException e) {
+        e.printStackTrace(); // or better error handling
+    }
+}
+```
+
+And in XHTML:
+
+```xhtml
+<h:commandButton value="Back to Email Configs" action="#{bean.goBackToSponsorEmails}" />
+```
+
+---
+
+#### ✅ 2. Use a **JavaScript redirect** as a workaround (not recommended for critical logic)
+
+If you want to avoid Java method, you can do something like:
+
+```xhtml
+<h:commandButton value="Back to Email Configs" onclick="window.location.href='sponsor_emails.xhtml'; return false;" />
+```
+
+But this **does not go through JSF lifecycle** and won’t work if you need any server-side processing.
+
+---
+
+#### ✅ 3. Use `<h:button>` (Not applicable in multipart forms)
+
+You **cannot** use `<h:button>` inside a `multipart/form-data` form if the goal is to submit anything — it creates an HTML button but **does not submit the form data** in a usable way.
+
+---
+
+### 🧠 Summary
+
+When using `<h:inputFile>` with `enctype="multipart/form-data"`:
+
+* **JSF navigation via outcome string often fails silently**
+* You must **explicitly redirect** using `ExternalContext.redirect(...)` in the backing bean
+
+Let me know if you want me to give you a final working snippet that does the redirect cleanly from within your upload form.
