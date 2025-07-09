@@ -1,0 +1,34 @@
+public void handleFileUpload() {
+    FacesContext context = FacesContext.getCurrentInstance();
+    ExternalContext externalContext = context.getExternalContext();
+
+    try {
+        HttpServletRequest request = (HttpServletRequest) externalContext.getRequest();
+        Part filePart = request.getPart("logoFile");
+
+        if (filePart != null && filePart.getSize() > 0) {
+            byte[] uploadedImage = new byte[(int) filePart.getSize()];
+            try (InputStream inputStream = filePart.getInputStream()) {
+                int bytesRead = inputStream.read(uploadedImage);
+                if (bytesRead != -1) {
+                    this.setStoredTempImage(uploadedImage);
+                } else {
+                    CustomLogger.error(this.getClass(), "Failed to read uploaded image stream");
+                    setDatabaseError(true);
+                    return;
+                }
+            }
+
+            // Call your existing logic to persist the image to the sponsor entity
+            modifyStoredImage();
+
+        } else {
+            CustomLogger.error(this.getClass(), "File part is null or empty");
+            setDatabaseError(true);
+        }
+
+    } catch (IOException | ServletException e) {
+        CustomLogger.error(this.getClass(), "Exception occurred in handleFileUpload", e);
+        setDatabaseError(true);
+    }
+}
