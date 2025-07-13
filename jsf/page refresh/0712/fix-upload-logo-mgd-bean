@@ -1,0 +1,151 @@
+Thanks — that method gives us everything we need.
+
+Given your direction to **separate concerns** and avoid cluttering the legacy `SponsorEmailsAdminBean`, I’ll now provide:
+
+---
+
+## ✅ Final Working Plan
+
+You’ll have:
+
+* ✅ A **new lightweight managed bean** called `UploadLogoBean`
+* ✅ A new JSF page `upload_logo.xhtml`
+* ✅ Values passed via URL (`?sponsorId=...&emailTypeId=...`)
+* ✅ No hardcoded sponsor/email type logic — all dynamic
+
+This bean will:
+
+* Accept `sponsorId` and `emailTypeId`
+* Capture uploaded file using `Part`
+* Reuse the **existing `modifyStoredImage()`** logic from your legacy bean
+
+---
+
+## ✅ Managed Bean: `UploadLogoBean.java`
+
+```java
+@ManagedBean(name = "uploadLogoBean")
+@ViewScoped
+public class UploadLogoBean implements Serializable {
+
+    private Integer sponsorId;
+    private Integer emailTypeId;
+    private Part uploadedFile;
+    private boolean uploadSuccess;
+    private boolean databaseError;
+
+    @PostConstruct
+    public void init() {
+        Map<String, String> params = FacesContext.getCurrentInstance()
+                .getExternalContext().getRequestParameterMap();
+        try {
+            sponsorId = Integer.parseInt(params.get("sponsorId"));
+            emailTypeId = Integer.parseInt(params.get("emailTypeId"));
+        } catch (Exception e) {
+            CustomLogger.error(this.getClass(), "Invalid sponsorId or emailTypeId in request params", e);
+            databaseError = true;
+        }
+    }
+
+    public String upload() {
+        try (InputStream is = uploadedFile.getInputStream()) {
+            byte[] logoBytes = is.readAllBytes();
+
+            SponsorEmailsAdminBean bean = new SponsorEmailsAdminBean(); // caution: not injected
+            bean.setSelectedSponsor(sponsorId);
+            bean.setSelectedEmailType(emailTypeId);
+            bean.setStoredTempImage(logoBytes);
+            bean.setLogoConfirmChange(true); // trigger save not delete
+
+            bean.modifyStoredImage(); // legacy method reused
+
+            this.uploadSuccess = bean.isSuccess();
+            this.databaseError = bean.isDatabaseError();
+        } catch (IOException e) {
+            CustomLogger.error(this.getClass(), "IOException reading uploaded file", e);
+            databaseError = true;
+        } catch (Exception ex) {
+            CustomLogger.error(this.getClass(), "Unexpected error during upload", ex);
+            databaseError = true;
+        }
+        return null; // stay on page
+    }
+
+    // Getters and setters
+    public Integer getSponsorId() { return sponsorId; }
+    public Integer getEmailTypeId() { return emailTypeId; }
+    public Part getUploadedFile() { return uploadedFile; }
+    public void setUploadedFile(Part uploadedFile) { this.uploadedFile = uploadedFile; }
+    public boolean isUploadSuccess() { return uploadSuccess; }
+    public boolean isDatabaseError() { return databaseError; }
+}
+```
+
+---
+
+## ✅ Page: `upload_logo.xhtml`
+
+```xhtml
+<ui:composition template="templates/main-admin.xhtml"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:h="http://java.sun.com/jsf/html"
+    xmlns:f="http://java.sun.com/jsf/core"
+    xmlns:ui="http://java.sun.com/jsf/facelets">
+
+<ui:define name="content">
+    <h:form enctype="multipart/form-data">
+        <h3>
+            Upload Logo for Sponsor ID: #{uploadLogoBean.sponsorId}, Email Type: #{uploadLogoBean.emailTypeId}
+        </h3>
+
+        <h:panelGrid columns="2">
+            <h:outputLabel for="logo" value="Choose logo image:" />
+            <h:inputFile id="logo" value="#{uploadLogoBean.uploadedFile}" required="true" />
+        </h:panelGrid>
+
+        <h:commandButton value="Upload" action="#{uploadLogoBean.upload}" />
+        <br/><br/>
+
+        <h:panelGroup rendered="#{uploadLogoBean.uploadSuccess}">
+            <h:outputText style="color:green;" value="Logo uploaded successfully." />
+        </h:panelGroup>
+
+        <h:panelGroup rendered="#{uploadLogoBean.databaseError}">
+            <h:outputText style="color:red;" value="Error during upload. Please contact support." />
+        </h:panelGroup>
+
+        <br />
+        <h:link outcome="sponsor_emails?faces-redirect=true" value="Back to Email Configs" />
+    </h:form>
+</ui:define>
+</ui:composition>
+```
+
+---
+
+## 🔁 Integration Flow
+
+1. In `sponsor_emails.xhtml`:
+
+   ```xhtml
+   <h:link outcome="upload_logo">
+       <f:param name="sponsorId" value="#{bean.selectedSponsor}" />
+       <f:param name="emailTypeId" value="#{bean.selectedEmailType}" />
+       Upload Logo
+   </h:link>
+   ```
+
+2. The `upload_logo.xhtml` reads those params and lets the user upload the logo.
+
+3. The `UploadLogoBean` uses `SponsorEmailsAdminBean`'s `modifyStoredImage()` to persist and trigger notifications.
+
+---
+
+## 🛑 Important Notes
+
+* If `SponsorEmailsAdminBean` is not injectable, calling `new` is fine since `modifyStoredImage()` doesn’t depend on any session state.
+* You may eventually migrate that logic into a `SponsorEmailServiceFacade` to make reuse cleaner, but for now, this isolates UI upload from legacy mess.
+
+---
+
+Would you like this implementation dropped into your canvas textdoc now?
