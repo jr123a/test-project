@@ -1,0 +1,94 @@
+Thanks for the reminder — and you're right, we need to resolve the **sponsor name** and **email type name** from their respective IDs passed as parameters.
+
+To do this cleanly in the new managed bean for `upload_logo.xhtml`, here's how you can implement it:
+
+---
+
+### ✅ 1. **Pass the parameters** (as you're already doing):
+
+```xhtml
+<h:outputLink value="upload_logo.xhtml">
+   <f:param name="sponsorId" value="#{bean.selectedSponsor}" />
+   <f:param name="emailType" value="#{bean.selectedEmailType}" />
+   Upload Logo
+</h:outputLink>
+```
+
+---
+
+### ✅ 2. **Update your new UploadLogoBean.java:**
+
+Assuming you have a `RefSponsorDataService` and a `RefEmailTypeService` (or enum/static map) already in the system (as in your `SponsorEmailsAdmin` bean), here's how to resolve the names.
+
+```java
+@ManagedBean
+@ViewScoped
+public class UploadLogoBean implements Serializable {
+
+    private Integer sponsorId;
+    private Integer emailType;
+
+    private String sponsorName;
+    private String emailTypeName;
+
+    @ManagedProperty(value = "#{refSponsorDataService}")
+    private RefSponsorDataService refSponsorDataService;
+
+    @PostConstruct
+    public void init() {
+        Map<String, String> params = FacesContext.getCurrentInstance().getExternalContext().getRequestParameterMap();
+
+        if (params.containsKey("sponsorId")) {
+            sponsorId = Integer.valueOf(params.get("sponsorId"));
+        }
+
+        if (params.containsKey("emailType")) {
+            emailType = Integer.valueOf(params.get("emailType"));
+        }
+
+        if (sponsorId != null) {
+            sponsorName = refSponsorDataService.findByPK(sponsorId).getSponsorName();
+        }
+
+        if (emailType != null) {
+            emailTypeName = resolveEmailTypeName(emailType);
+        }
+    }
+
+    public String resolveEmailTypeName(Integer type) {
+        switch (type) {
+            case 1: return "Opt-in Initial Email";
+            case 2: return "Opt-in Reminder Email";
+            case 3: return "Confirmation Passed Email";
+            case 4: return "Confirmation Failed Email";
+            case 5: return "IAL2 Confirmation Email";
+            case 6: return "IAL2 Confirmation Letter";
+            default: return "Unknown";
+        }
+    }
+
+    // getters and setters for all fields
+}
+```
+
+---
+
+### ✅ 3. **Display it in your `upload_logo.xhtml`:**
+
+```xhtml
+<h:panelGroup>
+   <h3>IPP Email Configuration - Upload Logo</h3>
+   <h:outputText value="Sponsor: #{uploadLogoBean.sponsorName}" /><br/>
+   <h:outputText value="Email Type: #{uploadLogoBean.emailTypeName}" /><br/><br/>
+</h:panelGroup>
+```
+
+---
+
+Let me know if:
+
+* you want to inject the services differently (Spring instead of JSF annotation),
+* you need help setting up `RefSponsorDataService` or enums for email types,
+* or want to include the ID fallback in case name lookup fails.
+
+Ready to generate the final `UploadLogoBean` Java file and the XHTML snippet if you confirm the services are available.
