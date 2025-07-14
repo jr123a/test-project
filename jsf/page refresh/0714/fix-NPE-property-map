@@ -1,0 +1,78 @@
+Thanks for sharing the method again — and yes, you're absolutely right to point out that the line:
+
+```java
+SponsorEmailsAdminBean bean = new SponsorEmailsAdminBean();
+```
+
+is the **core issue** — because it bypasses JSF/managed lifecycle, which leads to:
+
+* `@PostConstruct` not being invoked
+* `booleanPropertyMapping` staying null
+* resulting in `NullPointerException` when setters like `setLogoConfirmChange()` call `.replace(...)`
+
+---
+
+### ✅ **Fix: Use the JSF-managed instance instead**
+
+Here’s the **corrected version** of your `upload()` method that retrieves the `SponsorEmailsAdminBean` properly from the JSF context:
+
+```java
+public String upload() {
+    try (InputStream is = uploadedFile.getInputStream()) {
+        byte[] logoBytes = is.readAllBytes();
+
+        // ✅ Use JSF context to get the managed bean instance
+        FacesContext context = FacesContext.getCurrentInstance();
+        SponsorEmailsAdminBean bean = (SponsorEmailsAdminBean) context.getApplication()
+            .evaluateExpressionGet(context, "#{sponsorEmailsAdmin}", SponsorEmailsAdminBean.class);
+
+        // Initialize booleanPropertyMapping if not already done
+        if (bean.getBooleanPropertyMapping() == null) {
+            bean.init(); // manually trigger the post construct logic
+        }
+
+        bean.setSelectedSponsor(sponsorId);
+        bean.setSelectedEmailType(emailTypeId);
+        bean.setStoredTempImage(logoBytes);
+        bean.setLogoConfirmChange(true); // trigger save
+
+        bean.modifyStoredImage();
+
+        this.uploadSuccess = bean.isSuccess();
+        this.databaseError = bean.isDatabaseError();
+    } catch (IOException e) {
+        CustomLogger.error(this.getClass(), "IOException reading uploaded file", e);
+        databaseError = true;
+    } catch (Exception ex) {
+        CustomLogger.error(this.getClass(), "Unexpected error during upload", ex);
+        databaseError = true;
+    }
+    return null; // stay on page
+}
+```
+
+---
+
+### ✅ Why This Works
+
+* `evaluateExpressionGet(...)` gets the **real** managed `SponsorEmailsAdminBean` with all its Spring wiring, injected services, and internal maps (like `booleanPropertyMapping`)
+* You trigger the `init()` manually if the map is `null` (defensive coding)
+* Avoids hardcoding or redundant creation of a new instance that isn't wired
+
+---
+
+### 🔄 Optional: Move `buildMap()` to public helper
+
+If you're worried `init()` does more than you want (like building sponsor lists), you can **call just the map initializer**:
+
+```java
+if (bean.getBooleanPropertyMapping() == null) {
+    bean.buildMap(); // if you make this public or expose another initFlag-checking method
+}
+```
+
+Let me know if you want to refactor `buildMap()` into a public helper to isolate it from full `init()`.
+
+---
+
+Would you like the `UploadLogoBean` version to also accept injected `SponsorEmailsAdminBean` via `@ManagedProperty` or stick with this manual context lookup?
