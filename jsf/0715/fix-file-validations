@@ -1,0 +1,164 @@
+Great — adding a file validator is a smart move to harden the upload logic. Since you're using a standard `<h:inputFile>` with a backing bean (`UploadLogoBean`), here's how you can validate **file size** and **file type (image only)** in Java:
+
+---
+
+### ✅ Step 1: Update `UploadLogoBean.java`
+
+Add a custom validator method to check file size and content type:
+
+```java
+private static final long MAX_FILE_SIZE_BYTES = 20000; // 20 KB
+private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/gif");
+
+public void validateFile(Part filePart) throws ValidatorException {
+    if (filePart == null || filePart.getSize() == 0) {
+        throw new ValidatorException(new FacesMessage("File is required."));
+    }
+
+    if (filePart.getSize() > MAX_FILE_SIZE_BYTES) {
+        throw new ValidatorException(new FacesMessage("File size must be less than 20KB."));
+    }
+
+    String mimeType = filePart.getContentType();
+    if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
+        throw new ValidatorException(new FacesMessage("Only JPG, PNG, or GIF images are allowed."));
+    }
+}
+```
+
+---
+
+### ✅ Step 2: Call this validator in your upload method
+
+Update your `upload()` method to call the validator **before** reading the file:
+
+```java
+public String upload() {
+    try {
+        validateFile(uploadedFile);
+
+        try (InputStream is = uploadedFile.getInputStream()) {
+            byte[] logoBytes = is.readAllBytes();
+
+            SponsorEmailsAdminBean bean = new SponsorEmailsAdminBean();
+            bean.setSelectedSponsor(sponsorId);
+            bean.setSelectedEmailType(emailTypeId);
+            bean.setStoredTempImage(logoBytes);
+            bean.setLogoConfirmChange(true);
+
+            bean.modifyStoredImage();
+
+            this.uploadSuccess = bean.isSuccess();
+            this.databaseError = bean.isDatabaseError();
+        }
+    } catch (ValidatorException ve) {
+        FacesContext.getCurrentInstance().addMessage(null, ve.getFacesMessage());
+        databaseError = true;
+    } catch (IOException e) {
+        CustomLogger.error(this.getClass(), "IOException reading uploaded file", e);
+        databaseError = true;
+    } catch (Exception ex) {
+        CustomLogger.error(this.getClass(), "Unexpected error during upload", ex);
+        databaseError = true;
+    }
+
+    return null; // stay on page
+}
+```
+
+---
+
+### ✅ Step 3: (Optional) Front-end Hint
+
+If you want, you can also add an `accept` attribute to `<h:inputFile>` to restrict client selection:
+
+```xhtml
+<h:inputFile id="logoFile" value="#{uploadLogoBean.uploadedFile}" required="true" accept="image/png, image/jpeg, image/gif"/>
+```
+
+---
+
+Let me know if you want the validator extracted into a standalone JSF `@FacesValidator` class — but this inline version should be more than enough for your use case.
+---------------------------------------------------------------------------
+Great follow-up. Since you’re using standard JSF (`<h:inputFile>`) and validating the file server-side in your `upload()` method, you can show the file size/type error on the UI by:
+
+---
+
+### ✅ 1. Attach a `<h:message>` to the `<h:inputFile>`
+
+This displays validation errors specific to that component:
+
+```xhtml
+<h:form enctype="multipart/form-data">
+    <h:panelGrid columns="2">
+        <h:outputLabel for="logoFile" value="Upload Logo:" />
+        <h:inputFile id="logoFile" value="#{uploadLogoBean.uploadedFile}" required="true" accept="image/png,image/jpeg,image/gif" />
+        <h:message for="logoFile" style="color:red;" />
+    </h:panelGrid>
+    
+    <h:commandButton value="Upload" action="#{uploadLogoBean.upload}" />
+</h:form>
+```
+
+---
+
+### ✅ 2. Throw the error from Java bound to the input ID
+
+Make sure the `ValidatorException` you throw in `validateFile()` applies to the component with ID `logoFile`. You can do this by wrapping the validation call like this:
+
+```java
+public String upload() {
+    FacesContext context = FacesContext.getCurrentInstance();
+    UIComponent logoInput = context.getViewRoot().findComponent("formId:logoFile"); // replace "formId" with actual form ID if needed
+
+    try {
+        validateFile(uploadedFile);
+
+        try (InputStream is = uploadedFile.getInputStream()) {
+            byte[] logoBytes = is.readAllBytes();
+
+            SponsorEmailsAdminBean bean = new SponsorEmailsAdminBean();
+            bean.setSelectedSponsor(sponsorId);
+            bean.setSelectedEmailType(emailTypeId);
+            bean.setStoredTempImage(logoBytes);
+            bean.setLogoConfirmChange(true);
+            bean.modifyStoredImage();
+
+            this.uploadSuccess = bean.isSuccess();
+            this.databaseError = bean.isDatabaseError();
+        }
+    } catch (ValidatorException ve) {
+        context.addMessage(logoInput.getClientId(context), ve.getFacesMessage());
+        databaseError = true;
+    } catch (IOException | RuntimeException e) {
+        context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Upload failed. Please try again.", null));
+        databaseError = true;
+    }
+
+    return null;
+}
+```
+
+Or more simply (if you don't want to resolve the component ID manually), just use:
+
+```java
+context.addMessage("formId:logoFile", ve.getFacesMessage());
+```
+
+---
+
+### ✅ 3. Result
+
+If the uploaded file is too big or of the wrong type, the user will see the message like:
+
+```
+Only JPG, PNG, or GIF images are allowed.
+```
+
+or
+
+```
+File size must be less than 20KB.
+```
+
+Right below the input field. Let me know your exact form/component ID structure if you'd like this tailored further.
