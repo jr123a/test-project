@@ -1,0 +1,157 @@
+[7/17/25 11:22:10:056 CDT] 0000013b SystemOut     O BrowserCacheHandlerFilter processing: /IVSAdmin/sponsor_emails.xhtml
+[7/17/25 11:22:10:086 CDT] 0000013b SystemOut     O -----------------------------------------------------
+[7/17/25 11:22:10:086 CDT] 0000013b SystemOut     O selectSponsor::5
+[7/17/25 11:22:10:086 CDT] 0000013b SystemOut     O Loaded body::<p>    <span style="font-size: 9pt; font-family: Arial, sans-serif;">This communication is to notify you that your identity was verified in-person on ~TRANSACTION DATE~ at ~FACILITY NAME~, ~FACILITY CITY STATE~ Post Office.<o:p></o:p></span></p><p>    <span style="font-size: 9pt; font-family: Arial, sans-serif;">The enrollment code used was ~ENROLLMENT CODE~.<o:p></o:p></span></p><p>  <span style="font-size: 9pt; font-family: Arial, sans-serif;">Your activation code is ~ACTIVATION CODE~. It is valid for ~ACTIVATION CODE VALIDATION DAYS~ and will expire on ~ACTIVATION CODE EXPIRATION DATE~.<o:p></o:p></span></p><p>    <span style="font-size: 9pt; font-family: Arial, sans-serif;">If this was you, no action is required. If this was not you, please contact a Social Security representative at (301) 555-3434.<o:p></o:p></span></p><p>       &nbsp;</p>
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded greeting::<p>        Dear ~FIRST NAME~ ~LAST NAME~,</p><p>   &nbsp;</p>
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded closing::<p> <span style="font-size: 9pt; font-family: Arial, sans-serif;">Thank you, ~FIRST NAME~, for your attention,<o:p></o:p></span></p><p>     <span style="font-size: 9pt; font-family: Arial, sans-serif;">United States Postal Service in partnership with Social Security Administration<o:p></o:p></span></p><p>       &nbsp;</p>
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded postscript::<p>      Your activation code is ~ACTIVATION CODE~.&nbsp; It is valid for&nbsp;~ACTIVATION CODE VALIDATION DAYS~ and will expire on&nbsp;~ACTIVATION CODE EXPIRATION DATE~.</p>
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded subject::In-Person Identity Verification for my IAL2 Passed
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded expirationDays::
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded includeUSPSLogo::true
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded includeAgencyLogo::true
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded EmailType::6
+[7/17/25 11:22:10:087 CDT] 0000013b SystemOut     O Loaded EmailTypeList::[com.ips.entity.RefEmailType@cc1a8bf5, com.ips.entity.RefEmailType@6dd9d901, com.ips.entity.RefEmailType@1357c40a, com.ips.entity.RefEmailType@a28b8407, com.ips.entity.RefEmailType@635eb13c, com.ips.entity.RefEmailType@3afea116]
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded SponsorList::[com.ips.entity.RefSponsor@c21bc606, com.ips.entity.RefSponsor@693739b2, com.ips.entity.RefSponsor@736c3b63, com.ips.entity.RefSponsor@4c2cd3a5, com.ips.entity.RefSponsor@59125cc9, com.ips.entity.RefSponsor@e5861646, com.ips.entity.RefSponsor@1a6c80ab, com.ips.entity.RefSponsor@7ba15463, com.ips.entity.RefSponsor@22198ab3, com.ips.entity.RefSponsor@f85e9c1d, com.ips.entity.RefSponsor@2f1f484e, com.ips.entity.RefSponsor@beab5692, com.ips.entity.RefSponsor@1eba8cd0, com.ips.entity.RefSponsor@b4aa50af, com.ips.entity.RefSponsor@139268c7, com.ips.entity.RefSponsor@adc54c05, com.ips.entity.RefSponsor@d0882b87, com.ips.entity.RefSponsor@be36001d, com.ips.entity.RefSponsor@f0f0c79, com.ips.entity.RefSponsor@278cb1e6, com.ips.entity.RefSponsor@eac80890, com.ips.entity.RefSponsor@8f9a1b47, com.ips.entity.RefSponsor@d5042edd, com.ips.entity.RefSponsor@e0dd3938, com.ips.entity.RefSponsor@b7e673e6, com.ips.entity.RefSponsor@fb241d9, com.ips.entity.RefSponsor@29ac1fcc, com.ips.entity.RefSponsor@c43a475b, com.ips.entity.RefSponsor@c2c86546, com.ips.entity.RefSponsor@3a81f1f9, com.ips.entity.RefSponsor@868b7386]
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded PreviewEmail::null
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded SendEmail::0
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded StoredTempImage::null
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded ImageBase64String::
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O Loaded ImageExt::
+[7/17/25 11:22:10:088 CDT] 0000013b SystemOut     O -----------------------------------------------------
+[7/17/25 11:22:10:171 CDT] 00000149 SystemOut     O BrowserCacheHandlerFilter processing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:171 CDT] 00000149 SystemOut     O BrowserCacheHandlerFilter allowing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:174 CDT] 00000149 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /contents.css
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+        at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:49)
+        at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+        at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+        at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+        at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+        at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+        at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+        at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+        at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+        at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+        at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+        at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+        at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+        at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+        at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+        at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+        at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+        at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[7/17/25 11:22:10:195 CDT] 00000149 SystemOut     O BrowserCacheHandlerFilter processing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:195 CDT] 00000149 SystemOut     O BrowserCacheHandlerFilter allowing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:197 CDT] 00000149 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /contents.css
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+        at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:49)
+        at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+        at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+        at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+        at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+        at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+        at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+        at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.ready(HttpInboundLink.java:289)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink.determineNextChannel(SSLConnectionLink.java:1188)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink$MyReadCompletedCallback.complete(SSLConnectionLink.java:695)
+        at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+        at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+        at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+        at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+        at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+        at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+        at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+        at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+        at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[7/17/25 11:22:10:220 CDT] 00000148 SystemOut     O BrowserCacheHandlerFilter processing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:220 CDT] 00000148 SystemOut     O BrowserCacheHandlerFilter allowing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:222 CDT] 00000148 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /contents.css
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+        at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:49)
+        at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+        at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+        at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+        at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+        at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+        at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+        at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.ready(HttpInboundLink.java:289)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink.determineNextChannel(SSLConnectionLink.java:1188)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink$MyReadCompletedCallback.complete(SSLConnectionLink.java:695)
+        at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+        at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+        at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+        at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+        at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+        at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+        at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+        at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+        at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+
+[7/17/25 11:22:10:238 CDT] 00000148 SystemOut     O BrowserCacheHandlerFilter processing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:238 CDT] 00000148 SystemOut     O BrowserCacheHandlerFilter allowing: /IVSAdmin/contents.css
+[7/17/25 11:22:10:240 CDT] 00000148 filter        E com.ibm.ws.webcontainer.filter.FilterInstanceWrapper doFilter SRVE8109W: Uncaught exception thrown by filter BrowserCacheHandlerFilter: java.io.FileNotFoundException: SRVE0190E: File not found: /contents.css
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor._processEDR(DefaultExtensionProcessor.java:977)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.processEDR(DefaultExtensionProcessor.java:958)
+        at com.ibm.ws.webcontainer.extension.DefaultExtensionProcessor.handleRequest(DefaultExtensionProcessor.java:486)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+        at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:49)
+        at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+        at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+        at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+        at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+        at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+        at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+        at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+        at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+        at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.ready(HttpInboundLink.java:289)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink.determineNextChannel(SSLConnectionLink.java:1188)
+        at com.ibm.ws.ssl.channel.impl.SSLConnectionLink$MyReadCompletedCallback.complete(SSLConnectionLink.java:695)
+        at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+        at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+        at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+        at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+        at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+        at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+        at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+        at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+        at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
