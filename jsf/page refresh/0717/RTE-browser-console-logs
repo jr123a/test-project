@@ -1,0 +1,152 @@
+Refused to apply style from 'https://ips-sit.usps.com/IVSAdmin/contents.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.Understand this error
+sponsor_emails.xhtml:1 Refused to apply style from 'https://ips-sit.usps.com/IVSAdmin/contents.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.Understand this error
+sponsor_emails.xhtml:1 Refused to apply style from 'https://ips-sit.usps.com/IVSAdmin/contents.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.Understand this error
+sponsor_emails.xhtml:1 Refused to apply style from 'https://ips-sit.usps.com/IVSAdmin/contents.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled.Understand this error
+ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89 Uncaught TypeError: Cannot read properties of null (reading 'length')
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:311
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1250
+    at a.resourceManager.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1252)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1720)
+    at Object.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1744)
+    at a.resourceManager.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1003)
+    at a.editor.getStylesSet (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1204)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:248)
+    at a.editor.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:1920)
+    at a.editor.m (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6:1867)
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+a.editor.getStylesSet @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+setTimeout
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+setTimeout
+W @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+callFunction @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+(anonymous) @ VM226:1Understand this error
+ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89 Uncaught TypeError: Cannot read properties of null (reading 'length')
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:311
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1250
+    at a.resourceManager.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1252)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1720)
+    at Object.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1744)
+    at a.resourceManager.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1003)
+    at a.editor.getStylesSet (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1204)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:248)
+    at a.editor.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:1920)
+    at a.editor.m (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6:1867)
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+a.editor.getStylesSet @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+setTimeout
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+setTimeout
+W @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+callFunction @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+(anonymous) @ VM227:1Understand this error
+ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89 Uncaught TypeError: Cannot read properties of null (reading 'length')
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:311
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1250
+    at a.resourceManager.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1252)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1720)
+    at Object.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1744)
+    at a.resourceManager.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1003)
+    at a.editor.getStylesSet (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1204)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:248)
+    at a.editor.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:1920)
+    at a.editor.m (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6:1867)
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+a.editor.getStylesSet @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+setTimeout
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+setTimeout
+W @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+callFunction @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+(anonymous) @ VM228:1Understand this error
+ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89 Uncaught TypeError: Cannot read properties of null (reading 'length')
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:311
+    at ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1250
+    at a.resourceManager.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1252)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1720)
+    at Object.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23:1744)
+    at a.resourceManager.load (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24:1003)
+    at a.editor.getStylesSet (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125:1204)
+    at t (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:248)
+    at a.editor.<anonymous> (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89:1920)
+    at a.editor.m (ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6:1867)
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:23
+load @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:24
+a.editor.getStylesSet @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:125
+t @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:89
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fireOnce @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+setTimeout
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:131
+m @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+a.event.fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:6
+fire @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:7
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+setTimeout
+W @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:104
+(anonymous) @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+callFunction @ ckeditor.js.xhtml?ln=org.richfaces.ckeditor:10
+(anonymous) @ VM229:1Understand this error
