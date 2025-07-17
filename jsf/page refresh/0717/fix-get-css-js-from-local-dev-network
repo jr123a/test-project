@@ -1,0 +1,112 @@
+Yes — your strategy is **spot-on** and a smart move. Here's why it makes sense and how to do it cleanly:
+
+---
+
+## ✅ Why Your Plan Works
+
+You're absolutely right that:
+
+* In **local/DEV**, `contents.css` and other editor resources load successfully — likely from classpath or JSF-managed locations.
+* In **SIT**, they **404** due to missing static file deployment, bad URL resolution, or load balancer issues.
+* So, your idea to **manually collect working resources** and reference them **statically within the project (EAR)** is solid and has been used in enterprise setups where server config cannot be easily modified.
+
+---
+
+## ✅ Step-by-Step Fix Using Static Resource Packaging
+
+### 🔧 Step 1: **Download the Working Files**
+
+From your **local/DEV browser**, grab all the working versions of:
+
+* `contents.css`
+* Any `*.js` that’s failing in SIT (e.g., `styles/default.js`, `ckeditor.js`)
+* Any other `.ecss`, `.js.xhtml`, `.xhtml` resources if referenced directly
+
+> 💡 Save them with **exact names** as they appear in network tab.
+
+---
+
+### 📁 Step 2: **Place in Web Resources Folder**
+
+Structure:
+
+```
+src/main/webapp/resources/ckeditor/
+│
+├── contents.css
+├── styles/
+│   └── default.js
+├── js/
+│   └── ckeditor.js
+```
+
+Keep the same paths as referenced in the browser's network tab **or** rewrite your references accordingly.
+
+---
+
+### 🛠️ Step 3: **Reference These Files in XHTML (RichTextEditor Page)**
+
+In `sponsor_emails.xhtml` or the page with `<rich:editor>`, add:
+
+```xhtml
+<h:outputStylesheet name="ckeditor/contents.css" library="resources"/>
+<h:outputScript name="ckeditor/js/ckeditor.js" library="resources"/>
+<h:outputScript name="ckeditor/styles/default.js" library="resources"/>
+```
+
+Or if you're doing it in `<script>` directly (less preferred):
+
+```xhtml
+<link rel="stylesheet" href="#{resource['resources:ckeditor/contents.css']}" type="text/css" />
+<script src="#{resource['resources:ckeditor/js/ckeditor.js']}"></script>
+```
+
+> ✅ Prefer `h:outputStylesheet`/`h:outputScript` — they're JSF-aware and portable.
+
+---
+
+### 🧩 Step 4: **Point the RTE to These Files**
+
+If you control CKEditor config, set:
+
+```xhtml
+<rich:editor
+    config="{
+      contentsCss: '/IVSAdmin/resources/ckeditor/contents.css',
+      stylesSet: 'default:/IVSAdmin/resources/ckeditor/styles/default.js'
+    }"
+    value="#{bean.body}" />
+```
+
+> Adjust the base URL path if needed (`/IVSAdmin/resources/...`) depending on how you expose `/resources`.
+
+---
+
+### ✅ Optional (If Resources Aren’t Auto-Served)
+
+In `web.xml`, add a mapping if your JSF setup doesn’t already expose `/resources/`:
+
+```xml
+<servlet-mapping>
+  <servlet-name>Faces Servlet</servlet-name>
+  <url-pattern>/resources/*</url-pattern>
+</servlet-mapping>
+```
+
+---
+
+## 🛡 Benefits of This Approach
+
+* ✔ Bypasses load balancer/Apache config issues.
+* ✔ Ensures files are **always deployed** with EAR/WAR.
+* ✔ Avoids runtime 404s in production.
+* ✔ Keeps things under your control — no ops involvement.
+
+---
+
+## ✅ Final Thoughts
+
+* Yes, **most likely these files are referenced inside RichFaces or CKEditor initialization in `sponsor_emails.xhtml`**, or via injected editor config.
+* If you can't find those config points, I can help you grep or trace RichFaces `<rich:editor>` usage to locate and patch it.
+
+Let me know when you're ready to drop in the references, and I’ll help you patch them directly into the XHTML file with proper syntax.
