@@ -1,0 +1,130 @@
+Absolutely — here’s the **complete, production-ready fix package** for the **Rich Text Editor (RTE) resource loading issue in SIT**. You can store this and come back to it as needed.
+
+---
+
+## ✅ Problem Recap
+
+The **CKEditor inside RichFaces** fails to fully load in the SIT environment, showing a partially rendered editor. The cause is:
+
+1. **Missing `contents.css`** → leads to `FileNotFoundException`, MIME type errors, and JS crashes.
+2. **CKEditor `stylesSet` JS crash** → triggered due to a missing or invalid style config.
+3. **Resources behind load balancer** → may require additional MIME/header config for `.css`, `.js`, etc.
+
+---
+
+## ✅ Step-by-Step Fix (Store & Reuse Later)
+
+### 🔧 1. ✅ Restore or Remove `contents.css`
+
+#### 🔍 Locate Reference:
+
+* In your XHTML or JavaScript code, find where `contents.css` is referenced. For example:
+
+  ```html
+  <link rel="stylesheet" type="text/css" href="#{resource['contents.css']}"/>
+  ```
+
+  or maybe inside the CKEditor config:
+
+  ```js
+  contentsCss: '/IVSAdmin/contents.css'
+  ```
+
+#### 🛠 If it's **not needed**, REMOVE the reference.
+
+#### 🧱 If it's **required**, CREATE it:
+
+Create a blank or basic `contents.css` and place it in your resources:
+
+```
+src/main/webapp/resources/css/contents.css
+```
+
+Then reference it using JSF-friendly output:
+
+```xhtml
+<h:outputStylesheet library="css" name="contents.css"/>
+```
+
+---
+
+### ⚙️ 2. ✅ Fix CKEditor `stylesSet` Error
+
+If you're seeing JS like:
+
+```
+Uncaught TypeError: Cannot read properties of null (reading 'length')
+```
+
+Then the CKEditor config is referencing a bad or missing styles set.
+
+#### ✅ Option A: Disable `stylesSet` completely
+
+```js
+CKEDITOR.config.stylesSet = [];
+```
+
+#### ✅ Option B: Use built-in basic styles
+
+```js
+CKEDITOR.config.stylesSet = 'default';
+```
+
+This fix may need to be applied:
+
+* In XHTML if you control CKEditor directly.
+* Inside RichFaces `<rich:editor config="#{bean.ckeditorConfig}">` binding.
+* Via override script block after page load.
+
+If you want help wiring it, I can guide you.
+
+---
+
+### 🛡 3. ✅ Load Balancer/HTTP Config (Apache or IHS)
+
+Ensure your reverse proxy or HTTP server recognizes `.css`, `.js`, `.ecss`, etc.
+
+**Sample `httpd.conf` additions:**
+
+```apache
+AddType text/css .css
+AddType application/javascript .js
+AddType text/javascript .js
+AddType text/plain .ecss
+AddType text/javascript .xhtml
+```
+
+Make sure:
+
+* `contents.css` gets served with MIME `text/css`.
+* JSF `.js.xhtml` are allowed through the proxy without content mangling.
+
+You **already tried one change that broke CSS rendering** — likely due to an overbroad filter. Instead, use **targeted fixes** like above.
+
+---
+
+### 🧪 4. ✅ Debug Checklist (for future verification)
+
+If issue reappears, double-check:
+
+* ✅ Is `contents.css` present at the expected path?
+* ✅ Is it returning 200 OK, not 404?
+* ✅ Is the response `Content-Type: text/css`?
+* ✅ Are JS console errors from CKEditor gone?
+* ✅ Are you referencing JSF resources using `h:outputStylesheet` or `h:outputScript` when possible?
+
+---
+
+## ✅ Fix Summary (Store This!)
+
+| Area                 | Fix                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **Missing CSS**      | Either remove or add `contents.css` to `/resources/css`, and include using `<h:outputStylesheet>`           |
+| **CKEditor crash**   | Override `CKEDITOR.config.stylesSet = []` or `'default'` to avoid `null.length` error                       |
+| **Load Balancer**    | In `httpd.conf`, add proper MIME types for `.css`, `.js`, `.xhtml`, `.ecss`                                 |
+| **Resource Mapping** | Prefer `h:outputStylesheet` and `h:outputScript` for static resources instead of raw `<link>` or `<script>` |
+| **Fallback check**   | Use HAR file + browser console to trace missing or malformed assets                                         |
+
+---
+
+Let me know when you’re ready to switch to the other issue. I’ll stay focused.
