@@ -1,0 +1,112 @@
+Thanks for confirming. Yes — your example:
+
+```xhtml
+#{(bean.selectedSponsor == 1 and bean.selectedEmailType == 1)}
+```
+
+is a valid EL (Expression Language) condition and works just fine **inside a `rendered` attribute** or any EL-aware attribute (e.g., `disabled`, `readonly`, etc.) as long as:
+
+* `selectedSponsor` and `selectedEmailType` are primitives or wrapper types (`int` / `Integer`)
+* They are initialized and updated properly in your bean
+
+---
+
+### ✅ So here’s the updated version using **your style** of condition:
+
+```xhtml
+<!-- Show NOTHING if selectedSponsor == 1 -->
+<a4j:outputPanel id="greetingContainer" layout="block"
+    rendered="#{!(bean.selectedSponsor == 1) and (bean.selectedEmailType == 6)}">
+    <!-- Greeting Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="bodyContainer" layout="block"
+    rendered="#{!(bean.selectedSponsor == 1) and (bean.selectedEmailType != 6)}">
+    <!-- Body Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="closingContainer" layout="block"
+    rendered="#{!(bean.selectedSponsor == 1) and (bean.selectedEmailType == 6)}">
+    <!-- Closing Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="postscriptContainer" layout="block"
+    rendered="#{!(bean.selectedSponsor == 1) and (bean.selectedEmailType == 6)}">
+    <!-- Postscript Content -->
+</a4j:outputPanel>
+```
+
+---
+
+### 🧠 Logic Recap Based on Your Rules:
+
+| selectedSponsor | selectedEmailType | Expected Visible Divs |
+| --------------- | ----------------- | --------------------- |
+| 1               | Any               | None                  |
+| ≠1              | Not 6             | `bodyContainer` only  |
+| ≠1              | 6                 | All four containers   |
+
+---
+
+Let me know if you'd like to centralize this logic into helper methods like `isShowBodyOnly()` or `isShowAllSections()` to keep the XHTML clean.
+-----------------------------------------------------------------------------------------------
+Great — here's how to centralize your logic into helper methods within your backing bean to keep the XHTML clean and maintainable.
+
+---
+
+### ✅ **Step 1: Add these methods to your managed bean (e.g., `SponsorEmailsAdminBean`)**
+
+```java
+public boolean isShowNothing() {
+    return selectedSponsor == 1;
+}
+
+public boolean isShowBodyOnly() {
+    return selectedSponsor != 1 && selectedEmailType != 6;
+}
+
+public boolean isShowAllSections() {
+    return selectedSponsor != 1 && selectedEmailType == 6;
+}
+```
+
+---
+
+### ✅ **Step 2: Update your XHTML using those methods**
+
+```xhtml
+<a4j:outputPanel id="greetingContainer" layout="block"
+    rendered="#{bean.showAllSections}">
+    <!-- Greeting Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="bodyContainer" layout="block"
+    rendered="#{bean.showBodyOnly or bean.showAllSections}">
+    <!-- Body Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="closingContainer" layout="block"
+    rendered="#{bean.showAllSections}">
+    <!-- Closing Content -->
+</a4j:outputPanel>
+
+<a4j:outputPanel id="postscriptContainer" layout="block"
+    rendered="#{bean.showAllSections}">
+    <!-- Postscript Content -->
+</a4j:outputPanel>
+```
+
+---
+
+### 🧼 Optional: Add `@Transient` to those methods if your bean is JPA-annotated
+
+```java
+@Transient
+public boolean isShowAllSections() {
+    ...
+}
+```
+
+---
+
+Let me know if you want to add JSF `ajax` or force rerender of these sections on dropdown change — I can wire that up too.
