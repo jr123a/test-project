@@ -132,5 +132,63 @@ Yes, ✅ **you can absolutely use `<h:panelGroup>` with `style` to conditionally
 ---
 
 Let me know if you’d like me to refactor the other container sections (`bodyContainer`, `closingContainer`, etc.) the same way.
+------------------------------------------------------------------------------------
+Absolutely — if you're still using the raw `bean.selectedSponsor` and `bean.selectedEmailType` in your condition, you can directly place those expressions inside the `style` attribute of your `<h:panelGroup>` (or `<div>`).
+
+---
+
+### ✅ Example (Using `selectedSponsor` and `selectedEmailType` Directly)
+
+```xhtml
+<h:panelGroup id="greetingContainer" layout="block"
+    style="#{(bean.selectedSponsor != 1 and bean.selectedEmailType == 6) ? '' : 'display:none;'}">
+
+    <p class="error" id="greetingVariableError" style="display: none;"></p>
+    <p class="error" id="greetingLengthError" style="display: none;"></p>
+    <h3>Greeting</h3>
+
+    <rich:editor readonly="#{bean.isIAL2LetterChange() || bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange()}"
+                 id="greetingEditor"
+                 value="#{bean.greeting}"
+                 toolbar="custom">
+        <f:facet name="config">
+            toolbar_custom:
+                [
+                    { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                    { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                    { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                    { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                    { name: 'links', items: ['Link','Unlink'] },
+                    { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                    { name: 'colors', items: ['TextColor'] },
+                    { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+                ]
+        </f:facet>
+    </rich:editor>
+
+    <hr />
+</h:panelGroup>
+```
+
+---
+
+### 🧠 Summary of Logic Based on Your Rules
+
+You can apply similar logic for the other containers:
+
+#### `bodyContainer`
+
+```xhtml
+style="#{(bean.selectedSponsor != 1) ? '' : 'display:none;'}"
+```
+
+#### `greetingContainer`, `closingContainer`, `postscriptContainer`
+
+```xhtml
+style="#{(bean.selectedSponsor != 1 and bean.selectedEmailType == 6) ? '' : 'display:none;'}"
+```
+
+Let me know if you'd like me to provide all four `panelGroup` blocks together using this logic.
+
 
 
