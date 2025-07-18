@@ -1,0 +1,80 @@
+Thanks! Since you're using `faces-redirect=true`, JSF will generate a **GET request** with parameters in the URL. So we can **pass sponsorId and emailTypeId as `<f:param>`s** using an `<h:link>`, and ensure `SponsorEmailsAdminBean` reads them on redirect.
+
+---
+
+### ✅ Final Working Implementation
+
+#### 🔹 In `upload_logo.xhtml`:
+
+Replace your current back link with this:
+
+```xhtml
+<h:link outcome="sponsor_emails?faces-redirect=true" value="Back to Email Configs">
+    <f:param name="sponsorId" value="#{uploadLogoBean.sponsorId}" />
+    <f:param name="emailTypeId" value="#{uploadLogoBean.emailTypeId}" />
+</h:link>
+```
+
+✅ This passes the parameters into the redirected URL like:
+
+```
+.../sponsor_emails.xhtml?sponsorId=123&emailTypeId=6
+```
+
+---
+
+#### 🔹 In `SponsorEmailsAdminBean`:
+
+Make sure the `@PostConstruct init()` reads those params and applies them.
+
+If you haven’t already, include this logic:
+
+```java
+@PostConstruct
+public void init() {
+    if (!isInitialized) {
+        buildMap();
+        buildSponsorList();
+        buildEmailList();
+
+        FacesContext context = FacesContext.getCurrentInstance();
+        Map<String, String> params = context.getExternalContext().getRequestParameterMap();
+
+        String sponsorParam = params.get("sponsorId");
+        String emailTypeParam = params.get("emailTypeId");
+
+        if (sponsorParam != null) {
+            try {
+                setSelectedSponsor(Long.parseLong(sponsorParam));
+            } catch (NumberFormatException e) {
+                // fallback to default
+                setSelectedSponsor(sponsorList.isEmpty() ? null : sponsorList.get(0).getSponsorId());
+            }
+        } else {
+            setSelectedSponsor(sponsorList.isEmpty() ? null : sponsorList.get(0).getSponsorId());
+        }
+
+        if (emailTypeParam != null) {
+            try {
+                setSelectedEmailType(Long.parseLong(emailTypeParam));
+            } catch (NumberFormatException e) {
+                // fallback to default
+                setSelectedEmailType(emailTypeList.isEmpty() ? null : emailTypeList.get(0).getId());
+            }
+        } else {
+            setSelectedEmailType(emailTypeList.isEmpty() ? null : emailTypeList.get(0).getId());
+        }
+
+        resetEmailFields();
+        isInitialized = true;
+    }
+}
+```
+
+---
+
+### ✅ Result
+
+After uploading a logo, when testers click "Back to Email Configs", the sponsor and email type are pre-selected based on the passed parameters, and the uploaded logo will show up immediately.
+
+Let me know if you're using view parameters via `<f:metadata>` or need this generalized across other pages too.
