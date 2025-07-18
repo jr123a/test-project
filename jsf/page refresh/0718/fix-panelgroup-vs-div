@@ -1,0 +1,136 @@
+Thanks for the detailed context — that’s a **very helpful observation**, and you're absolutely onto something.
+
+---
+
+### 🔍 Root Cause Analysis
+
+You're replacing this:
+
+```html
+<div id="greetingContainer" hidden="true">...</div>
+```
+
+with:
+
+```xhtml
+<h:panelGroup rendered="#{yourConditions}">
+    <!-- rich:editor here -->
+</h:panelGroup>
+```
+
+And after that, **your Rich Text Editor (RTE) started failing or partially loading**. Here's why:
+
+---
+
+### ⚠️ Why the Problem Happens
+
+#### 1. **DOM `hidden="true"`** vs **JSF `rendered="false"`**:
+
+* Using `<div hidden="true">` means the **HTML is still present in the DOM**, just hidden via CSS.
+* But `rendered="false"` **does not send the component to the browser at all** — it is excluded from the JSF component tree **and from the rendered HTML**.
+* **CKEditor (used in RichFaces `rich:editor`) must be present in the DOM at page load to initialize properly.**
+* If it is not rendered initially (because `rendered=false`), the JavaScript initialization breaks or partially fails — causing the **"partially loaded RTE" bug** you’re seeing.
+
+---
+
+### ✅ Solution Options
+
+#### ✅ Option 1: Use `<div>` with conditional `style` or `hidden`
+
+Use your original `div` tag and control visibility like this:
+
+```xhtml
+<div id="greetingContainer" style="#{bean.showGreeting ? '' : 'display:none;'}">
+    <rich:editor ... />
+</div>
+```
+
+And in your bean:
+
+```java
+public boolean isShowGreeting() {
+    return selectedSponsor != 1 && selectedEmailType == 6;
+}
+```
+
+This way:
+
+* The RTE is **always part of the DOM** (so CKEditor initializes),
+* But is just **hidden visually**, which won’t break JavaScript-based components.
+
+---
+
+#### 🚫 Avoid: `rendered="false"` on any container wrapping `<rich:editor>`
+
+It **removes the editor from DOM**, and JavaScript cannot initialize a nonexistent element.
+
+---
+
+### 🔁 Summary
+
+| Approach                      | Safe for RTE?                    | Notes                                 |
+| ----------------------------- | -------------------------------- | ------------------------------------- |
+| `rendered="#{condition}"`     | ❌ **No**                         | Component never gets to DOM; JS fails |
+| `<div hidden="true">`         | ✅ Yes                            | Still in DOM; JS loads                |
+| `<div style="display:none;">` | ✅ Yes                            | JS-safe hiding                        |
+| `<h:panelGroup>`              | ✅ only if `rendered=true` always |                                       |
+
+---
+
+### ✅ Recommendation
+
+**Go back to using `<div>` or `<h:panelGroup layout="block">`**, but hide it with `style` or `hidden`, not `rendered`.
+
+Would you like me to give you a refactored version of your full RTE block using this safe pattern?
+
+---------------------------------------------------------------------------------------------------
+Yes, ✅ **you can absolutely use `<h:panelGroup>` with `style` to conditionally hide/show** RichFaces components like `<rich:editor>`, **as long as you do not use `rendered="false"`**.
+
+---
+
+### ✅ Example Using `<h:panelGroup>` Safely
+
+```xhtml
+<h:panelGroup id="greetingContainer" layout="block"
+              style="#{bean.showGreeting ? '' : 'display:none;'}">
+    
+    <p class="error" id="greetingVariableError" style="display: none;"></p>
+    <p class="error" id="greetingLengthError" style="display: none;"></p>
+    <h3>Greeting</h3>
+
+    <rich:editor readonly="#{bean.isIAL2LetterChange() || bean.isDatabaseError() || bean.isLogoConfirmChange() || bean.isLogoDeleteChange()}"
+                 id="greetingEditor"
+                 value="#{bean.greeting}"
+                 toolbar="custom">
+        <f:facet name="config">
+            toolbar_custom:
+                [
+                    { name: 'clipboard', items: ['Cut','Copy','Paste','PasteText','-','Undo','Redo'] },
+                    { name: 'editing', items: ['Find', 'Replace','-','SelectAll','-','Scayt'] },
+                    { name: 'basicstyles', items: ['Bold','Italic','Underline','Strike','-','RemoveFormat'] },
+                    { name: 'paragraph', items: ['NumberedList','BulletedList','-','Outdent','Indent','-','JustifyLeft','JustifyCenter','JustifyRight'] },
+                    { name: 'links', items: ['Link','Unlink'] },
+                    { name: 'styles', items: ['Styles','Format','Font','FontSize'] },
+                    { name: 'colors', items: ['TextColor'] },
+                    { name: 'insert', items: ['Image','HorizontalRule','Table','SpecialChar'] }
+                ]
+        </f:facet>
+    </rich:editor>
+
+    <hr />
+</h:panelGroup>
+```
+
+---
+
+### 🧠 Why This Works
+
+* `layout="block"` ensures the panel renders as a `<div>` in HTML.
+* The `style` attribute **only affects visibility**, not inclusion in the DOM.
+* CKEditor will still find and initialize the editor because the component exists on page load.
+
+---
+
+Let me know if you’d like me to refactor the other container sections (`bodyContainer`, `closingContainer`, etc.) the same way.
+
+
