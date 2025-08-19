@@ -1,0 +1,44 @@
+Yes, I remember the SponsorApplicationConfig screen where you manage and configure Workflow API Type Codes for each Sponsor Application (like BCG). Here’s a brief but clear documentation write-up for the tester team describing the functionality of the screen and each button.
+
+⸻
+
+📄 Sponsor Application Workflow Configuration – Button Functionality Documentation
+
+Screen Overview
+
+This screen allows users to configure the set and order of Workflow API Type Codes associated with a given Sponsor Application. The available APIs are listed in the top table, and the selected APIs (those assigned to the application) are shown in the middle section. The user can add, remove, reorder, and persist these workflow APIs, which are then reflected in the bottom table as a comma-separated list under the “Workflow API Type Code” column.
+
+⸻
+
+Button Descriptions
+
+✅ Include
+	•	Purpose: Adds one or more selected Workflow APIs from the Available APIs list (top table) to the Selected APIs list (middle section).
+	•	Effect: The selected APIs will appear in the Selected Workflow APIs for the Application table in the same order as selected.
+
+❌ Exclude
+	•	Purpose: Removes the selected API from the Selected APIs list.
+	•	Effect: The removed API will no longer be associated with the Sponsor Application, and will not appear in the final saved sequence.
+
+⬆️ Move Up
+	•	Purpose: Moves the selected API one position up in the Selected APIs list.
+	•	Effect: Changes the execution/priority order of the APIs. This order affects how the Workflow API Type Code sequence is generated.
+
+⬇️ Move Down
+	•	Purpose: Moves the selected API one position down in the Selected APIs list.
+	•	Effect: Reorders the sequence, just like Move Up, but in the downward direction.
+
+💾 Update
+	•	Purpose: Saves the current order of Selected APIs.
+	•	Effect: Persists the list as a comma-separated string in the “Workflow API Type Code” column of the bottom table. This reflects the current sequence of API execution for the given Sponsor Application.
+
+⸻
+
+Notes:
+	•	Only one API can be moved at a time (single selection required for Move Up/Down).
+	•	After modifying the list using Include/Exclude/Move, the Update button must be clicked to save changes.
+	•	The bottom table reflects the last saved state; unsaved changes will not appear until Update is clicked.
+
+⸻
+
+Let me know if you’d like this in a downloadable PDF/Word format or embedded into the UI as help text.
