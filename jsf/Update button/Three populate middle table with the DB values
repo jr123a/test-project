@@ -1,0 +1,88 @@
+Yes, absolutely — you should pre-populate the middle table (selectedApis) with the already-persisted workflow API codes from the database when the user lands on the page. This improves clarity and avoids duplicate selections.
+
+Let me walk you through how to do it cleanly.
+
+⸻
+
+✅ Goal Recap
+
+When the user lands on the SponsorApplicationConfig screen:
+	•	The middle table (selectedApis) should already show the APIs currently tied to the selected application (from DB).
+	•	The user should only use “Include” to add new APIs that are not already selected.
+
+⸻
+
+✅ Step-by-Step Implementation
+
+1. Add a property for the persisted data
+
+In your backing bean:
+
+private List<ApiWorkflow> selectedApis = new ArrayList<>(); // middle table
+private List<ApiWorkflow> allAvailableApis = new ArrayList<>(); // top table
+private SponsorApplication currentApp; // selected application
+
+2. Load the selected APIs in @PostConstruct
+
+Here’s how you pre-populate the selected middle table from the DB.
+
+@PostConstruct
+public void init() {
+    // Step 1: Load all available APIs from the master list (top table)
+    allAvailableApis = apiService.getAllAvailableApis();  // or however you load it
+
+    // Step 2: Load selected workflow codes from the database
+    String savedApiCodes = sponsorAppService.getWorkflowApiCodesByApplicationId(currentApp.getId()); 
+    // example: "OTP,MFA,PV,IDA"
+
+    if (savedApiCodes != null && !savedApiCodes.trim().isEmpty()) {
+        List<String> codeList = Arrays.asList(savedApiCodes.split(","));
+        for (String code : codeList) {
+            allAvailableApis.stream()
+                .filter(api -> api.getApiTypeCode().equals(code))
+                .findFirst()
+                .ifPresent(selectedApis::add);
+        }
+    }
+}
+
+⚠️ Note: sponsorAppService.getWorkflowApiCodesByApplicationId(...) should return the persisted comma-separated string (e.g., "PV,OTP,IDA"), and you match those against your master list (allAvailableApis).
+
+⸻
+
+✅ JSF Table Will Automatically Populate
+
+No changes needed on the JSF page. The middle table (selectedApis) will show up pre-filled when the page is first rendered.
+
+<h:dataTable value="#{workflowBean.selectedApis}" var="api" ...>
+  <!-- Already works -->
+</h:dataTable>
+
+
+⸻
+
+🔁 Include Button Logic – Optional Enhancement
+
+To avoid duplicates when user adds from the top table:
+
+public void includeSelectedApis() {
+    for (ApiWorkflow api : selectedFromTopTable) {
+        if (!selectedApis.contains(api)) {
+            selectedApis.add(api);
+        }
+    }
+}
+
+This prevents duplication when a user selects an API already present in the middle list.
+
+⸻
+
+✅ Summary
+	•	Yes, it’s possible and best practice to load the persisted DB state into the middle table.
+	•	Load the list in @PostConstruct by parsing the saved comma-separated string.
+	•	Match those codes to the master API list and populate selectedApis.
+	•	Middle table will display the current configuration, reducing user confusion.
+
+⸻
+
+Let me know if your ApiWorkflow objects are keyed differently (e.g., by ID instead of code), or if you want this integrated with DB entity objects!
