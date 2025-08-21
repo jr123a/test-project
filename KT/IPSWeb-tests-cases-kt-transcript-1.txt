@@ -1,0 +1,1818 @@
+IPSWeb test cases walk through-20250606_100012-Meeting Recording
+June 6, 2025, 5:00PM
+59m 27s
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor started transcription
+
+Knocik, Brian J - Washington, DC - Contractor   0:04
+Yeah, sure.
+So I guess.
+What would?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   0:11
+So do you have any specific questions, Jagan?
+
+Knocik, Brian J - Washington, DC - Contractor   0:11
+So Jagger, you were looking.
+Yeah. Is there specific questions?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   0:15
+Yeah. So yeah, just to give the some context, right.
+So basically what?
+I'm needing help with is.
+How this integration works with the remote proofing from the IPS web standpoint? So so far I mean I'm only exposed on the API side, but I don't have a clear picture on the.
+You know how it works from the front end.
+So you know when you log into IPS web and you trigger the remote proofing.
+
+Knocik, Brian J - Washington, DC - Contractor   0:51
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   0:54
+From the recalls different endpoints.
+You know things like Xperia and Equifax, LexisNexis. So I I don't have a clear knowledge on that.
+So that's where asked me to connect with you guys so that you know you can share your knowledge and your test cases.
+Things like that so that I can get familiarize myself with that.
+
+Knocik, Brian J - Washington, DC - Contractor   1:21
+OK, OK.
+No problem. Makes sense.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   1:24
+Yeah, I think, Brent, you can start from the.
+Cross stretch and we can also show him the seat admin how we can't we have the sponsors?
+
+Knocik, Brian J - Washington, DC - Contractor   1:35
+Yeah, that sounds good.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   1:35
+And we can configure like one or two sponsors and try to do the remote proofing from custom delivery.
+
+Knocik, Brian J - Washington, DC - Contractor   1:43
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   1:44
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   1:45
+Yeah, that's a good starting point.
+So I'm on set admin right now and when we log in, this is the first page that we get.
+It's the OTP and this is how we configure the supplier.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   1:56
+Play.
+
+Knocik, Brian J - Washington, DC - Contractor   1:56
+So Equifax, Experian, LexisNexis.
+And for the remote proofing and and Ranjit can correct me if I'm if I'm wrong here. But.
+The Equifax one that we tend to configure the most is this one, the dit smfa.
+So that there's a link that gets sent to us in order to confirm the verification of the user itself.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   2:22
+Yeah. So each vendor has like a different.
+What do we call like verification system? For example, if we can't verify Equifax and try to do the remote proving?
+We will get a link to our mobile phone like whichever it is configured and for example Alexis next we will get an OTP to our mobile phone. So when we enter that then like the identity is verified.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   2:49
+OK.
+Just one question. So as I can see here, so there is a percentage, so it could be a combo for all four or it could be either one or that.
+
+Knocik, Brian J - Washington, DC - Contractor   2:56
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   2:58
+Yeah.
+It it could be a combo of like two I guess.
+I'm not like sure, but it can be a comb of like any of the two.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:10
+Any of the two? OK, that's fine.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   3:11
+It might be like 95, five or something like 4060.
+
+Knocik, Brian J - Washington, DC - Contractor   3:16
+Yeah, like so here.
+As long as it adds up to 100.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   3:19
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:21
+And from the flow wise, so we can clearly see the difference. Like for example we say 95.5.
+
+Knocik, Brian J - Washington, DC - Contractor   3:21
+And.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:30
+South, for example, Dit Smfa is 95 and 5% is Equifax OTP.
+So can we clearly distinguish that distinction from the UA standpoint?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   3:43
+From the US standpoint, during the verification system, I think we can distinguish it based on what?
+What kind of second verification we are getting?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:55
+OK, OK.
+
+Knocik, Brian J - Washington, DC - Contractor   3:59
+And at least of late, the way that we've been testing everything, it's just been one supplier for the most part and ever since I started, that's all I've done.
+So if you wanted a better idea of mixing these percentages, it would be best to check with Ranjit or even Katya and Mickey.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   4:17
+OK, OK.
+Yeah, sure.
+
+Knocik, Brian J - Washington, DC - Contractor   4:22
+Now we're using our own information and I'll kind of walk you through this with a visual when we're going through inform delivery.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   4:28
+Also, Brian, can you can you show him the document we have for the different sponsors and what users will be using in our test environment?
+
+Knocik, Brian J - Washington, DC - Contractor   4:37
+Yeah, yeah, sure.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   4:37
+Oh, yeah, yeah, that sponsor cusrage here, right?
+Do we have a different sponsors, right? Like whole mail?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   4:42
+Yeah, we have a different sponsors as well.
+We have one for.
+Change of address COA.
+And one for.
+What's the other?
+I'm not recalling it.
+Can you?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   4:58
+On the lower here you call my.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   4:58
+Can you open the drop down?
+
+Knocik, Brian J - Washington, DC - Contractor   4:58
+Operation Center, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:02
+One for.
+
+Knocik, Brian J - Washington, DC - Contractor   5:05
+This one here.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:06
+Yeah. Operation Center, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   5:08
+Yes.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   5:08
+OK. OK. Change of address. OK. Makes sense.
+
+Knocik, Brian J - Washington, DC - Contractor   5:12
+Yeah.
+And and we'll go through each of these operations sent out. I think Ranjita would want you to walk him through 'cause. I I was still learning the ropes when you guys were doing this. So I I haven't had much experience, but these two.
+You know, I could go through.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:29
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   5:31
+So Custodge is what we're going to go through for like the inform delivery and hold mail and and all that.
+And.
+So we we would be using our own information as Ranjeet mentioned, we would get stuff through our mobile phone.
+And for certain suppliers, there's certain like information that you have to provide.
+It's not always your like your first and last name. So for example here it's Equifax.
+You could see the scenarios that you can test, one that can be completely denied as a result for verification.
+One that gets automatically approved, one that requires a A some type of verification which is.
+What we would be getting on her mobile phone and then getting the approval for it and that all really depends on this information here.
+So low confidence e-mail.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   6:33
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   6:34
+High confidence in medium low confidence is typically just a automatic fail for the result.
+And it's it's kind of just indicated in the name itself here, low confidence.
+Medium is where there's some additional step that's needed, AKA getting.
+A passcode or a link to your mobile phone to get approved.
+And then there's the high confidence, which is pretty much an automatic pass you just put in your information.
+Say, hey, this is what I wanna do.
+Inform delivery and you automatically get approved and I'll show you an example of visual for each of them, and I could even share this document with you afterwards in the chat.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   7:22
+Thank you.
+
+Knocik, Brian J - Washington, DC - Contractor   7:24
+Mm hmm.
+So we use Linda Davis a lot just for the the passing LEXIS Nexus is where you do use your real name.
+Councillor for my case, Brian Nasuk would be would I would be putting as the information and these emails again have the same parameters.
+Low confidence, deny medium requires an additional step of a verification and high confidence is automatic approval.
+And then we have Experian, which is similar to Equifax, where there's these premade user accounts with their specific names, something that Ember mentioned to me is it has to be exact word for word or letter for letter George Smith test Peter Brown test.
+You can put a middle initial that doesn't really affect it as long it's the middle initial field.
+And you can always make adjustments in the the edit profile and I can walk you through that as well.
+But it has to be the exact name for it to work properly.
+And those are the the three here.
+And I'll give you an example.
+On the configuration so we can start with with Equifax here.
+So you just change confirm and successfully updated. You can see the percentages here now.
+We can send you this link.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   9:09
+So brand this was a landing page, correct?
+If I log into the Ivs admin, this would be the page that's a landing page, right?
+
+Knocik, Brian J - Washington, DC - Contractor   9:14
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   9:18
+I don't have to navigate to it.
+
+Knocik, Brian J - Washington, DC - Contractor   9:20
+That's correct, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   9:20
+Yeah, this is the home page. When you log into the site admin.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   9:24
+OK, OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   9:25
+Yeah, if you want to navigate to any other pages, there's a three that yeah, the icon. Like if you click you'll have other options as well.
+
+Knocik, Brian J - Washington, DC - Contractor   9:35
+Yeah. And there's an additional option there. You just kind of have to zoom out a little bit for some reason, it doesn't Scroll down all the way like if you have it 100% here.
+You're you're missing one.
+It's this.
+IBS unit testing portal.
+So there's still some extra stuff here, so you know.
+OK.
+So we'll we'll send you this link and the way it works is you're we're creating a new account right now.
+You would go to sign up.
+Personal account.
+Continue.
+For username you can create whatever you like.
+I just like to keep it simple and not think too much.
+Just put username and some numbers. You can keep track of them if you want, but me personally I just kind of mix it up.
+You can make your own password as long as it follows the parameters required.
+And security questions.
+You could select any of them born pet, holiday, movie, sport made a name.
+Doesn't really matter.
+And As for the answers.
+Just like password, as long as it hits the parameters, you can really just put anything you want.
+I typically just write holiday and pet whatever the specific question was, yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:04
+That's what I do, just in case. If you have to recover.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   11:07
+Please.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:09
+So we have a solid.
+
+Knocik, Brian J - Washington, DC - Contractor   11:11
+Right, exactly.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:11
+You know, code to what it would be.
+
+Knocik, Brian J - Washington, DC - Contractor   11:14
+And it gets exhausting trying to think of other things. So.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:18
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   11:21
+Now we're on Equifax, so I'll pull this back up again for you.
+And.
+We'll do one that's just a we'll do a medium confidence one.
+So here Linda Davis medium confidence triggers secondary valification method.
+Yes. So that'll be getting the link.
+Right here.
+Yes, we'll get the link.
+And.
+And then it would be to prove. So that's the scenario we're expecting when we fill out this information when the data's.
+Linda Davis uat.
+Now I've done this test so many times that I have to add some some extra letters afterwards.
+And I'll explain how you can adjust it later on to make it go through specifically as this.
+E-mail we had it as a medium confidence.
+And phone number.
+This is pretty crucial.
+Here you would put your phone number.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   12:34
+Yeah, because we need to receive the OTP.
+
+Knocik, Brian J - Washington, DC - Contractor   12:36
+Exactly.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   12:37
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   12:43
+And then here you can put.
+Really any address?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   12:48
+Or any address OK.
+
+Knocik, Brian J - Washington, DC - Contractor   12:50
+Yeah.
+And you would search the address and make sure it's a deliverable address.
+This is good.
+We create account.
+And you're registered, so this is the first step here.
+Then you would go to the top right here.
+And click on my profile.
+And we got to make sure this, says Linda, not Linda. Why you?
+So we'll edit.
+Just removed it.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:26
+Oh, this that was needed just to pass the validation.
+
+Knocik, Brian J - Washington, DC - Contractor   13:31
+Yeah, and it it.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   13:32
+Yeah. So basically what happened is so we created so many accounts with this first name and last name, right.
+So with the same if we give the same information while creating account it gives it throws us, it throws an error saying that the account already exists.
+So we are trying to bypass that error and giving some random names and once the account is created then we are going to profile page and.
+Renaming it as per the test account.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:01
+OK.
+That's nice.
+
+Knocik, Brian J - Washington, DC - Contractor   14:03
+And if you would like a visual, I can show you what that would look like if it's needed.
+So we adjusted it and we'll continue and continue saving this.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:18
+Just so yesterday I was doing this.
+It was when I tried to log in right it was.
+Forwarding the URL to the production one you see in the url.esp.com. So what I was noticing is it take took me to the production and it was like a live environment and.
+
+Knocik, Brian J - Washington, DC - Contractor   14:36
+Mm hmm.
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:47
+I was using some dummy address though, but it was almost like I was.
+It could have, you know, trigger the, it was informed delivery though I think.
+Or maybe you didn't click on inform delivery yet.
+Probably when it, you know.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:00
+Yeah, yeah, we did not confirm.
+So if we if we go through quick tools and click inform delivery then I think it navigates to production I guess.
+But we have other navigation step you can go through by preference preferences link.
+Click there and Scroll down.
+You'll find information.
+
+Knocik, Brian J - Washington, DC - Contractor   15:23
+Yeah.
+It still looks like it's in Sid.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:27
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   15:30
+It's good to keep track of them.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:31
+And when you check this check box then you will get an option to verify identity online.
+
+Knocik, Brian J - Washington, DC - Contractor   15:35
+Yeah.
+Select that.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:39
+So this is remote proofing.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   15:42
+So now it's triggering the remote proofing OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:44
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   15:45
+Stone said.
+Here, so you might have gotten off it by accident and you're in prod or you're on prods.
+Specifically.
+Oh goodness.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:58
+Oh, is this coming again?
+
+Knocik, Brian J - Washington, DC - Contractor   16:00
+I hope not.
+Oh my alright.
+Yeah, I think it might have been.
+The same issue.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:13
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   16:15
+He didn't deploy anything, right, Deepak or I didn't see any message.
+OK.
+Well, Jagan, this shouldn't.
+You should be moving on to a next page after this.
+This is the defect we kept coming across, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:34
+So after this verification you will get a a page saying that displaying your phone number and requesting an O OTP button.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   16:42
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   16:42
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   16:44
+So that would do the secondary verification, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:44
+Yeah.
+Yeah. So but you, yeah. There you go.
+
+Knocik, Brian J - Washington, DC - Contractor   16:48
+Oh, here we go. OK, cool. Perfect.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   16:50
+Oh OK, I got it.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:51
+So your information is displayed and you have a mobile number.
+That number you gave while creating an account, so that will be displayed if you click continue then you'll get a OTP to your mobile phone.
+
+Knocik, Brian J - Washington, DC - Contractor   16:54
+Mm hmm.
+Let me go get my son.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   17:08
+Your configured to XFX right?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   17:14
+It was epic facts.
+Did SMF or something?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   17:17
+Yeah, yeah. For the Equifax, we'll get an option to send link.
+
+Knocik, Brian J - Washington, DC - Contractor   17:23
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   17:23
+Yeah, if if you think that you'll a link will be sent to your mobile phone and when you click that link from your phone then this page will be automatically redirected and you'll get a success message.
+
+Knocik, Brian J - Washington, DC - Contractor   17:24
+So I'm sending the link.
+And you click on that text that link that you get. I clicked on just now.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   17:42
+No.
+Yeah, you see it's loading.
+Yep, now you're enrolled.
+
+Knocik, Brian J - Washington, DC - Contractor   17:59
+Yep.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   18:01
+Yeah, if you go click on go to dashboard.
+And can you go to preferences again?
+We'll. We'll show him.
+Uh the ESOL as well. If you Scroll down, yeah, if you like.
+
+Knocik, Brian J - Washington, DC - Contractor   18:12
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   18:15
+Once you're enrolled to inform delivery, then you will have an option to.
+Sign into this electronic signature online E sign.
+
+Knocik, Brian J - Washington, DC - Contractor   18:24
+Yeah. And you can see here it's identified verified.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   18:28
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   18:31
+So here's the ESOL.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   18:31
+Yes. Click yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   18:34
+Click the box and signature.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   18:38
+Enroll my signature.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   18:45
+Hello.
+
+Knocik, Brian J - Washington, DC - Contractor   18:47
+You just have to Scroll down and sign.
+Do whatever.
+Confirm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   19:00
+Finished.
+
+Knocik, Brian J - Washington, DC - Contractor   19:05
+Sometimes it kicks you after this, sometimes you can go back and edit afterwards. It kind of just depends like you can edit it, download. This is part of some of the testing as well.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   19:16
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   19:17
+This is all is part of remote proofing.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   19:20
+No, it's not part of remote proofing.
+I think this is one of the feature as well.
+Uh, we just wanted to show you, uh, this one as well, because it's part of this process.
+
+Knocik, Brian J - Washington, DC - Contractor   19:28
+Yes.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   19:29
+Yeah, personally use inform delivery so, but I don't know what this is all.
+The in the production.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   19:36
+Umm.
+Yeah, I think it's about like online signature, something like that.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   19:47
+Maybe I should enroll for this too.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   19:52
+Yeah, so this is.
+Flow for Equifax we'll we'll have the same flow for LexisNexis as well, but the secondary verification will be like OTP.
+Like OTP.
+
+Knocik, Brian J - Washington, DC - Contractor   20:08
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   20:08
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   20:10
+Yeah, we can go through that one now.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   20:10
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   20:14
+What is this?
+So LexisNexis does a device reputation as well, right?
+Checks whether device was abused or you know things like that.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   20:26
+The.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   20:26
+That's a different flow.
+
+Knocik, Brian J - Washington, DC - Contractor   20:32
+Not 100% sure.
+Ranji should I show what it looks like in the database too, just like?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   20:42
+Yeah, you can show.
+Yeah, you can show a few of the tables.
+
+Knocik, Brian J - Washington, DC - Contractor   20:46
+OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   20:47
+Like audit person IPP event.
+
+Knocik, Brian J - Washington, DC - Contractor   21:11
+All right.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   21:13
+Yeah, I think we need to activate the device reputation in admin page.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   21:21
+Oh, OK.
+It's a separate configuration.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   21:23
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   21:24
+From LEXIS Nexus, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   21:26
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   21:28
+So do you guys test it usually or?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   21:29
+I think other suppliers as well.
+What is that Channel?
+
+Knocik, Brian J - Washington, DC - Contractor   21:34
+What was it?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   21:35
+So do you guys test that as part of your regression?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   21:38
+Yeah, we we tested as part of our part of our regression testing and normal flows as well.
+We'll we have like all the test cases with those prior configurations.
+
+Knocik, Brian J - Washington, DC - Contractor   21:57
+Right now, we're looking in the auto person table here for my PS zone and just by the order date of when it was created.
+And we could see here that Linda Davis was sent through.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:12
+So so this was the user we just created and when we initiate this validation, we'll have all the proofing status listed here.
+So once the remote proofing is completed and successful, we'll get an another row called LOA achieved.
+There is some issue in seat I guess so that's why we are not getting.
+So we reported the this issue to.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   22:37
+What is loa Ranjit?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:39
+Loa achieved.
+
+Knocik, Brian J - Washington, DC - Contractor   22:42
+Little level of assurance.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:42
+I'm not sure about the yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   22:46
+Level of assurance, OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:47
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   22:47
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:49
+So that's the final step for remote proofing.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   22:54
+But that would be in the audit person table.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   22:56
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   22:57
+Yeah, this one here.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   23:03
+You go IPS.
+No proofing events OK.
+Then the last status would be LOL Y achieved.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   23:10
+Loa ache.
+Yeah, if you Scroll down, you'll have some old records. If you want to show.
+
+Knocik, Brian J - Washington, DC - Contractor   23:12
+Yeah, yeah.
+Yeah, hopefully we can.
+Here we go.
+Someone here?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   23:19
+Yeah, something like this.
+
+Knocik, Brian J - Washington, DC - Contractor   23:20
+Just elevates it, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   23:20
+LOA achieved.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   23:22
+Yeah, OK, got you.
+
+Knocik, Brian J - Washington, DC - Contractor   23:24
+That's ideally what we're shooting for.
+And you can see high confidence.
+Tells automatic approval.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   23:33
+If you have, would have if you had used eye confidence, you could have got that status.
+Or maybe that's there is an issue that is also preventing.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   23:44
+Yeah, we haven't checked the high High Conference e-mail yet, so not sure if we if we'll get dialer achieved or not.
+
+Knocik, Brian J - Washington, DC - Contractor   23:53
+Yeah, that's actually a good question.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   23:55
+Yeah. Can you can you try Brent?
+
+Knocik, Brian J - Washington, DC - Contractor   23:57
+Yeah, yeah.
+And just for the sake of explaining things, I might have gotten signed out.
+We can adjust something else here, and we'll do a high confidence.
+Yeah, still working.
+It's.
+OK.
+I'll do LexisNexis.
+Here.
+Continue to confirm.
+So you saw that was the landing page here.
+Don't have to look for it.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   24:51
+Hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   24:51
+Brian, can you show him the device replication as well on admin?
+Yeah. If you open that.
+You have device replication option, yeah.
+Yeah, if you select this sponsor, it should be same as what we select on the first page.
+End the application. Inform delivery. Yeah.
+So yeah.
+This is how we configured device replication here.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   25:23
+OK.
+So all the all the three like Equifax, Experian, Lexus, Nexus, they're they're all three.
+Do the device reputation or only access?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   25:36
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   25:37
+They're all three, OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   25:39
+Call 3.
+
+Knocik, Brian J - Washington, DC - Contractor   25:46
+OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   25:47
+Yeah you can.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   25:48
+And now it's at 200%.
+So that means in the background it's doing the device reputation as well.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   25:53
+Device replication.
+Also yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   25:59
+And we'll sign out so we could create a new user.
+And sign up since it's a account.
+And LexisNexis, we have a configure tool.
+You'd be putting your name.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   26:45
+What?
+
+Knocik, Brian J - Washington, DC - Contractor   26:47
+Your real name and your real address as well.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   26:51
+Can you show me the high confidence first?
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   27:02
+Yes.
+Credit card.
+It's good.
+The following.
+Fix the adjustment.
+Team.
+Preferences.
+Informed delivery.
+Check the box.
+And then verify identity.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   27:53
+What is?
+So for high confidence, we'll not have the secondary verification.
+
+Knocik, Brian J - Washington, DC - Contractor   28:09
+Yeah.
+Automatically approved.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   28:12
+OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   28:15
+Can you go to database and check if we if we got?
+
+Knocik, Brian J - Washington, DC - Contractor   28:19
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   28:26
+No, we did not get. Yeah, something with all of the users thing is.
+
+Knocik, Brian J - Washington, DC - Contractor   28:33
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   28:35
+So is there a way to see the device reputation happened here from there?
+
+Knocik, Brian J - Washington, DC - Contractor   28:35
+OK.
+That's good to know.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   28:42
+We have a table.
+Let me check what table is that.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   28:48
+Device reputation under score response. The only reason I'm asking is that was the thing I was working on before. I was just curious.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   28:51
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   28:56
+Yeah, yeah, of course.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   28:57
+Yeah, if you click, can you type device, device reputation, under score.
+
+Knocik, Brian J - Washington, DC - Contractor   29:04
+Is that under IPS home?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:06
+Yeah. Turn the IPS on.
+
+Knocik, Brian J - Washington, DC - Contractor   29:08
+OK.
+Send device repair station.
+To one of these.
+RP.
+Mm hmm.
+Actually I don't know if that's here.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:37
+It is.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   29:37
+Because.
+
+Knocik, Brian J - Washington, DC - Contractor   29:40
+Name is RP RP.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   29:40
+Under score response address.
+
+Knocik, Brian J - Washington, DC - Contractor   29:43
+Like like this right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:44
+Yeah, its RP under score.
+
+Knocik, Brian J - Washington, DC - Contractor   29:47
+Device reputation.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:47
+Device reputation, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   29:49
+Yeah. OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:51
+Under score response.
+
+Knocik, Brian J - Washington, DC - Contractor   29:51
+And.
+Oh, you're doing the response, OK?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   29:56
+Yeah.
+This corresponds.
+You can use person ID.
+
+Knocik, Brian J - Washington, DC - Contractor   30:03
+From this one, I guess like the one we just made. OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   30:04
+Yeah, same personality.
+
+Knocik, Brian J - Washington, DC - Contractor   30:27
+Results.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   30:28
+If you scroll right you.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   30:29
+OK, basically so person ID is unique.
+So there is a record date happen OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   30:37
+Yeah, it happened, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   30:37
+Mm hmm yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   30:40
+You can see the response here as well Nexus Nexus response.
+
+Knocik, Brian J - Washington, DC - Contractor   30:44
+It's quite long.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   30:45
+And this could have a threat matrix inside it, right?
+
+Knocik, Brian J - Washington, DC - Contractor   30:47
+With you.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   30:49
+Something like that.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   30:49
+Yeah, we can log into threatmatrics and also view there as well.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   30:56
+What what is threatmatrics means?
+Anjit.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   31:03
+Good question.
+Even I'm not sure.
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   31:12
+It's only for Lexus Nexus, right? So?
+It must be just.
+Some kind of verification?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   31:25
+Yeah, it might be something like a a platform to verify the identity.
+
+Knocik, Brian J - Washington, DC - Contractor   31:25
+Ranjit, I forgot how.
+Was it account name that we were doing before?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   31:36
+Oh yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   31:38
+So account name and I think it was.
+The name that you're looking for.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   31:45
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   31:48
+Yeah, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   31:50
+Yep.
+Can you click that?
+
+Knocik, Brian J - Washington, DC - Contractor   32:01
+Good Morning News task force.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   32:03
+Is the status pass.
+
+Knocik, Brian J - Washington, DC - Contractor   32:07
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   32:12
+Yeah, this is how we verify in Technet.
+We just checked the review status and even tag if it's a failure.
+
+Knocik, Brian J - Washington, DC - Contractor   32:21
+Yeah, and event tag is straight here inside.
+I'm not sure why it's not showing something here, may 'cause it was high confidence.
+Possibly.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   32:34
+So if LexisNexis is review status failed, then we so in the IPS where it will go to the in person.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   32:44
+Yeah. So we will have an option to send the code by mail.
+Or we can also choose up for in person proofing to go to the nearby post office.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   32:55
+OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:00
+Can you show that workflow as well?
+
+Knocik, Brian J - Washington, DC - Contractor   33:02
+Yep, Yep. And.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:05
+Just use this same account.
+Go to edit.
+
+Knocik, Brian J - Washington, DC - Contractor   33:08
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:09
+Yeah, and change the details.
+I mean use medium confidence.
+
+Knocik, Brian J - Washington, DC - Contractor   33:30
+Lot of preferences from delivery.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:34
+I think you need to change name.
+
+Knocik, Brian J - Washington, DC - Contractor   33:37
+OK.
+Should I put your name in or?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:44
+Yeah, you can put them.
+
+Knocik, Brian J - Washington, DC - Contractor   33:49
+Sorry I don't remember how to spell your last name.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:51
+Ngi.
+NENI.
+
+Knocik, Brian J - Washington, DC - Contractor   33:57
+Take this.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   33:58
+N.
+ENI.
+
+Knocik, Brian J - Washington, DC - Contractor   34:01
+And OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   34:02
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   34:04
+And got changes too.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   34:07
+Yeah, that should be OK.
+We are just verifying the failed scenario right in person.
+
+Knocik, Brian J - Washington, DC - Contractor   34:11
+OK.
+Yeah, good point.
+T.
+OK.
+Yeah, I should.
+Should've reset it, yeah.
+Put the box.
+So you can go this way and then click another button or you can go through here, right, Ranjeet for that.
+For the invitation code.
+Like, if I'm not mistaken, if you go this way.
+You could do alternative verification.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   34:54
+Yes, it's like this.
+Yeah, you can do alternative verification.
+That's one option.
+
+Knocik, Brian J - Washington, DC - Contractor   35:01
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   35:02
+You can find post office or request code by mail.
+Or go back to verification.
+Return back to verification.
+Yeah, click continue.
+Should fail.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   35:16
+So now remote proofing in initiator right.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   35:20
+Yeah, initiated. But it failed because the name and the phone number does not match.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   35:29
+How live is this data in the set?
+Is it really like a production data?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   35:35
+Yeah, so these verification details, I think it's same like production verification details same like production.
+Because like if we give any dummy data or like incorrect information while for real name and real phone number it will fail.
+We need to give the correct data.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   35:56
+So that means it's really calling the LexisNexis production in systems.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   36:00
+Right, right. Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   36:02
+We have to be careful then, right?
+
+Knocik, Brian J - Washington, DC - Contractor   36:06
+At least for this one, yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   36:06
+So yours is.
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   36:11
+Yeah. So this is an example of a a fail scenario.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   36:14
+Yeah, here you can request code by mail or you can go to the choosing person profile.
+This is where in person roofing comes. Can you click that?
+Yeah. Continue in person verification.
+You'll get a bar code.
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   36:35
+OK.
+With the record locator here at the bottom.
+And and that's primarily the end of this process. Here you would have to take this to the post office.
+So we can't go beyond this part.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   36:56
+OK, OK.
+How about Equifax and Experian?
+Are there live too in the city environment?
+Or they are just.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:05
+For Equifax, we need to register our phone numbers with the Equifax.
+In the.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   37:13
+I remember Karthia helped me once.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:16
+Yeah, yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   37:18
+But that's how they know we are using, you know, testing the system, you know, from the usds, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:23
+Right, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   37:24
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:25
+Wait.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   37:27
+And that medium confidence and this should be all configured on their systems as well.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:32
+Right, yeah.
+And for Experian, we are using test data but we will not get any OTP in lower environments.
+We will have to enter a common OTP which is 1111.
+This just for testing purpose.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   37:53
+OK, I think.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:54
+Yeah, that's how it is.
+
+Knocik, Brian J - Washington, DC - Contractor   37:54
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   37:54
+Then you. So we're gonna run through that scenario right now after this, correct?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   37:58
+Yeah. Can you can you show experienced?
+
+Knocik, Brian J - Washington, DC - Contractor   38:00
+Yeah, yeah, no problem.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   38:04
+Finish the Lexus Nexus.
+And Equifax, the last one is the Experian. OK across the.
+
+Knocik, Brian J - Washington, DC - Contractor   38:11
+Experience right?
+Cool.
+20%.
+Make sure you log out to to get confused.
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   38:42
+So is the business flow is different, right?
+So is it the same like personal account?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   38:52
+It's the same.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   38:53
+It's very much we can use all the data we are using for the person, OK?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   38:55
+Yeah.
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   39:00
+Yeah, that BCG thing, right?
+Business customer gateway.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:05
+Oh for BCG.
+BCG, let me recall.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   39:08
+Oh, that's a different OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:11
+Yeah. So we haven't tested that through UI.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   39:12
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:13
+We only use the web service to test that.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   39:19
+OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:22
+For that, I think you can use any any test, test data.
+
+Knocik, Brian J - Washington, DC - Contractor   39:28
+For the business account.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:30
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   39:31
+Yeah. OK.
+Experian here.
+We can do.
+You guys want to do a pass test with medium.
+Does that sound good?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   39:42
+Yeah, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   39:45
+And this Peter Brown test is the one for this chart.
+2.
+As you can see, Jugan is all a similar flow.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   40:36
+Mm hmm.
+All this UI is not part of our IBS, right?
+So.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   40:49
+Yeah, it's all castrate.
+Ies will come in place when we do that verify identity.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   41:00
+It's all background, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   41:01
+Yeah, it's all background, yeah.
+Yeah, this is very tricky.
+
+Knocik, Brian J - Washington, DC - Contractor   41:19
+Singing.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   41:27
+So there is no OTP send here.
+We just need to enter 1111.
+Validate code.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   41:37
+OK, because they added our phone numbers in the experience.
+So they buy basically bypass that validation. Yeah. OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   41:42
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   41:45
+With LexisNexis, it'll be an actual code that you will get to your phone.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   41:49
+Yeah, for LexisNexis also, you'll see the same screen, but when you click continue, you'll get an OTP to your phone.
+The same OTP you need to enter there.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   41:59
+Thank you for Equifax too.
+Right.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   42:02
+Equifax will get a link.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   42:04
+Oh, link. OK, OK.
+
+Knocik, Brian J - Washington, DC - Contractor   42:05
+Like a hyperlink? Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   42:05
+Yeah.
+Yeah, this is how we do inform delivery for all three sponsors.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   42:15
+How about hold mail and is there a different?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   42:20
+Old mail also same thing.
+We have a different URL I guess.
+Can you go to quick tools and navigate to Hotmail?
+Yeah, yeah.
+Check availability.
+Yeah, you are very your identity already verified through inform delivery, right? So.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   42:42
+Oh yeah. OK.
+
+Knocik, Brian J - Washington, DC - Contractor   42:43
+Mm hmm.
+This is where it stops.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   42:45
+Oh yeah, basically.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   42:45
+Yes.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   42:48
+Yeah. How about if we start the whole mail 1st instead of inform delivery, so that will trigger the remote proofing too.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   42:56
+Yeah. Can you do that scenario, Brian?
+
+Knocik, Brian J - Washington, DC - Contractor   42:59
+Yeah.
+I know that another option is Rose Davis.
+This is another pass one like Peter Brown Rose Davis.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   43:19
+In the experience system, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   43:22
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   43:22
+Correct. Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   43:27
+No Nigel.
+
+Knocik, Brian J - Washington, DC - Contractor   43:28
+I just want to double check.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   43:28
+Navigator quick tools. No, no.
+Navigate to quick tools and go back.
+Go to hold pay first.
+
+Knocik, Brian J - Washington, DC - Contractor   43:34
+Yeah.
+Just double checking. OK, check availability.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   43:38
+Take away.
+
+Knocik, Brian J - Washington, DC - Contractor   43:39
+Yeah, yeah, you're right.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   43:40
+Verify identity.
+Yep.
+You'll get this.
+
+Knocik, Brian J - Washington, DC - Contractor   43:56
+OK.
+Oh.
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   44:09
+Good morning.
+
+Knocik, Brian J - Washington, DC - Contractor   44:09
+Not for why I got that.
+Good try with the new user.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   44:17
+Yeah, we can try with the new user.
+
+Knocik, Brian J - Washington, DC - Contractor   44:32
+Let me just show you the LexisNexis.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   44:34
+I think I think he used wrong incorrect.
+To use that, I guess you need to use.
+
+Knocik, Brian J - Washington, DC - Contractor   44:41
+Did I?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   44:44
+Yeah, you need to use.
+Maybe Jack Young test or Linda Davis uet.
+
+Knocik, Brian J - Washington, DC - Contractor   44:53
+I thought we were on Experian.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   44:56
+Yeah, we had an Expedia.
+
+Knocik, Brian J - Washington, DC - Contractor   45:01
+Oh oops. OK.
+My fault, OK.
+I bet it's always good to refer to this chart. As you can see jagan's.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   45:07
+No problem.
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   45:12
+Hmm.
+
+Knocik, Brian J - Washington, DC - Contractor   45:13
+Still learning myself.
+I wanted to show you.
+Like a LexisNexis code.
+Yes.
+All right, let's try this again.
+Hold the middle.
+Check availability.
+Verify identity.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   46:38
+My.
+
+Knocik, Brian J - Washington, DC - Contractor   46:42
+The number.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   46:51
+Yeah, no genet code.
+1111.
+
+Knocik, Brian J - Washington, DC - Contractor   47:02
+I.
+I switched it to LexisNexis.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   47:03
+Yes.
+Oh, OK.
+
+Knocik, Brian J - Washington, DC - Contractor   47:06
+So if you're juggling, I got a code on my phone, a text.
+745-6943.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   47:15
+Well, this is Alexis Nexus, right?
+
+Knocik, Brian J - Washington, DC - Contractor   47:17
+Yep, that's right.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   47:24
+The sick environment is you guys use it for your testing, right?
+
+Knocik, Brian J - Washington, DC - Contractor   47:24
+Verify.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   47:28
+So yeah, I usually so cat is the one can I use to test? I mean just to explore myself.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   47:36
+Yeah, I think even CAD is also test environment. You can use it. But I would suggest you to check with Kartia before using it.
+
+Knocik, Brian J - Washington, DC - Contractor   47:37
+Yeah.
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   47:45
+OK, OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   47:49
+Sit. You can use it.
+
+Knocik, Brian J - Washington, DC - Contractor   47:52
+Yeah. Good.
+Here you can use it.
+I.
+I guess what was the next thing? The BCG, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   48:02
+So for BCG and everything we'll do through web service itself.
+
+Knocik, Brian J - Washington, DC - Contractor   48:03
+We want to check.
+Acg Social Security so we can configure it.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   48:16
+Yes.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   48:26
+We don't have anything for BCG.
+
+Knocik, Brian J - Washington, DC - Contractor   48:30
+We don't.
+Here OK.
+Yeah. So for sponsor code, you would have to make these adjustments.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   48:35
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   48:41
+This is customer Reg and this is.
+Cola change of address.
+Can run it through here.
+Do I have it under remote rest?
+This is you wanna test it like this right through a check device.
+Verify phone. Is that what you're interested in, Jagan?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:02
+Yeah, yeah.
+So the change of address and Operation Center, we test through this web services itself.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   49:10
+Oh, OK.
+So there is no portal for that.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:13
+There is portal, but uh we haven't. Uh done through UI yet.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   49:18
+OK, OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:19
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   49:20
+So we just changed the sponsor code, but the request remains the same.
+Everything.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:24
+Same correct. Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   49:29
+But once you send it.
+Verify for certain attributes in the response.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:35
+Can you go to that web service?
+So yeah, once.
+So there's a sequence of steps here.
+1st we will verify the check device.
+
+Knocik, Brian J - Washington, DC - Contractor   49:47
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:48
+After that, we'll verify phone and if the phone number is valid, then we'll request passcode. So we'll get a passcode to our phone.
+
+Knocik, Brian J - Washington, DC - Contractor   49:50
+Mm hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   49:55
+The same passcode you'll enter for confirm passcode.
+
+Knocik, Brian J - Washington, DC - Contractor   50:02
+This little more manual work doing this.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   50:05
+Yeah. So sounds like these are the steps that happens for remote proofing step by step.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   50:10
+Yeah, the same steps which happens through UI.
+
+Knocik, Brian J - Washington, DC - Contractor   50:11
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   50:13
+It's we are doing the same through web services.
+
+Knocik, Brian J - Washington, DC - Contractor   50:18
+Yeah, and Equifax, you get a link.
+So that's why this has validate link yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   50:23
+Call a date link, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   50:27
+There's. Yeah, this.
+You just have to remember that step for this one. You could resend the link too if if it didn't go through.
+Mobile phone.
+I don't think.
+Don't remember using this Porsche?
+I think it was just some.
+Something random contesting, but these six or so we could walk you through that process.
+Did I make the adjustment already?
+I don't think I did, so we'll adjust it here, right.
+Change of address call and LexisNexis and change it.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   50:59
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   51:04
+Just do that example.
+Go back to postman.
+And here change unique ID and I think that's it, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   51:11
+Change the unique ID, yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   51:18
+That this is similar to like the chart that we were showing you is using the names so it it could be the Linda Davis for Equifax, here for LexisNexis, my name medium confidence could be low, high confidence.
+The address.
+You don't have to touch this stuff here.
+It's just part of the body.
+That we'll send.
+Here and this looks fine.
+It requires additional proofing.
+This is where we need to get the code.
+You have to copy.
+Customer unique ID.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   52:03
+So.
+
+Knocik, Brian J - Washington, DC - Contractor   52:03
+So you can implement it here.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   52:08
+Is that the person ID? If I am not wrong?
+
+Knocik, Brian J - Washington, DC - Contractor   52:13
+No, this is different.
+This is like the record locator.
+Remember the barcode that you got for alternate verification going to post office that we showed you?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   52:22
+Oh, that's a in person proofing, right?
+
+Knocik, Brian J - Washington, DC - Contractor   52:25
+And and that would be the the type of code. Yeah. And it's always good to be careful, I hear.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   52:27
+Oh, OK.
+
+Knocik, Brian J - Washington, DC - Contractor   52:32
+I guess I was a little bit careless trying different things.
+Make sure the information is correct.
+Otherwise it just it becomes a mess and you're questioning why it's not working and then you see these little mistakes here. Just double check everything.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   52:48
+It looks like only LexisNexis expects the you know, real.
+First name and last name.
+
+Knocik, Brian J - Washington, DC - Contractor   52:57
+Yeah, only LEXIS Nexus. Yeah.
+And with your actual street address and every apartment doesn't seem to make a difference.
+But at least the street address.
+And passcode was successfully sent to phone. Everything looks good.
+And I just got the code here.
+I don't need to request it 'cause. I already got it sent.
+This is if it just for some reason didn't go through. I'll still show you how that looks.
+Similar thing.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   53:32
+So you need to give the same details here which we gave on the check device.
+
+Knocik, Brian J - Washington, DC - Contractor   53:39
+Yeah.
+It's a unique ID and.
+712663 that's the code I got.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   53:50
+Select.
+
+Knocik, Brian J - Washington, DC - Contractor   53:56
+We'll send.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   54:06
+Can you go to verify phone?
+And scroll up.
+Yeah, the person ID. OK.
+On the check device, what did he give?
+
+Knocik, Brian J - Washington, DC - Contractor   54:21
+Check the what? I'm sorry.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   54:23
+On the check device, what did he keep the unique ID?
+OK.
+It's same everywhere.
+Why it didn't work?
+
+Knocik, Brian J - Washington, DC - Contractor   54:36
+Let me send another.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   54:39
+Oh, it's. It's eight here now.
+OK.
+Save it.
+Now it should work against.
+
+Knocik, Brian J - Washington, DC - Contractor   54:44
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   54:52
+Can you guess? Can you hear me?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   54:54
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   54:54
+Yeah. Did we lose him?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   54:56
+Repl.
+Can you go to verify phone?
+Check device.
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   55:14
+Having a network issue looks like.
+
+Knocik, Brian J - Washington, DC - Contractor   55:22
+Can you see like the screen?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   55:24
+Well.
+
+Knocik, Brian J - Washington, DC - Contractor   55:24
+Can you hear us?
+You still there?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   55:28
+Select.
+
+Knocik, Brian J - Washington, DC - Contractor   55:33
+It would not have lost him.
+That's strange because I still get the passcode anyways.
+Doesn't make sense.
+Hmm.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   56:25
+Yeah, something strange.
+
+Knocik, Brian J - Washington, DC - Contractor   56:38
+Just follow your prompts to you.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   56:41
+Yeah. Jagan is having.
+
+Knocik, Brian J - Washington, DC - Contractor   56:46
+Now we're getting.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   56:47
+Yeah.
+He he text me.
+
+Knocik, Brian J - Washington, DC - Contractor   56:52
+OK.
+Mm.
+You know what? Maybe it's this.
+Matters.
+It's strange because still going through.
+So why is it saying it can't be found?
+I guess we could stop the recording here.
+At least until it comes back.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   58:38
+Yeah, you can stop the recording. I think we can connect again tomorrow.
+
+Knocik, Brian J - Washington, DC - Contractor   58:42
+OK.
+Alright, that's no problem.
+I guess I could keep trying this again to see what's up.
+Maybe I just have to change up the unique ID little bit.
+This configured appropriately.
+All right.
+Yeah, if you want to connect with him next week. I I guess we could do that too.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   59:12
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   59:13
+OK.
+Thank you for your help man, I really appreciate it.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   59:16
+Yep, sure, no problem.
+You did good.
+
+Knocik, Brian J - Washington, DC - Contractor   59:17
+OK. Thanks.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   59:18
+Yeah. Thank you so much.
+
+Knocik, Brian J - Washington, DC - Contractor   59:20
+Yeah, of course. Thank you.
+All right, I'll talk to you later.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   59:23
+Yep, Yep, sure. Bye.
+
+Knocik, Brian J - Washington, DC - Contractor   59:25
+But.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor stopped transcription

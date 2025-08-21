@@ -1,0 +1,399 @@
+Continuation for IPSWeb testcases-20250609_103341-Meeting Recording
+June 9, 2025, 5:33PM
+16m 26s
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor started transcription
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   0:07
+Starter yeah. Whenever you're ready.
+
+Knocik, Brian J - Washington, DC - Contractor   0:15
+Did you want me to share my screen? Ranjith.
+Or did you wanna take care of that?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   0:21
+Can you try again on your? On your system? We'll see.
+
+Knocik, Brian J - Washington, DC - Contractor   0:24
+Yeah, yeah, no problem.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   0:26
+Will you change the customer unique ID and try? That should work.
+
+Knocik, Brian J - Washington, DC - Contractor   0:32
+The customer unique ID you said something? Nope. OK.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   0:34
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   0:38
+Yeah. So we can make the admin configurations here.
+Since it is not working the IBS admin for it and it's the similar concept where we change the the sponsor and we'll do KOA a change of address.
+And we'll do the remote testing here remote rest.
+The check device verify phone passcode, confirming it and even validating the link as well.
+Right now it's configured to Experian.
+Just to give you a quick recap, Experian would be the Peter Brown test.
+User.
+And that's what we'll be using here for check device.
+Do you have these Jagan the like these requests?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   1:33
+Yeah, yeah, I have them, yes.
+
+Knocik, Brian J - Washington, DC - Contractor   1:35
+OK, perfect.
+Yeah, if you need us to ever resend, just let us know.
+Now, look, I'm just gonna try this out. 'cause. I was having an issue last week. Hopefully.
+We'll be working.
+Now.
+What what you would do is change the 1st last name and the unique ID.
+E-mail can be adjusted and the address, so should address all the way down to zip code and mobile phone number, which would be your number.
+265.
+Keep this address.
+Send it.
+It requires additional proofing.
+So after check device you would go to verify phone for the next step and you take customer unique ID, copy it and put it in the next.
+Next one.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   2:46
+Just one quick question, Brian.
+So in the previous request, right?
+So looks like we can even call the admin IBS admin from the postman.
+Is that correct?
+
+Knocik, Brian J - Washington, DC - Contractor   3:00
+Yeah. Yeah, that's right.
+It's just simple configurations, which would be the the sponsor. So for cola you can also put like CR for customer Raj.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:02
+What's the?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   3:09
+Yeah, this is for changing the sponsors.
+
+Knocik, Brian J - Washington, DC - Contractor   3:14
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:16
+However, I see remote rest in the URL.
+I'm very confused there.
+So is it part of remotest or IDs admin?
+Do you guys know?
+
+Knocik, Brian J - Washington, DC - Contractor   3:27
+I mean, this is something that Emmert gave us during WAZ 9 testing, so he might have it might be just directly related to what he.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:30
+OK.
+
+Knocik, Brian J - Washington, DC - Contractor   3:39
+You know, I I guess made.
+Like this IPS web.
+I don't really have a full answer for you.
+That's a good point.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   3:48
+Yeah, no worries.
+Yeah. I just wanted to make sure I will check on check with Emma.
+Yeah, no worries. Thanks.
+
+Knocik, Brian J - Washington, DC - Contractor   3:54
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   4:02
+But however I need that Bran will will you able to send me those configurations request when you get a chance?
+
+Knocik, Brian J - Washington, DC - Contractor   4:08
+Yeah, yeah, sure. No problem.
+Slash phone. Now we'll do that.
+And this is saying it was not verified yet, so I'm gonna have to request the passcode.
+Think for Experian. It's not actually gonna send anything.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   4:39
+So for the experience you will get any pass code.
+
+Knocik, Brian J - Washington, DC - Contractor   4:44
+Right. So let me just hop over now to confirm passcode, because we know what it is.
+It's 1111.
+Same customer unique ID.
+Yeah, and for some reason I'm I'm getting an error but but Ranjit tested it as well and he he got a successful response.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:10
+Yeah, let me let me let me share my screen and try.
+
+Knocik, Brian J - Washington, DC - Contractor   5:14
+Sure.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:22
+Can you see my screen?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   5:25
+Yep.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   5:27
+OK.
+So let me try for change of address.
+So basically.
+So once this request is done, you will get this message response message.
+Identify customer successfully verified.
+I'll try once again for another customer unique ID.
+I'm using Linda Davis UAT and Medium conference e-mail.
+And if I send this.
+Yeah, customer requires additional proofing and I'll verify the phone here.
+Same customer unique ID.
+That phone was not verified, so I'll request for passcode.
+Not be sent to this customer because this configuration is not set for Experian.
+So let me just confirm password.
+So passcode for experience is all 111. If I click send.
+Yeah. There you go. The customer 178412 is successfully verified.
+So this is how we do change of address.
+And the same thing, the same steps we'll do for Operation Santa for Operation Santa will just change sponsor code to OS.
+And will perform the same steps.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   7:48
+OK.
+OK.
+That makes sense.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   7:50
+Yeah.
+So basically we need to follow these test accounts for different vendors.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   7:53
+At the moment.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   8:00
+So that's how we retest it.
+
+Knocik, Brian J - Washington, DC - Contractor   8:07
+Gonna try the operation center.
+See if that works for me.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   8:13
+Yeah, yeah, you can try operation Center.
+Can you share your screen?
+
+Knocik, Brian J - Washington, DC - Contractor   8:17
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   8:18
+Yeah.
+Yes.
+
+Knocik, Brian J - Washington, DC - Contractor   8:30
+Change voucher code to OSI.
+Just change the unique ID.
+Linda Davis.
+Requires additional proofing.
+You.
+Let's see.
+It's not verified.
+I missed it was operation incentive requiring a passcode or is it like Experian?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   9:21
+Yes.
+If it, if it is experienced, we'll not get pass code, so you can use the same one.
+
+Knocik, Brian J - Washington, DC - Contractor   9:27
+OK, got you.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   9:32
+You need to change the sponsor code.
+
+Knocik, Brian J - Washington, DC - Contractor   9:35
+Oh yes.
+Good catch.
+Tim's gone.
+I'm gonna have to look into a more.
+Umm.
+But do you have any questions Shagun?
+Like, is it kind of a simple flow?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   9:58
+I mean, so Lil sounds like we just changed the sponsor code and.
+
+Knocik, Brian J - Washington, DC - Contractor   10:05
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   10:05
+The Everything else remains the same, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   10:09
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   10:10
+Yeah.
+
+Knocik, Brian J - Washington, DC - Contractor   10:12
+Yeah, it just depends on the configuration that you have experienced.
+LEXIS Nexus. Equifax.
+Then you just make the information adjustments and always have a new, a new customer, unique ID and carry it with you throughout the process.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   10:30
+So that unique ID.
+Sorry, maybe I missed that part.
+So you create a person from the UI and then use it here? Or is there a way you can create it from the post?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   10:42
+No, it's just a random random unique number.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   10:46
+Oh, it's just a random unit number.
+It's not a person ID.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   10:48
+Yeah.
+No, no, no.
+It's not a person ID.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   10:51
+Right.
+
+Knocik, Brian J - Washington, DC - Contractor   11:00
+Something to politely 0.
+It was just something unique.
+Does that have a specific length rajeet?
+2.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   11:11
+Uh, I'm not sure.
+Can you just try?
+
+Knocik, Brian J - Washington, DC - Contractor   11:25
+Mine is 11 characters.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:42
+I have another question not related to remote proofing specifically, but.
+
+Knocik, Brian J - Washington, DC - Contractor   11:44
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:49
+When I look at IBS admin, there's so many configurations, right?
+
+Knocik, Brian J - Washington, DC - Contractor   11:54
+Mm hmm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   11:55
+So do you guys know how they come into picture? You know, probably some of most of them belong to the in person proofing as well, right?
+But you guys are mainly working on remote proofing, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   12:11
+We work on inputs and as well there are some configurations to enable e-mail notifications and there are some configurations.
+To set the.
+Primary verification ID and secondary verification ID or some kind of in person proofing like.
+Configuring Acceptance acceptable IDs like passport or any any IDs. I think IBS admin is not working right now.
+So if it's working, I could have shown you on the UI.
+Do do you have any idea on eb's tablets?
+How do we perform the in person proofing?
+
+Knocik, Brian J - Washington, DC - Contractor   12:57
+Is there for for Jacob.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   12:58
+Jayden yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:00
+Focused on remote proofing at the moment so.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   13:02
+OK.
+So basically, yeah, I'll just give you a quick walkthrough.
+Let me share my screen.
+So for in person proofing, first we'll generate some.
+You remember on Friday?
+We on the inform delivery we for one of the scenario we selected in person proofing and a barcode was generated.
+Do you remember the chiran?
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:35
+Yeah, yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   13:38
+Hello.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:39
+Can you hear me, Ranjit?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   13:41
+Yeah, I can hear you now.
+
+Knocik, Brian J - Washington, DC - Contractor   13:41
+Yeah, we do, yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:43
+Yeah, I remember that.
+So if the remote proofing fails so person can do the in person proofing.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   13:45
+Stop.
+Yeah, so that bar code we will, we will need to take that bar code to the any of the Postal office.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   13:51
+Yeah, right.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   14:00
+So what they do is they'll have a EBS device, EBS tablets.
+They have an application there and they will enter that barcode number in that application. Tpe and the information will be pop retrieved.
+So they'll have your all your first name last name details.
+And in that process, you'll also have to show your.
+Acceptable ID something like driver's license or passport.
+So those kind of things you you can set up through IBS admin.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:35
+OK.
+So what kind of documents are accepted?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   14:37
+Yeah, exactly.
+Yeah.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:45
+Yeah, I think eventually probably when I'm getting familiarized, right?
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   14:45
+Umm.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   14:51
+Then I should.
+Maybe I I don't know eventually, but even I don't wanna.
+You know, step on too many boards at the same time, so get.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:02
+Yeah, yeah. You'll get there. A lot of things.
+
+Knocik, Brian J - Washington, DC - Contractor   15:05
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   15:06
+So if you are like working on it, if you get some hands on, like if you get any tasks like while you are working, you'll get to know a lot of things.
+And if you have any questions you can reach out to us as well.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   15:31
+So I think, yeah.
+So thanks for sharing the information.
+Yeah, I have.
+I feel very more confident now. You know how to test it from IPS web, so I will go through the sessions one more time. Probably I will recreate those and to get more familiarized so that any task that comes to me.
+
+Knocik, Brian J - Washington, DC - Contractor   15:49
+OK.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor   15:58
+Yeah, that will help us.
+Help me with this.
+Yeah. Thank you. Thank you guys again.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:01
+Yeah, yeah, sure.
+
+Knocik, Brian J - Washington, DC - Contractor   16:02
+Yeah.
+
+Rangineni, Ranjith Kumar - Wilkes-Barre, PA - Contractor   16:03
+Yeah, anytime. If you are stuck anywhere or if you have any questions you can like reach out to us, we can work together.
+
+Knocik, Brian J - Washington, DC - Contractor   16:04
+Change it.
+Yep, definitely.
+And that really was the last piece of this that we wanted to show you.
+
+Kandada, Jagan M - Wilkes-Barre, PA - Contractor stopped transcription
