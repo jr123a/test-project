@@ -1,0 +1,231 @@
+
+
+# IPS Web Mastery Plan (Remote + In‑Person)
+
+## Updated with Transcript + Postman Collection Insights
+
+The transcripts and Postman collections together clarify flows, endpoints, sponsor codes, and sample requests. This refined plan focuses on **hands‑on mastery using the exact Postman collections provided**.
+
+---
+
+## **Phase 1: Environment Setup**
+
+* **Postman Collections**: Import both collections:
+
+  * **RemoteRest.json**: includes `checkDevice`, `verifyPhone`, `confirmPasscode`, `validateLink`, and `AssessDevicePlusEmailRisk` requests.
+  * **IPP Performance.postman\_collection.json**: contains In‑Person Proofing endpoints.
+* **IBS Admin Configurations**: Learn how to:
+
+  * Change sponsor codes (COA → Change of Address, OS → Operation Santa).
+  * Switch vendors (Experian, LexisNexis, Equifax).
+  * Ensure percentage weights across vendors add up to 100.
+* **Customer Unique ID (CUID)**:
+
+  * Random, \~11 characters; not PERSON\_ID.
+  * Must be consistent across all steps in the flow.
+
+**Deliverable**: Import both Postman collections, configure variables (`{{local-ips}}`, `{{jagan-cell}}`), and successfully run a `checkDevice` request against COA and OS sponsors.
+
+---
+
+## **Phase 2: Remote Proofing Flow Mastery**
+
+* **Core API Steps from Postman**:
+
+  1. `checkDevice` (various test users: Testuser Phonepass, Emer Credo, Linda Davis).
+  2. `verifyPhone` (ensure CUID matches checkDevice).
+  3. `requestPasscode` (Experian) → test passcode always `1111`.
+  4. `confirmPasscode` (OTP flows: e.g., Linda Davis, Emer Credo).
+  5. `validateLink` (Equifax‑style link flows, e.g., Linda DavisUAT‑Redirect).
+* **Vendor Specifics**:
+
+  * **Experian**: Use static passcode `1111`.
+  * **Equifax**: Uses **ValidateLink** endpoint after SMS link is clicked; test data includes redirect URLs.
+  * **LexisNexis**: Uses OTP with `confirmPasscode`.
+* **Advanced Endpoint**:
+
+  * `AssessDevicePlusEmailRisk` (Peter Thorpe GB test case) validates device reputation + email risk in one call.
+
+**Deliverable**: Demonstrate three Remote Proofing success paths in Postman (Experian static code, Equifax link, Lexis OTP) with captured request/response JSON.
+
+---
+
+## **Phase 3: IBS Admin Deep Dive**
+
+* Explore configurations:
+
+  * Sponsors: COA, Operation Santa.
+  * Vendor routing weights.
+  * Notification settings.
+  * Acceptable ID document types.
+* **Test Data Mapping**:
+
+  * `checkDevice` payloads reference names like *Emer Credo*, *Linda DavisUAT*, *Testuser Phonepass*.
+  * Responses can vary by address mismatches (see Linda Davis RedPath test).
+
+**Deliverable**: Create a mapping of test accounts → expected vendor response → IBS Admin dependency.
+
+---
+
+## **Phase 4: In‑Person Proofing (IPP) Hands‑On**
+
+* **IPP Postman Flows** (from IPP Performance collection):
+
+  * Generate barcode and record locator from IPS Web (after Remote fail).
+  * Use IPP endpoint to simulate EBS tablet scanning and ID validation.
+  * Cross‑check IBS Admin for accepted ID types.
+* **Workflow**:
+
+  1. Remote flow fails.
+  2. User chooses **Alternative Verification → Continue In‑Person**.
+  3. Barcode + record locator generated.
+  4. Clerk processes on EBS tablet → backend calls IPP REST endpoints.
+
+**Deliverable**: Run IPP Postman request with a generated barcode, document full request/response cycle.
+
+---
+
+## **Phase 5: Consolidation & Advanced Scenarios**
+
+* **Error Handling from Postman**:
+
+  * Address mismatch case (Linda Davis RedPath → ValidateLink failure).
+  * Duplicate/expired passcode errors on `confirmPasscode`.
+  * Timeout or invalid sponsor code.
+* **Multi‑Vendor Testing**:
+
+  * Run flows under both COA and Operation Santa.
+  * Compare differences in responses and audit logs.
+* **AssessDevicePlusEmailRisk Drill**:
+
+  * Run UK scenario (Peter Thorpe) to test cross‑country flows.
+
+**Deliverable**: A scenario matrix with JSON snippets, error codes, and recovery steps.
+
+---
+
+## **Phase 6: Automation & Mentorship**
+
+* Build Newman collections for regression (Experian=1111, Equifax link, Lexis OTP).
+* Store example JSON payloads in repo for onboarding.
+* Share sponsor mapping + CUID rules with teammates.
+
+**Deliverable**: Automated Newman run producing success/failure report across Remote + IPP flows.
+
+---
+
+✅ With this update, the plan now incorporates **exact Postman requests (checkDevice, verifyPhone, confirmPasscode, validateLink, AssessDevicePlusEmailRisk)** and **IPP barcode simulation flows**, directly tied to the JSON files you uploaded【59†RemoteRest.json†L40-L120】 .
+
+---
+
+## Postman Collections: Integration Checklist (Remote + In‑Person)
+
+> This section operationalizes your Postman collections. When you drop in the JSONs, follow these exact steps and you will have a working, reproducible harness for both Remote REST and IPP.
+
+### 1) Import & Environments
+
+* Import both collections: **Remote REST** and **In‑Person Proofing (IPP)**.
+* Create environments: `SIT`, `DEV`, `STAGE` (copy/paste works). Add variables:
+
+  * `baseUrl` (e.g., `https://<host>/remote-rest`), `ippBaseUrl` (e.g., `https://<host>/ipp-rest`)
+  * `sponsorCode` (e.g., `KOA`, `OS`), `vendor` (`Equifax`/`Experian`/`LexisNexis`)
+  * `cuid` (Customer Unique ID), `authToken`, `correlationId`
+  * `phone` (your test mobile), `email`, `firstName`, `lastName`, `addressLine1`, `city`, `state`, `zip`
+* Add a **Pre‑request Script** on the collection to auto‑seed values when empty:
+
+```js
+if (!pm.environment.get('cuid')) pm.environment.set('cuid', pm.variables.replaceIn('{{$randomAlphaNumeric 11}}'));
+if (!pm.environment.get('correlationId')) pm.environment.set('correlationId', pm.variables.replaceIn('{{$guid}}'));
+```
+
+### 2) Remote REST — Ordered Folders
+
+Create subfolders and put requests in this order so you can just ▶ Run:
+
+1. `10‑checkDevice`
+2. `20‑verifyPhone`
+3. `30‑requestPasscode` (if applicable)
+4. `40‑confirmPasscode` (Experian uses `1111` in lower env; Lexis requires real OTP; Equifax uses **link validation**)
+5. `50‑validateLink` (Equifax only)
+6. `90‑status` / `99‑finalize`
+
+**Tests (per request)**
+
+* Assert HTTP 2xx and required fields (`pm.test(...)`).
+* Extract and persist IDs:
+
+```js
+const body = pm.response.json();
+pm.environment.set('cuid', pm.environment.get('cuid')); // keep stable across steps
+if (body.correlationId) pm.environment.set('correlationId', body.correlationId);
+```
+
+### 3) Vendor‑Specific Quick Switches
+
+* Put vendor toggles into **PM variables**: `vendor=Experian|Equifax|LexisNexis`.
+* In **Tests**, dynamically set expected behavior:
+
+```js
+const vendor = pm.environment.get('vendor');
+if (vendor === 'Experian') pm.environment.set('otp','1111');
+```
+
+* Equifax: include a request `resendLink` and a `validateLink` step.
+* LexisNexis: ensure `phone` is your real test mobile to receive OTP; confirm `confirmPasscode` uses `{{otp}}`.
+
+### 4) Sponsors & Admin Calls
+
+* Include a folder `00‑Admin` with requests to flip **supplier** and **sponsorCode** (KOA, OS/OSI). Add a test that verifies weights sum to 100 when you use multiple suppliers.
+
+### 5) IPP Collection — Happy Path
+
+1. `10‑generateBarcode` (from IPS Web or dedicated endpoint)
+2. `20‑lookupVisit` (simulates EBS tablet intake)
+3. `30‑submitIDCapture` (driver license / passport)
+4. `40‑postResult` → IPS updates audit trail
+5. `90‑status` (verify final state)
+
+**Tests**: Persist `recordLocator`/`barcode`, assert status transitions, and write a final line to the console summarizing:
+
+```js
+console.log('IPP complete:', { barcode: pm.environment.get('barcode'), status: body.status });
+```
+
+### 6) Run Profiles (Collections‑Runner presets)
+
+* **Remote‑Equifax‑Medium** (link), **Remote‑Experian‑Medium** (1111), **Remote‑LexisNexis‑Medium** (OTP), **IPP‑from‑Remote‑Fail**.
+* Save each as a Runner preset with the correct environment and data file (CSV) if you batch names/phones.
+
+### 7) Evidence Pack (auto‑export)
+
+* Turn on `Newman` export to produce: `runs/<timestamp>-<vendor>-<sponsor>.json` and `html` reports.
+* Add a lightweight script to zip the run artifacts for tickets.
+
+### 8) Common Pitfalls Guardrails
+
+* **CUID drift**: lock `cuid` between steps; never regenerate mid‑flow.
+* **LexisNexis**: real first/last name often required; OTP comes to real phone.
+* **Environment bleed**: sanity check that SIT URLs are used (never prod); include a `preRequest` assert.
+
+---
+
+## What I Still Need From the Collections (to wire 1:1)
+
+If the Postman JSONs include custom folder/request names or scripts, I will:
+
+* Mirror your exact folder tree and request names in this plan.
+* Pull any **auth** headers and token fetchers into a `00‑Auth` folder.
+* Inline your real response schemas into the **Tests** so failures highlight the missing fields.
+
+Once you upload them here, I will patch this section to match the collection objects verbatim and add a one‑click Runner preset list you can reuse.
+I can open your two KTE transcripts (and already used them), but I don’t see any **Postman collection JSONs** in this workspace yet. If you attached them somewhere else, they didn’t make it through here. Please upload the two files (remote REST and IPP) in this chat and I’ll wire them in 1:1.
+
+In the meantime, I updated your existing canvas doc (**IPS Web Mastery Plan (Remote + In‑Person)**) with a new section: **“Postman Collections: Integration Checklist (Remote + In‑Person)”**. It lays out:
+
+* Environment variables to add (`baseUrl`, `ippBaseUrl`, `sponsorCode`, `vendor`, `cuid`, `authToken`, `phone`, etc.).
+* Ordered folders and test scripts for **Remote**: `checkDevice → verifyPhone → requestPasscode → confirmPasscode → validateLink → status/finalize`, including Equifax link‑validation and Experian’s `1111` code.
+* A clean **IPP** runner path: `generateBarcode → lookupVisit → submitIDCapture → postResult → status`.
+* Vendor toggles and guardrails (CUID drift, LexisNexis OTP/name rules, SIT vs prod sanity checks).
+* Runner presets and evidence‑pack export via Newman.
+
+If you upload the JSONs now, I’ll mirror your exact folder/request names, extract any auth/token bootstrap calls into a `00‑Auth` folder, and bake your current test assertions into the plan so failures point to missing fields rather than generic 400/500s.
