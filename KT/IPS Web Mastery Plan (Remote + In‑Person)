@@ -1,0 +1,213 @@
+# IPS Web Mastery Plan (Remote + In‑Person) — v2 with KTE specifics
+
+Audience: You are working in the IPS Web app that orchestrates Remote Identity Proofing and In‑Person Proofing (IPP) via REST. This plan is hands‑on and optimized for mastering day‑to‑day work quickly while building deep system expertise.
+
+Outcome: In 4 weeks you will be able to: 1) trace any user journey end‑to‑end across services, 2) reproduce and debug issues with data and logs, 3) design and validate new flows and edge cases, 4) confidently support both Remote and IPP.
+
+---
+
+## Transcript‑Derived Specifics (SIT/DEV reality)
+
+* **Supplier config in IBS Admin (landing page):** Equifax, Experian, LexisNexis suppliers are selected with percentage weights that must sum to 100; many teams currently test with a single supplier.
+* **Confidence tiers drive UX:**
+
+  * *High confidence* ⇒ automatic approval (no secondary step).
+  * *Medium confidence* ⇒ secondary verification step (e.g., phone link for Equifax, OTP for LexisNexis).
+  * *Low confidence* ⇒ automatic denial.
+* **Experian (lower env) passcode:** use the fixed passcode **1111** after `verifyPhone` instead of expecting an SMS.
+* **Equifax (Medium Confidence) flow:** user receives a **link** by SMS; tapping the link completes verification and the web page auto‑advances to success.
+* **LexisNexis flow:** secondary factor is **OTP**; device reputation (ThreatMetrix) can be enabled per sponsor/app in IBS Admin.
+* **Device reputation storage:** responses persist in a table like **RP\_DEVICE\_REPUTATION\_RESPONSE**, keyed by **PERSON\_ID**.
+* **Audit trail:** proofing milestones appear in **AUDIT\_PERSON** (IPS proofing events), with final milestone **LOA\_ACHIEVED** on success.
+* **Sponsors commonly used in tests:** COA (Change of Address) and Operation Santa (codes like `OS`/`OSI`).
+* **Unit Testing Portal quirk:** the left nav can hide an “IBS Unit Testing Portal” link unless you zoom out.
+* **Record locator & barcode:** when remote proofing fails, users can choose **Alternative Verification → In‑Person**, generating a barcode and record locator for USPS retail.
+* **Customer Unique ID (CUID) in Remote REST:** arbitrary unique token (often \~11 chars) you carry across the remote REST steps; it is **not** the PERSON\_ID.
+
+---
+
+## Quick Start (Day 0)
+
+* Secure access: source repos, dev/stage clusters, secrets, Postman or curl, log viewer (Splunk/ELK), feature flag console.
+* Tools to install: jq, httpie or curl, Postman, a UUID generator, diagramming tool, and an API diff tool.
+* Create a working folder with: environment files (.env.dev, .env.stage), a Postman collection skeleton, and a notes.md.
+
+Artifacts you will produce: (1) Postman collection for Remote + IPP (dev and stage). (2) A glossary. (3) Sequence diagrams. (4) A test data matrix. (5) A runbook and triage checklist.
+
+---
+
+## Week 1: Architecture, Contracts, and Basic E2E (Remote first)
+
+**Environment nuances to validate**
+
+* Confirm you remain on SIT URLs (not PROD) during flows.
+* In IBS Admin, test one supplier at a time while learning.
+* For Experian seeded names must match exactly (e.g., “Peter Brown Test”, “George Smith Test”).
+* Check that the **IBS Unit Testing Portal** link is visible (zoom out if needed).
+
+**Map the big picture**
+
+* IPS Web (UI/API) → Orchestrator → Vendor services (Equifax/Experian/LexisNexis) → Data stores → Notification/Status.
+* Identify where correlation IDs, user IDs, enrollment IDs, and status transitions are stored.
+
+**API contract walkthrough**
+
+* List Remote endpoints you actually call in lower envs: `checkDevice`, `verifyPhone`, `requestPasscode`, `confirmPasscode`, `status/poll`, `finalize`, `cancel`.
+* Note required headers, auth, idempotency keys, retry semantics, and error codes.
+
+**Build the Postman collection**
+
+* Folders: 00‑Env, 10‑Remote, 20‑IPP, 90‑Negative.
+* Parameterize base URLs, tokens, CUID, sponsor code; add pre‑request scripts to auto‑generate unique IDs.
+
+**First E2E happy paths (Remote)**
+
+* **Equifax (Medium Confidence):** `checkDevice` → phone **link** sent → user taps link → auto‑advance → success.
+* **LexisNexis (Medium Confidence):** `checkDevice` → **verifyPhone** → **requestPasscode** → **confirmPasscode (OTP)** → success.
+* **Experian (Medium, lower env):** `checkDevice` → `verifyPhone` → `confirmPasscode` with **1111** → success.
+
+**Logs and observability**
+
+* Search by correlation ID; verify each hop; record log query templates.
+
+Deliverables: Architecture diagram (sequence), Postman collection v1, glossary v1, log search cheat‑sheet.
+
+---
+
+## Week 2: Remote Deep Dive, Edge Cases, and Recovery
+
+**State machine anchors**
+
+* Enumerate statuses (CREATED → PENDING\_\* → COMPLETED/FAILED\_\*); include `LOA_ACHIEVED` as terminal success recorded in **AUDIT\_PERSON**.
+
+**Negative and gray paths**
+
+* Name/phone mismatch ⇒ Remote fail page shows **Alternative Verification** with options: **Request code by mail** or **Continue In‑Person** (barcode + record locator).
+* Device reputation adverse signals (ThreatMetrix) present in **RP\_DEVICE\_REPUTATION\_RESPONSE** for the PERSON\_ID.
+* Supplier timeouts or SMS/link delivery issues; duplicate enroll; user abort.
+
+**Reliability patterns**
+
+* Idempotency keys, retries with backoff, timeouts, circuit breakers, dead‑letter queues.
+* Prove that repeating `confirmPasscode`/`verifyPhone` with the same CUID is idempotent.
+* Validate that **percentage weight changes** in IBS Admin take effect and still sum to 100.
+
+**Data and privacy**
+
+* What is persisted vs transient, retention windows, redaction in logs, PII handling.
+
+**Contract tests**
+
+* Newman tests that confirm schema and required fields across versions.
+
+Deliverables: State machine doc, edge case matrix, Newman suite, reliability notes.
+
+---
+
+## Week 3: In‑Person Proofing (IPP) End‑to‑End
+
+**Simulate from IPS Web**
+
+* From a remote failure choose **Alternative Verification → Continue In‑Person**; capture **barcode** + **record locator**.
+
+**Retail/EBS tablet flow (what happens on site)**
+
+* Clerk enters barcode on EBS tablet; user presents acceptable ID (configured in IBS Admin).
+* IPP result posts back; verify IPS Web reflects final status and **AUDIT\_PERSON** records the transition.
+
+**Admin config to review**
+
+* Acceptable ID types; primary vs secondary verification IDs; notification toggles tied to IPP.
+
+Deliverables: IPP sequence diagram, IPP Postman folder, failure playbook.
+
+---
+
+## Week 4: Operations, Security, and Production Readiness
+
+**Triage runbook**
+
+* 10‑minute checklist: capture correlation ID, reproduce with Postman, read last logs, identify state, choose next action.
+* Canned responses and escalation criteria.
+
+**Monitoring and alerts**
+
+* SLOs for success rate, latency, vendor error rates; draft alert thresholds and dashboards.
+
+**Security and compliance**
+
+* AuthN/AuthZ flows, token scopes, signed URLs, encryption, secrets management, PII minimization, audit trails, retention windows.
+
+**Performance and load**
+
+* Minimal load test using Newman/k6 on key endpoints; observe rate limits and bottlenecks.
+
+**Change safety**
+
+* Contract diffs, feature flags, canary strategy, rollback checklist, post‑deploy validation.
+
+Deliverables: Triage runbook v1, dashboard sketch, security checklist, rollback checklist.
+
+---
+
+## Hands‑On Labs (do these as you go)
+
+1. Correlation ID tracing: start a session, capture the ID, find each service log entry.
+2. Idempotent submit: send the same doc twice with the same idempotency key; verify single state change.
+3. Vendor timeout drill: simulate a 504 from the vendor; confirm retry/backoff and user messaging.
+4. Redaction audit: cause a validation error that includes PII; confirm logs are redacted.
+5. Cross‑channel switch: begin Remote, then switch to IPP; document how the system handles the pivot.
+6. Data retention: locate where images or PII are stored; verify purge or TTL behavior.
+7. Callback failure: simulate callback down; confirm replay or manual recovery path.
+8. Error catalog: trigger at least 10 unique errors; capture code, text, remediation.
+9. Load smoke: 10 RPS for 5 minutes on enroll/status; note errors and limits.
+10. **CUID walk‑through:** exercise `checkDevice → verifyPhone → requestPasscode → confirmPasscode` for **Experian (1111)**, **Equifax (link)**, **LexisNexis (OTP)** and verify **AUDIT\_PERSON** and **RP\_DEVICE\_REPUTATION\_RESPONSE** entries.
+11. **Sponsor switch drill:** repeat the same flow for **COA** and **Operation Santa (OS/OSI)**; note any sponsor‑specific behavior.
+
+---
+
+## Test Data Matrix (starter)
+
+* Identity doc: driver license, passport card, passport; valid/expired; name variants with hyphen and middle name.
+* Address: current, prior, mismatch.
+* Date of birth: edge cases near minimum age.
+* Selfie/liveness (if applicable): pass, fail, poor lighting.
+* Remote: Equifax Medium (link), LexisNexis Medium (OTP), Experian Medium (1111), each at High and Low.
+* IPP: valid visit code, expired code, duplicate code, reschedule.
+
+For each row capture: input, expected status, API response snippet, user message, cleanup steps.
+
+---
+
+## Runbook Templates
+
+**Triage checklist**
+
+1. Gather: user ID, correlation ID, time window, environment.
+2. Locate state: call status endpoint; record current state and last transition.
+3. Inspect logs: vendor response, error codes, retries, feature flag values.
+4. Decide: retry, reset to previous state, cancel and re‑enroll, or escalate.
+5. Document: link to Postman run and logs; record resolution in knowledge base.
+
+**Rollback checklist**
+
+* Identify recent feature flags or deploys. Confirm no schema changes are pending.
+* Roll back the smallest blast radius first (flag), then code.
+* Validate via synthetic happy path and 2 key negative cases.
+
+---
+
+## Stretch Goals (Weeks 5‑6)
+
+* Build a local mock of vendor endpoints to run full Remote flows offline.
+* Write a thin CLI to orchestrate flows without Postman.
+* Add contract tests to CI to catch breaking API changes.
+* Draft a design for batched reprocessing of stuck enrollments.
+
+---
+
+## Proof of Mastery
+
+* You can demo Remote and IPP happy path and at least 8 negative paths in under 15 minutes.
+* You can resolve a new production‑like ticket within 30 minutes using the runbook.
+* Your Postman collection and runbooks are used by at least one teammate successfully.
