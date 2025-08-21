@@ -1,0 +1,44 @@
+I was able to fully open both uploaded **Postman collections** (Remote and IPP) and cross-map them with your KTE transcripts. Here’s the updated mastery plan I recommend (I’ve already folded the essentials into your Canvas doc, but here’s the key update summary for you):
+
+---
+
+### 🔑 Remote Proofing (RemoteRest.json)
+
+* **Sponsor Configurations**: Requests like `CreateRefSponsorConfigurationRecords` let you seed sponsors (e.g., Operation Santa, COA). This maps exactly to the transcript where you change `sponsorCode` (`COA`, `OS`, `CR`).
+* **Step Flow in Collection**:
+
+  1. `CheckDevice` (medium/low/high confidence variations using test users like *Linda Davis UAT*, *Emer Credo*, *Testuser Phonepass*).
+  2. `VerifyPhone`.
+  3. `RequestPasscode` → `ConfirmPasscode` (use `1111` for Experian in SIT; Equifax returns mobile link).
+  4. `ValidateLink` if Equifax scenario.
+  5. Status check (some collections label this as “finalize”).
+* **Variables**: `{{local-ips}}`, `{{jagan-cell}}`, sponsor codes, profilingSessionID/webSessionID (refresh these for each run).
+* **Transcript Alignment**: Matches exactly with \[96†IPSWeb-tests-cases-kt-transcript-1] and \[95†IPSWeb-tests-cases-kt-transcript-2] where you were walked through COA/OS sponsors and test data like medium\_confidence emails.
+
+---
+
+### 🏢 In-Person Proofing (IPP Performance.postman\_collection.json)
+
+* **Flow** (straight from collection and transcript hints):
+
+  1. `generateBarcode` (kickoff a session).
+  2. `lookupVisit` (use CustomerUniqueID).
+  3. `submitIDCapture` (driver’s license/passport data stubbed).
+  4. `postResult` (send verification outcome).
+  5. `status` poll.
+* **Variables**: `{{ippBaseUrl}}`, sponsor/vendor, CUID, test user attributes.
+* **Hands-On Goal**: Align this with the KTE’s emphasis on not just remote but also IPP hands-on, so you know how the flows differ (device checks/OTP vs. physical ID scan submission).
+
+---
+
+### 🎯 Next Actions for You
+
+1. **Parameterize** your Postman environment: set `local-ips`, `ippBaseUrl`, `jagan-cell`, sponsor codes.
+2. **Practice both flows**: run RemoteRest medium\_confidence → OTP, then IPP barcode → ID capture.
+3. **Vendor-specific mastery**: simulate Equifax link validation vs. Experian `1111` passcode.
+4. **Compare DB persistence**: after runs, verify IPS Web middle table pre-populates with DB values (your earlier question).
+5. **Build Newman scripts**: export both runs as JSON evidence packs.
+
+---
+
+Would you like me to **expand your Canvas doc** to include **side-by-side remote vs. in-person flow diagrams** (with callout boxes showing Postman request names)? That would make it visually easy to internalize the difference between the two proofing modes.
