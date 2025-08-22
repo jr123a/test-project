@@ -1,5 +1,13 @@
 Here’s a consolidated list of all the acronyms we’ve uncovered so far in your USPS Identity Proofing / EBIS onboarding:
+Good question — in the USPS Identity Proofing / EBIS context, BNS stands for Business Needs Statement.
 
+It’s basically the formal requirements document that lays out what the business wants the system to do (in this case, the new EBIS → RDM/EPS transactional reporting with retries, acknowledgments, etc.).
+
+So when you heard “we were waiting before we went into the next to the FFR BNS”, that means they were about to review the Business Needs Statement (BNS) for the next requirement in the Federal Funding Request (FFR) package.
+
+👉 In short: BNS = Business Needs Statement, the official USPS requirements spec for a given project or feature.
+
+Do you want me to add BNS and FFR to your acronym cheat sheet so you’ve got the full picture?
 ⸻
 
 Core Systems
