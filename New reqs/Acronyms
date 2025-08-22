@@ -1,0 +1,29 @@
+Here’s a consolidated list of all the acronyms we’ve uncovered so far in your USPS Identity Proofing / EBIS onboarding:
+
+⸻
+
+Core Systems
+	•	IPS → Identity Proofing Services
+	•	IVS → Identity Verification System (the admin/processing layer supporting IPS)
+	•	EBIS / eBiz → Enterprise Business Information System (billing/financial system, source of agency-funded transactions)
+	•	IPP → In-Person Proofing (identity verification at a retail location using EBIS tablet)
+
+Downstream / File Transfer
+	•	RDM → Revenue Data Mart (financial reporting & reconciliation system)
+	•	EPS → Enterprise Payment System (handles agency billing and payments)
+	•	AFTS → Automated File Transfer System (secure USPS mechanism to move files between systems)
+
+Verification / Authentication
+	•	OTP → One-Time Passcode (SMS or phone-based identity check)
+	•	SMFA / Dit SMFA → Secure Multi-Factor Authentication (vendor-supported MFA, e.g., Equifax integration)
+	•	UAT → User Acceptance Testing (test accounts like “Linda Davis UAT”)
+
+Other References
+	•	COA → Change of Address (a USPS sponsor that uses proofing)
+	•	ECR → Enterprise Customer Repository (customer account/transactional data reporting system)【from transcript context】
+
+⸻
+
+✅ This should give you a handy cheat sheet for conversations and documentation.
+
+Would you like me to format this into a simple 1-page quick reference table (acronym | full form | role/purpose) that you can print or keep open during meetings?
