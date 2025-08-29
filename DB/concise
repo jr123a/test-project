@@ -1,0 +1,150 @@
+# IVS Persistence Data Model (ER Overview)
+
+Below is a concise, working view of the IVS (Identity Verification Services) persistence model focused on **remote proofing**: the policy/config that picks a KBA supplier at runtime, the runtime event trail, and supporting throttles/lockouts and vendor configs.
+
+---
+
+## Key Entities (by functional area)
+
+### Reference / Configuration
+
+* **ref\_sponsor** — master list of sponsors/clients
+* **ref\_loa\_level** — LOA catalog (LOA/IAL, descriptions, expirations)
+* **ref\_kba\_supplier** — KBA/OTP vendors (Experian, Equifax, LexisNexis, …)
+* **rp\_kba\_attempts** — per **Sponsor + LOA + Supplier** policy matrix
+* **ref\_kba\_velocity** — rate/velocity limits per supplier
+* **kba\_lockout\_info** — person-level lockouts (per LOA and/or supplier)
+* **ref\_id\_validation\_vendor** — id validation vendor catalog
+* **sponsor\_endpoints** — per-sponsor environment endpoint URLs
+* **sponsor\_tokens / vendor\_tokens / rp\_supplier\_token** — API credentials
+
+### Person & Runtime
+
+* **id\_person\_details** — person identity details (PII attributes)
+* **id\_verify\_service\_requests** — audit of outgoing verification requests
+* **rp\_event** — runtime proofing/event trail (supplier, LOA, decisions, timing)
+* **rp\_* vendor result tables*\* — per-vendor detailed outcomes/payloads (e.g., Experian/LexisNexis/Equifax result + payload tables)
+
+### Risk / Document Adjuncts (commonly cross‑referenced)
+
+* **id\_document\_details, id\_images** — document/meta storage
+* **address\_verification, high\_risk\_addresses, high\_risk\_address\_attempts** — address risk signals
+* **efx\_id\_verification\_details** — Equifax‑specific details
+* **ref\_equifax\_match\_assessment, ref\_equifax\_fraud\_indicator, ref\_lexisnexis\_response\_code** — vendor code maps
+
+---
+
+## ER Diagram (Mermaid)
+
+```mermaid
+erDiagram
+  REF_SPONSOR ||--o{ RP_KBA_ATTEMPTS : defines
+  REF_LOA_LEVEL ||--o{ RP_KBA_ATTEMPTS : constrains
+  REF_KBA_SUPPLIER ||--o{ RP_KBA_ATTEMPTS : eligible
+
+  REF_KBA_SUPPLIER ||--o{ REF_KBA_VELOCITY : governs
+  REF_KBA_SUPPLIER ||--o{ KBA_LOCKOUT_INFO : locks
+
+  REF_KBA_SUPPLIER ||--o{ RP_EVENT : used_in
+  REF_LOA_LEVEL ||--o{ RP_EVENT : targeted_by
+
+  ID_PERSON_DETAILS ||--o{ RP_EVENT : produces
+
+  REF_ID_VALIDATION_VENDOR ||--o{ ID_VERIFY_SERVICE_REQUESTS : via
+
+  REF_SPONSOR ||--o{ SPONSOR_ENDPOINTS : points_to
+  REF_SPONSOR ||--o{ SPONSOR_TOKENS : authorizes
+  REF_KBA_SUPPLIER ||--o{ VENDOR_TOKENS : authenticates
+
+  ID_DOCUMENT_DETAILS ||--o{ ID_IMAGES : has
+  ADDRESS_VERIFICATION ||--o{ HIGH_RISK_ADDRESS_ATTEMPTS : tracked_by
+  HIGH_RISK_ADDRESSES ||--o{ HIGH_RISK_ADDRESS_ATTEMPTS : accumulates
+
+  RP_EVENT ||--o{ RP_VENDOR_RESULTS : captures  
+```
+
+> Note: `RP_VENDOR_RESULTS` is a logical bucket here representing vendor‑specific result tables such as `rp_experian_decision_result`, `rp_experian_response_payload`, `rp_lexisnexis_result`, `efx_id_verification_details`, etc.
+
+---
+
+## Relationship Cheatsheet (cardinalities and keys)
+
+* **rp\_kba\_attempts**
+
+  * **PK**: (sponsor\_id, proofing\_level, kba\_supplier\_id)
+  * **FKs**: sponsor\_id → ref\_sponsor; proofing\_level → ref\_loa\_level; kba\_supplier\_id → ref\_kba\_supplier
+  * **Meaning**: eligible suppliers and attempt limits for a Sponsor+LOA
+
+* **ref\_kba\_velocity**
+
+  * **FK**: kba\_supplier\_id → ref\_kba\_supplier
+  * **Meaning**: sliding‑window attempt limits (ATTEMPTS\_ALLOWED / ATTEMPT\_WINDOW)
+
+* **kba\_lockout\_info**
+
+  * **FK**: (person\_id, loa\_code\[, kba\_supplier\_id])
+  * **Meaning**: active/expiry lockouts for a person at an LOA (optionally per supplier)
+
+* **rp\_event**
+
+  * **FKs**: person\_id → id\_person\_details; kba\_supplier\_id → ref\_kba\_supplier; proofing\_level → ref\_loa\_level
+  * **Meaning**: audit trail of each remote proofing step, final/next decisions, timings
+
+* **sponsor\_endpoints / sponsor\_tokens / vendor\_tokens / rp\_supplier\_token**
+
+  * **FKs**: sponsor\_id → ref\_sponsor; kba\_supplier\_id/vendor\_id → ref\_kba\_supplier/ref\_id\_validation\_vendor
+  * **Meaning**: environment URLs and credentials for outbound calls
+
+---
+
+## How “Which KBA Vendor?” Is Decided (service perspective)
+
+1. Read **rp\_kba\_attempts** rows for (sponsor\_id, proofing\_level)
+2. Apply **ref\_kba\_velocity** limits and **kba\_lockout\_info** state
+3. Consider prior **rp\_event** history in the velocity window
+4. Select supplier (and next action) → log to **rp\_event** and vendor result tables
+
+---
+
+## Handy SQL Starters
+
+* Effective policy matrix for one sponsor:
+
+```sql
+SELECT a.SPONSOR_ID, a.PROOFING_LEVEL, s.KBA_SUPPLIER_NAME,
+       a.ATTEMPTS AS supplier_attempts, a.TOTAL_ATTEMPTS AS total_allowed,
+       a.VERSION, a.CREATE_DATE, a.UPDATE_DATE
+FROM   rp_kba_attempts a
+JOIN   ref_kba_supplier s ON s.kba_supplier_id = a.kba_supplier_id
+WHERE  a.sponsor_id = :sponsor_id
+ORDER  BY a.proofing_level, a.version, s.kba_supplier_name;
+```
+
+* Lockout & velocity checks:
+
+```sql
+SELECT * FROM ref_kba_velocity WHERE kba_supplier_id = :supplier_id;
+SELECT * FROM kba_lockout_info WHERE person_id = :person_id AND loa_code = :loa;
+```
+
+* Runtime “who actually handled KBA” for a person:
+
+```sql
+SELECT e.event_id, e.person_id, e.kba_supplier_id, s.kba_supplier_name,
+       e.create_date, e.final_decision, e.completion_datetime
+FROM   rp_event e
+JOIN   ref_kba_supplier s ON s.kba_supplier_id = e.kba_supplier_id
+WHERE  e.person_id = :person_id
+ORDER  BY e.create_date DESC;
+```
+
+---
+
+### Notes
+
+* Field names/FKs may vary slightly by schema version; use your generated JPA entities for canonical column names.
+* Vendor‑specific detail tables (Experian/Lexis/Equifax) attach via event IDs or transaction IDs; query from `rp_event` outward when troubleshooting.
+
+---
+
+**Want edits?** I can expand this with column lists per table or add a swimlane diagram that aligns UI beans → services → tables touched per step.
