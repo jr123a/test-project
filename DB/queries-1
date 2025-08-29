@@ -1,0 +1,89 @@
+Here’s the short list to watch when you tweak the percentages in the IVS Admin and want to see what the DB changes look like.
+
+Primary tables to verify
+
+1. rp\_kba\_attempts
+   What to check: per Sponsor + LOA + Supplier rows. Look for columns like ATTEMPTS, TOTAL\_ATTEMPTS, VERSION, and any weight field your schema uses (often named PERCENT, DISTRIBUTION\_PCT, WEIGHT, or similar). Also watch MODIFY\_CONFIGURATION\_USERID and MODIFY\_CONFIGURATION\_TIME.
+   Why: this is the policy matrix the service reads at runtime; percentage edits usually land here.
+
+2. ref\_kba\_supplier
+   What to check: supplier ids and names for join clarity.
+   Why: not typically updated by percentage edits, but needed to read rp\_kba\_attempts meaningfully.
+
+3. ref\_loa\_level
+   What to check: LOA codes and descriptions.
+   Why: same as above, for joining and filtering.
+
+4. ref\_sponsor
+   What to check: sponsor ids and names.
+   Why: same as above, for joining and filtering.
+
+Runtime validation (not updated by the admin save, but proves the effect)
+5\) rp\_event
+What to check: after you run test sessions, verify which supplier actually handled KBA. Over a batch of runs, counts should reflect your configured split (subject to velocity/lockouts).
+Why: confirms the routing distribution at runtime.
+
+Constraints that can override routing (not changed by percentage edits)
+6\) ref\_kba\_velocity
+What to check: ATTEMPTS\_ALLOWED and ATTEMPT\_WINDOW by supplier.
+Why: velocity blocks can make a supplier ineligible even if its percentage is high.
+
+7. kba\_lockout\_info
+   What to check: person level or supplier level lockouts and expiry.
+   Why: lockouts can force fallback to another supplier and skew observed distribution.
+
+Handy queries for your exercise
+
+A) Snapshot the policy matrix before and after saving percentages
+
+```sql
+SELECT
+  a.sponsor_id,
+  a.proofing_level,
+  a.kba_supplier_id,
+  s.kba_supplier_name,
+  a.attempts,
+  a.total_attempts,
+  a.version,
+  a.modify_configuration_userid,
+  a.modify_configuration_time,
+  /* include your weight column if present, e.g. a.distribution_pct */
+  a.distribution_pct
+FROM rp_kba_attempts a
+JOIN ref_kba_supplier s ON s.kba_supplier_id = a.kba_supplier_id
+WHERE a.sponsor_id = :sponsor_id
+ORDER BY a.proofing_level, a.version, s.kba_supplier_name;
+```
+
+B) Verify observed routing after running N test sessions
+
+```sql
+SELECT
+  e.proofing_level,
+  e.kba_supplier_id,
+  s.kba_supplier_name,
+  COUNT(*) AS sessions_routed
+FROM rp_event e
+JOIN ref_kba_supplier s ON s.kba_supplier_id = e.kba_supplier_id
+WHERE e.sponsor_id = :sponsor_id
+  AND e.create_date >= :start_ts
+GROUP BY e.proofing_level, e.kba_supplier_id, s.kba_supplier_name
+ORDER BY sessions_routed DESC;
+```
+
+C) Check for constraints that might override your split
+
+```sql
+-- Velocity rules per supplier
+SELECT * FROM ref_kba_velocity WHERE kba_supplier_id IN (:supplier_ids);
+
+-- Any lockouts impacting a test person at an LOA
+SELECT * FROM kba_lockout_info
+WHERE person_id = :person_id AND loa_code = :loa_code;
+```
+
+Notes
+
+* If you do not see a distribution\_pct or weight column in rp\_kba\_attempts, your build may store weights under a differently named column or a side table. Grep your persistence code for “pct”, “percent”, “weight”, or the admin save method to locate the exact column name.
+* Percentage changes generally do not touch ref\_sponsor, ref\_loa\_level, or ref\_kba\_supplier; those are for joins only.
+* Expect runtime counts in rp\_event to approximate the configured split over many sessions; single-digit tests will look noisy.
