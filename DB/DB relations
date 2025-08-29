@@ -1,0 +1,174 @@
+
+
+# Core reference tables
+
+* ref\_sponsor (RefSponsor)
+
+  * Columns: SPONSOR\_ID, SPONSOR\_NAME, REMOTE\_PROOFING\_CLIENT, ...
+  * One sponsor -> many persons; used to scope all policy.
+* ref\_loa\_level (RefLoaLevel)
+
+  * Columns: LOA\_CODE, LOA\_LEVEL, LOA\_LEVEL\_DESCRIPTION, CREDENTIAL\_EXPIRATION\_PERIOD, ...
+  * Defines the target Level of Assurance used in policy checks and event stats.
+* ref\_kba\_supplier (RefOtpSupplier)
+
+  * Columns: KBA\_SUPPLIER\_ID, KBA\_SUPPLIER\_NAME, ...
+  * Constants present for suppliers: Equifax OTP (3), LexisNexis RDP (4), Equifax DIT SMFA (5), Experian CrossCore (6).
+  * Relationships:
+
+    * One supplier -> many rp\_event rows.
+    * One supplier -> many rp\_kba\_attempts rows (policy matrix).
+    * One supplier -> many ref\_kba\_velocity rows (rate limits).
+    * One supplier -> many kba\_lockout\_info rows.
+
+# Policy and throttling (this is where “which KBA to use” lives)
+
+* rp\_kba\_attempts (RpOtpAttemptConfig + RpOtpAttemptConfigPK)
+
+  * PK: (PROOFING\_LEVEL, SPONSOR\_ID, KBA\_SUPPLIER\_ID).
+  * Columns: ATTEMPTS (per-supplier cap), TOTAL\_ATTEMPTS (overall cap), VERSION, CREATE\_DATE, MODIFY\_CONFIGURATION\_TIME/USERID, UPDATE\_DATE.
+  * @ManyToOne ref: KBA\_SUPPLIER\_ID -> ref\_kba\_supplier.
+  * Named queries:
+
+    * findByProofingLevel, findByPrimaryKey.
+    * findByProofingLevelSorted (filters TOTAL\_ATTEMPTS <> 0 and orders for selection).
+  * Meaning: For a given Sponsor + LOA, defines eligible KBA suppliers and attempt limits. Backend uses these rows to pick a vendor at runtime.
+* ref\_kba\_velocity (RefOtpVelocity)
+
+  * Columns: VELOCITY\_ID, ATTEMPT\_WINDOW, ATTEMPTS\_ALLOWED, VELOCITY\_TYPE, ...
+  * One supplier -> many velocity rules. Used by backend checks to enforce rate limits.
+* kba\_lockout\_info (OtpLockoutInfo)
+
+  * Columns (high level): PERSON\_ID, LOA\_CODE, KBA\_SUPPLIER\_ID, LOCKOUT\_EXPIRES, ivs\_lockout\_datetime, kba\_supplier\_lockout\_datetime, ...
+  * Tracks per-person lockouts across suppliers/levels.
+
+# People and runtime activity
+
+* id\_person\_details (IdPersonDetails)
+
+  * PERSON\_DETAIL\_ID, DETAIL\_DATA, EYE\_COLOR, CREATE\_DATE, UPDATE\_DATE, ...
+  * Person identity detail storage (PII attributes, doc details elsewhere).
+* id\_verify\_service\_requests (IdVerifyServiceRequest)
+
+  * VERIFY\_REQUEST\_ID, ERROR\_CODE, ERROR\_MESSAGE, CREATE\_DATE, UPDATE\_DATE, ...
+  * Outbound call audit/requests to remote identity services.
+* rp\_event (RpEvent)
+
+  * Columns: EVENT\_ID, PERSON\_ID, KBA\_SUPPLIER\_ID, CREATE\_DATE, FINAL\_DECISION, KBA\_TRANSACTION\_ID, QUESTIONS\_RETURNED, ANSWERS\_SUBMITTED\_DATETIME, COMPLETION\_DATETIME, etc.
+  * Heavily used for:
+
+    * Velocity windows, counts, “latest supplier” reads.
+    * KPI reporting (taken, incomplete, by supplier, by decision).
+  * Relationships:
+
+    * Many events per person.
+    * Each event references one supplier and one LOA.
+    * Vendor-specific sub-entities exist (e.g., RpExperianDecisionResult, RpLexisNexisResult) that hang off event/process.
+
+# Vendor and endpoint configuration
+
+* ref\_id\_validation\_vendors (RefIdValidationVendor)
+
+  * VENDOR\_ID, VENDOR\_NAME, CREATE\_DATE, ...
+  * Enumerates identity vendors used elsewhere (often mirrors KBA suppliers).
+* sponsor\_endpoints (SponsorEndpoints)
+
+  * ENDPOINT\_ID, ENVIRONMENT, ENDPOINT\_URL, ...
+  * Per-sponsor integration endpoints (maps to remote REST/hosted experiences).
+* sponsor\_tokens, vendor\_tokens, rp\_supplier\_token
+
+  * Token storage for calling vendor APIs on behalf of a sponsor/environment.
+
+# Document and risk adjuncts (you will see these during flow)
+
+A sampling of supporting tables you will likely touch when tracing full proofing:
+
+* id\_document\_details, id\_images, id\_person\_details (identity artifacts).
+* address\_verification, high\_risk\_addresses, high\_risk\_address\_attempts (risk signals).
+* efx\_id\_verification\_details (Equifax detail).
+* ref\_equifax\_match\_assessment, ref\_equifax\_fraud\_indicator, ref\_lexisnexis\_response\_code (vendor code maps).
+
+# How the runtime decision “which KBA supplier?” is actually made
+
+1. UI bean calls a service (VerificationProviderService or similar) with the session context (Person, Sponsor, target LOA, prior phone/device checks).
+2. Service queries rp\_kba\_attempts for that Sponsor + LOA, filters by eligible suppliers, ignores rows with TOTAL\_ATTEMPTS = 0 (per named query), orders rows for selection, and applies:
+
+   * Per-supplier ATTEMPTS,
+   * Overall TOTAL\_ATTEMPTS,
+   * Velocity rules in ref\_kba\_velocity,
+   * Any lockout in kba\_lockout\_info,
+   * Prior history from rp\_event (e.g., latest supplier, attempt counts in window).
+3. Service returns the chosen supplier and a “next action” (hosted URL, Q\&A step, OTP resume, SMFA step).
+4. Web layer then executes the branch for the selected vendor and logs vendor-specific results back to rp\_event and vendor-specific result tables.
+
+# Minimal ER sketch (text)
+
+* ref\_sponsor (1) —> (M) person (in web tier, person tables: id\_person\_details and related)
+* ref\_loa\_level (1) —> (M) rp\_event
+* ref\_kba\_supplier (1) —> (M) rp\_kba\_attempts
+* ref\_kba\_supplier (1) —> (M) rp\_event
+* ref\_kba\_supplier (1) —> (M) ref\_kba\_velocity
+* ref\_kba\_supplier (1) —> (M) kba\_lockout\_info
+* (sponsor\_id, proofing\_level, supplier\_id) in rp\_kba\_attempts forms the policy matrix per Sponsor+LOA
+* rp\_event (M) —> (1) person; rp\_event (M) —> (1) ref\_kba\_supplier; rp\_event (M) —> (1) ref\_loa\_level
+
+# Handy queries you can run right now
+
+1. Effective KBA policy matrix for one sponsor
+
+```sql
+SELECT
+  a.id.sponsorId            AS sponsor_id,
+  a.id.proofingLevel        AS loa_level,
+  s.KBA_SUPPLIER_NAME       AS supplier_name,
+  a.ATTEMPTS                AS supplier_attempts,
+  a.TOTAL_ATTEMPTS          AS total_allowed,
+  a.VERSION,
+  a.CREATE_DATE,
+  a.UPDATE_DATE
+FROM rp_kba_attempts a
+JOIN ref_kba_supplier s
+  ON s.KBA_SUPPLIER_ID = a.id.otpSupplierId
+WHERE a.id.sponsorId = :sponsor_id
+ORDER BY loa_level, VERSION, supplier_name;
+```
+
+2. Velocity and lockout in effect for a supplier
+
+```sql
+-- Velocity
+SELECT * FROM ref_kba_velocity
+WHERE KBA_SUPPLIER_ID = :supplier_id;
+
+-- Lockout for a person at an LOA
+SELECT * FROM kba_lockout_info
+WHERE PERSON_ID = :person_id AND LOA_CODE = :loa_code;
+```
+
+3. What actually happened at runtime (who handled KBA)
+
+```sql
+SELECT
+  e.EVENT_ID,
+  e.PERSON_ID,
+  e.KBA_SUPPLIER_ID,
+  s.KBA_SUPPLIER_NAME,
+  e.CREATE_DATE,
+  e.FINAL_DECISION,
+  e.QUESTIONS_RETURNED,
+  e.ANSWERS_SUBMITTED_DATETIME,
+  e.COMPLETION_DATETIME
+FROM rp_event e
+JOIN ref_kba_supplier s
+  ON s.KBA_SUPPLIER_ID = e.KBA_SUPPLIER_ID
+WHERE e.PERSON_ID = :person_id
+ORDER BY e.CREATE_DATE DESC;
+```
+
+# Quick takeaways
+
+* The IVS Admin “who does remote proofing” ultimately boils down to rows in rp\_kba\_attempts scoped by Sponsor + LOA. That matrix, plus velocity and lockout tables, determines the chosen KBA supplier at runtime.
+* rp\_event is your ground truth for “what was actually used and how it ended.”
+* sponsor\_endpoints and token tables connect your sponsors to the correct remote endpoints with the right credentials.
+
+If you want, I can also generate a compact CSV/diagram (entities, columns, and FK-style links) so you can paste it into your wiki or draw\.io.
