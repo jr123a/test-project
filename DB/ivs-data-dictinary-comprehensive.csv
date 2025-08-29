@@ -1,0 +1,66 @@
+table,column_name,description
+ref_sponsor,SPONSOR_ID,Primary key
+ref_sponsor,SPONSOR_NAME,Sponsor/client name
+ref_sponsor,REMOTE_PROOFING_CLIENT,Client code for remote proofing
+ref_sponsor,CREATE_DATE,Row creation timestamp
+ref_sponsor,UPDATE_DATE,Row last update timestamp
+
+ref_loa_level,LOA_CODE,Primary key (code for level of assurance)
+ref_loa_level,LOA_LEVEL,Numeric/string level (e.g., 1,2,3 or IAL2)
+ref_loa_level,LOA_LEVEL_DESCRIPTION,Text description
+ref_loa_level,CREDENTIAL_EXPIRATION_PERIOD,Policy duration
+ref_loa_level,CREATE_DATE,Row creation timestamp
+ref_loa_level,UPDATE_DATE,Row last update timestamp
+
+ref_kba_supplier,KBA_SUPPLIER_ID,Primary key
+ref_kba_supplier,KBA_SUPPLIER_NAME,Vendor name (LexisNexis, Experian, Equifax)
+ref_kba_supplier,ACTIVE_FLAG,Whether supplier is active
+ref_kba_supplier,CREATE_DATE,Row creation timestamp
+ref_kba_supplier,UPDATE_DATE,Row last update timestamp
+
+rp_kba_attempts,SPONSOR_ID,FK → ref_sponsor
+rp_kba_attempts,PROOFING_LEVEL,FK → ref_loa_level
+rp_kba_attempts,KBA_SUPPLIER_ID,FK → ref_kba_supplier
+rp_kba_attempts,ATTEMPTS,Max attempts allowed with this supplier
+rp_kba_attempts,TOTAL_ATTEMPTS,Overall attempts allowed across all suppliers
+rp_kba_attempts,VERSION,Configuration revision/version
+rp_kba_attempts,MODIFY_CONFIGURATION_USERID,Last user who modified
+rp_kba_attempts,MODIFY_CONFIGURATION_TIME,Timestamp of modification
+rp_kba_attempts,CREATE_DATE,Row creation timestamp
+rp_kba_attempts,UPDATE_DATE,Row last update timestamp
+
+ref_kba_velocity,VELOCITY_ID,Primary key
+ref_kba_velocity,KBA_SUPPLIER_ID,FK → ref_kba_supplier
+ref_kba_velocity,VELOCITY_TYPE,Window type (daily/hourly, etc.)
+ref_kba_velocity,ATTEMPT_WINDOW,Time window size
+ref_kba_velocity,ATTEMPTS_ALLOWED,Number of attempts allowed in window
+ref_kba_velocity,CREATE_DATE,Row creation timestamp
+ref_kba_velocity,UPDATE_DATE,Row last update timestamp
+
+kba_lockout_info,PERSON_ID,FK → id_person_details
+kba_lockout_info,LOA_CODE,FK → ref_loa_level
+kba_lockout_info,KBA_SUPPLIER_ID,FK → ref_kba_supplier
+kba_lockout_info,LOCKOUT_EXPIRES,Datetime lockout ends
+kba_lockout_info,IVS_LOCKOUT_DATETIME,When IVS lockout was triggered
+kba_lockout_info,KBA_SUPPLIER_LOCKOUT_DATETIME,When supplier lockout was triggered
+kba_lockout_info,CREATE_DATE,Row creation timestamp
+kba_lockout_info,UPDATE_DATE,Row last update timestamp
+
+id_person_details,PERSON_ID,Primary key
+id_person_details,PERSON_DETAIL_ID,Detail key
+id_person_details,DETAIL_DATA,Serialized detail JSON
+id_person_details,EYE_COLOR,Example of PII attribute stored
+id_person_details,CREATE_DATE,Row creation timestamp
+id_person_details,UPDATE_DATE,Row last update timestamp
+
+rp_event,EVENT_ID,Primary key
+rp_event,PERSON_ID,FK → id_person_details
+rp_event,KBA_SUPPLIER_ID,FK → ref_kba_supplier
+rp_event,PROOFING_LEVEL,FK → ref_loa_level
+rp_event,FINAL_DECISION,Outcome (approved/denied/escalated)
+rp_event,KBA_TRANSACTION_ID,Vendor transaction reference
+rp_event,QUESTIONS_RETURNED,Count of KBA questions
+rp_event,ANSWERS_SUBMITTED_DATETIME,When answers were submitted
+rp_event,COMPLETION_DATETIME,When session completed
+rp_event,CREATE_DATE,Row creation timestamp
+rp_event,UPDATE_DATE,Row last update timestamp

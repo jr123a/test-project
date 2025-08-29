@@ -1,0 +1,32 @@
+# label: %table%
+# namespace: csvimport-
+# style: shape=table;html=1;
+# connect: { "from": "refs", "to": "table", "invert": true }
+# width: auto
+# height: auto
+# padding: 10
+# ignore: refs
+# nodespacing: 40
+# levelspacing: 100
+# edgespacing: 40
+# layout: auto
+table,field,refs
+ref_sponsor,SPONSOR_ID,
+ref_sponsor,SPONSOR_NAME,
+ref_sponsor,REMOTE_PROOFING_CLIENT,
+rp_kba_attempts,SPONSOR_ID,ref_sponsor
+rp_kba_attempts,PROOFING_LEVEL,ref_loa_level
+rp_kba_attempts,KBA_SUPPLIER_ID,ref_kba_supplier
+rp_kba_attempts,ATTEMPTS,
+rp_kba_attempts,TOTAL_ATTEMPTS,
+ref_kba_supplier,KBA_SUPPLIER_ID,
+ref_kba_supplier,KBA_SUPPLIER_NAME,
+ref_loa_level,LOA_CODE,
+ref_loa_level,LOA_LEVEL,
+rp_event,EVENT_ID,
+rp_event,PERSON_ID,id_person_details
+rp_event,KBA_SUPPLIER_ID,ref_kba_supplier
+rp_event,PROOFING_LEVEL,ref_loa_level
+rp_event,FINAL_DECISION,
+id_person_details,PERSON_ID,
+id_person_details,DETAIL_DATA,
