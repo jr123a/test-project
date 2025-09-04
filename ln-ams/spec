@@ -1,0 +1,917 @@
+ 
+
+
+
+
+
+
+USPS IVS Remote Proofing As a Service Web Service
+Interface Control Document for
+LN-AMS Workflow Redesign
+Application Name: Identity Verification Services (IVS)
+EIR# 4482
+4/26/2023
+ 
+
+Table of Contents
+1.	Overview	3
+1.	VerifyBusiness Web Service	4
+2.	Request Field Description	7
+3.	Response Field Description	11
+4.	JSON Request and Response Examples	13
+5.	Validation Errors	19
+
+ 
+          DOCUMENT IDENTIFICATION INFORMATION
+Version:	1.0
+Date Created:	8-12-2025
+Created By:	Emer Credo
+Date Published:	
+
+CHANGE HISTORY
+Ver.	Date 	Change Description	Author
+1.00	8/12/2025	Initial draft.	Emer Credo
+1.01	8/22/2025	Changed AMS response reason code descriptions. Added new request field option “workflowAPI”.	Emer Credo
+
+
+ 
+1.	Overview
+
+The existing IVS business verification workflow is being redesigned. The overall mission of this initiative is to secure communication for the government and public sector as well as to adapt to digital commerce trends while maintaining logistical efficiency and fraud mitigation.  The goal is to streamline API calls, improve verification processes, and enhance overall system efficiency.  
+
+To achieve this goal, the IVS Business requires the following two key API integrations: 
+•	Updating the API integration with LexisNexis for business registrations, specifically regarding Business InstantID (BIID) checks. 
+•	Integrating the USPS ZIP Code Lookup Service to ensure accurate address verification.
+
+The objectives of the above requirements are the following:
+•	Optimize API calls by separating BIID from Device and Email Risk checks.
+•	Improve verification efficiency by leveraging AMS for business address checks before BIID verification.
+•	Enhance the registration process for Business Customer Gateway (BCG) and 	Customer Onboarding Portal (COP) registrations by applying BIID selectively.
+
+2.	VerifyBusiness Web Service
+
+The IVS VerifyBusiness will replace the currently used AssessDevicePlusEmailRisk web service.  Just like AssessDevicePlusEmailRisk, this new web service will be called from CustReg applications to perform the device and email risk assessment. For BCG and COP accounts, AMS address check will be called, and if AMS address check failed, the workflow will step up and call Business Identity & Information Data (BIID) verification with LexisNexis.  
+
+The IVS URLs are environment specific. The “hostname:port” portion of the URLs specified in this document are based on the actual environment as listed below:
+
+Environment	URL
+DEV	https://ips-dev.usps.com
+
+SIT	https://ips-sit.usps.com
+
+CAT	https://ips-cat.usps.com
+
+PRE PROD	https://ips-preprod.usps.com 
+
+PROD	https://ips.usps.com 
+
+
+
+
+
+The endpoint URL, request method, and examples of request and response JSON for VerifyBusiness web service are detailed below.  More JSON examples are detailed in sections below for various transaction scenarios, failed response and validation errors.
+     
+Request and Response JSON with No Validation Errors
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "Peraton",
+    "companyFEIN": "123456789",
+    "firstName": "John",
+    "lastName": "Deer",
+    "emailAddress": "john.deer@peraton.com",
+    "streetAddress1": "14900 Conference Center Dr",
+    "city": "Chantilly",
+    "state": "VA",
+    "zipCode": "20151",
+    "country": "US",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{
+    "status": {
+        "reference": "Business Customer Gateway – LN BIID Check",
+        "transactionStatus": "passed",
+        "conversationId": "50000746867015",
+        "requestId": "3042244575",
+        "ivsReferenceId": "10501",
+        "transactionReasonCodes": [
+            {
+                "code": "email_risk_assessment_pass",
+                "description": "EMAIL RISK ASSESSMENT PASS"
+            },
+            {
+                "code": "ams_business_address_check_failed",
+                "description": "Address found but missing exact information"
+            },
+            {
+                "code": "biid.pass",
+                "description": "PASS: BIID verification passed"
+            }
+        ]
+    }
+}
+
+
+
+
+
+Request and Response JSON with Validation Errors
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcx",
+    "companyName": "Peraton^^",
+    "companyFEIN": "123456789909",
+    "firstName": "John**",
+    "lastName": "Deer#$",
+    "emailAddress": "john.deer@peraton.com",
+    "streetAddress1": "14900 Conference Center Dr",
+    "city": "Chantilly",
+    "state": "VA",
+    "zipCode": "20151678",
+    "country": "XX",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{
+    "status": {
+        "reference": "IVS_Transaction",
+        "transactionStatus": "failed",
+        "transactionReasonCodes": [
+            {
+                "code": "input_validation_error",
+                "description": "Input Validation Error"
+            }
+        ],
+        "inputValidationErrors": [
+            {
+                "fieldName": "country",
+                "errorMessage": "country 2-Letter code is invalid",
+                "fieldValue": "XX"
+            },
+            {
+                "fieldName": "firstName",
+                "errorMessage": "firstName contains invalid characters or formatting is invalid",
+                "fieldValue": "John**"
+            },
+            {
+                "fieldName": "lastName",
+                "errorMessage": "lastName contains invalid characters or formatting is invalid",
+                "fieldValue": "Deer#$"
+            },
+            {
+                "fieldName": "companyName",
+                "errorMessage": "companyName contains invalid characters or formatting is invalid",
+                "fieldValue": "Peraton^^"
+            },
+            {
+                "fieldName": "companyFEIN",
+                "errorMessage": "companyFEIN contains invalid characters or formatting is invalid",
+                "fieldValue": "123456789909"
+            },
+            {
+                "fieldName": "appCode",
+                "errorMessage": "Application for bcx code cannot be found",
+                "fieldValue": "bcx"
+            }
+        ]
+    }
+}
+
+3.	Request Field Description
+
+The following table shows the request data fields and their types.
+
+Field	Type	Format	Required	Description
+sponsorCode	String	Alpha only (Acceptable value: "cr")	Y	Identification code for the agency or sponsor (i.e. Customer Registration)
+appCode	String	Alpha only ( Acceptable values:
+"bcg" for Business Customer Gateway, "cop" for Customer Onboarding Portal, "dbr" for DotCom Business Registration, "gbc" for Guest Business Checkout, and "idb" for Informed Delivery Business)
+	Y	Identification code for the application under the sponsor (i.e. Business Customer Gateway)
+workflowAPI	String	Acceptable values:
+"DERA”, “DERA-AMS-BIID", “AMS-BIID”.
+
+Default value (field is not passed or value is empty or null):
+a. If appCode = “bcg” or “cop”, default value is “DERA-AMS-BIID".
+b. If appCode = “dbr” or “idb” or “gbc”, default value is “DERA".
+
+
+	N	Identification code of the workflow API combination needed for this application / account. 
+If an existing (already registered) “dbr”, “idb” or “gbc” and needs TAC 109 check, “workflowAPI”:”AMS-BIID” should be passed in the request. This will skip “DERA” and directly call “AMS-BIID”.
+companyName	String	Regex: ^[A-Za-z0-9\\-\\.'_,\"&()?#/+@\\s]*$
+
+Alphanumeric and can include hyphens, apostrophes, comma, period, forward slash (/), number sign (#), ampersand (&), open/close parentheses, underscore, questions mark, plus symbol, at the rate (@) and spaces.
+	Y	Customer’s business or company name
+
+firstName	String	Regex: ^[\\sA-Za-z'\\-\\.]*$
+
+Alphabetic and can include hyphens, apostrophes, period and spaces	Y	Customer’s first name
+lastName	String	Regex: ^[\\sA-Za-z'\\-\\.]*$
+
+Alphabetic and can include hyphens, apostrophes, period and spaces	Y	Customer’s last name
+streetAddress1	String	Regex: ^[0-9A-Za-z'\-\._",&()?#/+@\s]*$
+
+Alphanumeric and can include hyphens, apostrophes, comma, period,  forward slash (/), number sign(#), underscore, questions mark, plus symbol, at the rate (@), open/close paranthesis, double quotes, period   and spaces.	Y	First line of customer’s street address.
+streetAddress2
+	String	Regex: ^[0-9A-Za-z'\-\._",&()?#/+@\s]*$
+
+Alphanumeric and can include hyphens, apostrophes, comma, period,  forward slash (/), number sign(#), underscore, questions mark, plus symbol, at the rate (@), open/close paranthesis, double quotes, period and spaces.	N	Second line of customer’s street address. If ever a third line is available, concatenate line 2 and line 3 and send as line 2. 
+
+city	String	Regex: ^[A-Za-z'\-\.\s]*$
+
+Alphabetic and can include hyphens, apostrophes, period and spaces	Y	The customer’s city.
+State 	String	2-Letter abbreviation based on USPS code standard for US States, Territories and military bases.	Y
+(Required for US address only)	The customer’s State abbreviation. This is not needed for international address, If supplied, it would be ignored.  
+ZipCode 
+(US)	String	5 digit numeric or 9 digit numeric with a hyphen	Y	The customer’s US zip code.
+ZipCode
+(non-US)
+	String	Regex: ^[0-9\-\.'\sA-Za-z"_&( ),?#/+@]*$
+
+Alphanumeric can accept underscore, question mark, plus symbol, at the rate (@), open/close paranthesis, double quotes, period, hyphens, apostrophes, comma, period,  forward slash (/), number sign(#), ampersand (&), open/close parentheses
+	Y	The customer’s non-US zip code.
+
+Country 
+(US)	String	2-Letter code. 
+Acceptable value: “US” 	Y	The customer’s US country code.
+
+
+Country
+(non-US)	String	2-Letter code based on ISO 3166
+		The customer’s non-US country code.
+
+MobilePhone 	String	min length: 10 , max length: 15. Allows numbers and +-( ) characters.	Y	The customer’s phone number.
+emailAddress	String	Regex:
+ ^([0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*@([0-9a-zA-Z][-\\w]*[0-9a-zA-Z]\\.)+[a-zA-Z]{2,9})$
+
+Validate with OWASP validation routine. 
+Alphanumeric and can include hyphen, plus, underscore, period,  and @ sign.
+	Y	The customer’s email address.
+profilingSessionID	String	Alphanumeric and can include hyphens and underscore.
+Up to 50 characters	Y	The Threat Metrix session ID needed for device reputation.
+webSessionID		Alphanumeric and can include hyphens and underscore.
+Up to 50 characters	Y	The IVS page web session ID needed for device reputation.
+trueIPAddress	String	max length 50 characters
+Allow IPv4, IPv6 and IPv6 dual IP addresses.
+Alphanumeric and can include period  and colon.	Y	The true IP address of the customer’s device.
+
+4.	Response Field Description
+
+The VerifyBusiness web service returns a JSON response that includes the Status block of results.  The following table lists the element names, possible values and data type/length. 
+
+Element Name	Possible Values	Data Type/Length
+conversationId	Numeric values (cast in String)	VARCHAR (30 BYTE)
+requestId	Numeric values (cast in String)
+	VARCHAR (20 BYTE)
+
+
+transactionStatus	Passed
+Failed
+error	VARCHAR (10 BYTE)
+
+reference	REST_Transaction (LexisNexis Call)
+IVS_Transaction (Before LexisNexis Call)	VARCHAR (20 BYTE)
+
+ivsReferenceId	Numeric values (cast in String)
+This the personId in IVS.	VARCHAR (20 BYTE)
+transactionReason Codes	An array of objects with specific transaction code and description.	
+DERA Transaction Reason 
+
+Code / description
+	Code: failed_device_assessment
+Desc: Failed: Device Assessment
+
+Code: email_risk_assessment_pass 
+Desc: Email Risk Assessment Pass
+
+Code: email_risk_assessment_denial Desc: Email Risk Assessment Denial
+
+Code: failed_device_assessment
+Desc: Failed: Device Assessment
+	
+BIID Transaction Reason 
+
+Code / description	Code: biid.pass
+Desc: PASS: BIID verification passed
+
+Code: biid.denial
+Desc: DENIAL: BIID verification denial	
+AMS Transaction Reason 
+
+Code / description	Code: business_address_check_passed Desc: Business address match
+
+Code: business_address_check_failed 
+Desc: Residential address match 
+
+Code: business_address_check_failed Desc: Address found but missing exact information
+
+Code: business_address_check_failed Desc: Address Not Found
+
+Code: business_address_check_failed Desc: General Delivery address match
+
+Code: business_address_check_failed Desc: Mixed, mostly Residential address match
+
+Code: business_address_check_failed Desc: Mixed, mostly Business address match 
+
+Note: The intent is to start with UsageCode B, but may be loosened to include UsageCode D (Mixed, mostly business).	
+inputValidationErrors	An array of objects with specific fieldName in error, fieldValue with error, and validation error message	
+fieldName	String value from input field name	
+fieldValue	String value from input field value	
+errorMessage	[See Section 3.5 below for possible input validation error messages] 	
+
+Note: 	DERA – LexisNexis Device Email Risk Assessment API
+BIID	- LexisNexis Business InstantID API
+AMS – USPS Address Management System API
+HRA – IVS High-Risk Primary Address Check
+
+
+5.	JSON Request and Response Examples
+
+4.1 Sample JSON request and response for a transaction with the following scenario:
+
+a. BCG account
+b. Failed LexisNexis Device-Email-Risk-Assessment (DERA) - Device Assessment Denial 
+/Email Risk Assessment Denial
+
+The final “failed” result from DERA will be returned to CustReg. 
+     
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "Quest Diagnostics",
+    "companyFEIN": "123456789",
+    "firstName": "Kim",
+    "lastName": "Marshall",
+    "emailAddress": "kmarshall@tcfoundations.org",
+    "streetAddress1": "14225 Newbrook Drive",
+    "city": "Chantilly",
+    "state": "VA",
+    "zipCode": "20151",
+    "country": "US",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{
+    "status": {
+        "reference": "Business Customer Gateway – LN DERA Check",
+        "transactionStatus": "passed",
+        "conversationId": "50000753088175",
+        "requestId": "3048589845",
+        "ivsReferenceId": "10553",
+        "transactionReasonCodes": [
+            {
+                "code": "device_assessment_denial",
+                "description": "Device Assessment Denial"
+            },
+            {
+                "code": "email_risk_assessment_denial",
+                "description": "Email Risk Assessment Denial"
+            }
+        ]
+    }
+}
+Note	emailAddress is in TMX blocklist
+
+
+
+
+
+4.2 Sample JSON request and response for a transaction with the following scenario:
+
+a. BCG account
+b. Passed LexisNexis Device-Email-Risk-Assessment (DERA) - Device Assessment Pass/Email Risk 	Assessment Pass
+c. Passed AMS Address-Check – Exact Match & Business Address
+
+The final “passed” result from AMS Address-Check will be returned to CustReg. Customer will be granted TAC 109.
+
+
+     
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "Quest Diagnostics",
+    "companyFEIN": "123456789",
+    "firstName": "John",
+    "lastName": "Deer",
+    "emailAddress": "ecredo@hotmail.com",
+    "streetAddress1": "14225 Newbrook Drive",
+    "city": "Chantilly",
+    "state": "VA",
+    "zipCode": "20151",
+    "country": "US",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{
+    "status": {
+        "reference": "Business Customer Gateway - AMS Address Check",
+        "transactionStatus": "passed",
+        "conversationId": "50000746867015",
+        "requestId": "3042244575",
+        "ivsReferenceId": "10347",
+        "transactionReasonCodes": [
+            {
+                "code": "device_assessment_pass",
+                "description": "Device Assessment Pass"
+            },
+            {
+                "code": "email_risk_assessment_pass",
+                "description": "Email Risk Assessment Pass"
+            },
+            {
+                "code": "business_address_check_passed",
+                "description": "Business address match"
+            }
+        ]
+    }
+}
+Note	emailAddress is a valid email and not in TMX blocklist.
+streetAddress1 is a valid business address.
+
+4.3 Sample JSON request and response for a transaction with the following scenario:
+
+a. BCG account
+b. Passed LexisNexis Device-Email-Risk-Assessment (DERA) - Email Risk Assessment Pass
+c. Failed AMS Address-Check – Address Not Found
+d. Passed LexisNexis Business Instant ID (BIID)  - BIID Verification Passed
+
+The final “passed” result from BIID Check will be returned to CustReg. Customer will be granted TAC 109.
+     
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "Quest Diagnostics",
+    "companyFEIN": "123456789",
+    "firstName": "John",
+    "lastName": "Deer",
+    "emailAddress": "ecredo@hotmail.com",
+    "streetAddress1": "14000 Newbrook Drive",
+    "city": "Chantilly",
+    "state": "VA",
+    "zipCode": "20151",
+    "country": "US",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+
+Response	{
+    "status": {
+        "reference": "Business Customer Gateway - AMS Address Check",
+        "transactionStatus": "passed",
+        "conversationId": "50000746867015",
+        "requestId": "3042244575",
+        "ivsReferenceId": "10347",
+        "transactionReasonCodes": [
+           {
+                "code": "device_assessment_pass",
+                "description": "Device Assessment Pass"
+            },
+            {
+                "code": "email_risk_assessment_pass",
+                "description": "Email Risk Assessment Pass"
+            },
+            {
+                "code": "business_address_check_failed",
+                "description": "Address not found"
+            },
+            {
+                "code": "biid.pass",
+                "description": "PASS: BIID verification passed"
+            }
+        ]
+    }
+}
+Note	emailAddress is a valid email and not in TMX blocklist.
+streetAddress1 is not a valid business address.
+
+
+ 
+4.4 Sample JSON request and response for a transaction with the following scenario:
+
+a. BCG account
+b. Passed LexisNexis Device-Email-Risk-Assessment (DERA) - Email Risk Assessment Pass
+c. Failed AMS Address-Check – Exact Match but Not Business Address
+d. Passed LexisNexis Business Instant ID (BIID)  - BIID Verification Passed
+
+The final “passed” result from BIID Check will be returned to CustReg. Customer will be granted TAC 109.
+
+
+     
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "Quest Diagnostics",
+    "companyFEIN": "123456789",
+    "firstName": "John",
+    "lastName": "Deer",
+    "emailAddress": "ecredo@hotmail.com",
+    "streetAddress1": "42981 Bonnieblue Ct",
+    "city": "Ashburn",
+    "state": "VA",
+    "zipCode": "20147",
+    "country": "US",
+    "mobilePhone": "7038026900",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{
+    "status": {
+        "reference": "Business Customer Gateway - AMS Address Check",
+        "transactionStatus": "passed",
+        "conversationId": "50000746867015",
+        "requestId": "3042244575",
+        "ivsReferenceId": "10347",
+        "transactionReasonCodes": [
+            {
+                "code": "device_assessment_pass",
+                "description": "Device Assessment Pass"
+            },            
+            {
+                "code": "email_risk_assessment_pass",
+                "description": "Email Risk Assessment Pass"
+            },
+            {
+                "code": "business_address_check_failed",
+                "description": "Residential address match"
+            },
+            {
+                "code": "biid.pass",
+                "description": "PASS: BIID verification passed"
+            }
+        ]
+    }
+}
+
+Note	emailAddress is a valid email and not in TMX blocklist.
+streetAddress1, city, state and zipCode are valid but the address is not a business one.
+
+
+
+4.5 Sample JSON request and response for a transaction with the following scenario:
+
+a. BCG account
+b. Passed LexisNexis Device-Email-Risk-Assessment (DERA) - Email Risk Assessment Pass
+c. Failed AMS Address-Check – Exact Match but Not Business Address
+d. Failed LexisNexis Business Instant ID (BIID)  - BIID Verification Failed
+
+The final “failed” result from BIID Check will be returned to CustReg. Customer will not be granted TAC 109.
+
+     
+End Point URL	https://hostname:port/RemoteRest/resources/remote/VerifyBusiness
+Request Type	POST
+Request 	{
+    "sponsorCode": "cr",
+    "appCode": "bcg",
+    "companyName": "CMS SASH DOOR INC",
+    "companyFEIN": "208359922",
+    "firstName": "ELMIRA",
+    "lastName": "CONWARD",
+    "emailAddress": "ecredo@hotmail.com",
+    "streetAddress1": "14 BUSINESS STEET",
+    "city": "GLASGLOW",
+    "state": "MT",
+    "zipCode": "59230",
+    "country": "US",
+    "mobilePhone": "4062282473",
+    "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+    "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+    "trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+}
+Response	{"status": {
+   "reference": "Business Customer Gateway - LN BIID Check",
+   "transactionStatus": "failed",
+   "conversationId": "50000754105225",
+   "requestId": "3049631435",
+   "transactionReasonCodes":    [
+      {
+          "code": "device_assessment_pass",
+          "description": "Device Assessment Pass"
+      },
+      {
+         "code": "email_risk_assessment_pass",
+         "description": "Email Risk Assessment Pass"
+      },
+      {
+         "code": "business_address_check_failed",
+         "description": "Address found but missing exact information"
+      },
+      {
+         "code": "biid.fail",
+         "description": "Fail: BIID verification failed"
+       }
+    ],
+   "ivsReferenceId": "10555"
+ }
+}
+
+Note	emailAddress is a valid email and not in TMX blocklist.
+Companyname, companyFEIN, firstName, lastName, streetAddress1, city, state, zipCode are taken from LexisNexis BIID Test Seeds table (Unable to verify business name on business records).
+
+
+6.	Validation Errors
+
+
+Error Request 	Error Response
+"sponsorCode": "cs"
+	"inputValidationErrors": [   {
+      "fieldName": "sponsorCode",
+      "errorMessage": "Sponsor for cs code cannot be found",
+      "fieldValue": "cs"
+   }]
+"sponsorCode": "cr1"
+	   "inputValidationErrors": [   {
+      "fieldName": "sponsorCode",
+      "errorMessage": "sponsorCode contains invalid characters or formatting is invalid",
+      "fieldValue": "cr1"
+   }]
+[missing sponsorCode]
+	   "inputValidationErrors": [   {
+      "fieldName": "sponsorCode",
+      "errorMessage": "sponsorCode is required but field is missing",
+      "fieldValue": null
+   }]
+
+"sponsorCode": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "sponsorCode",
+      "errorMessage": "sponsorCode is required but value is empty",
+      "fieldValue": ""
+   }]
+
+"appCode": "bcx"
+	   "inputValidationErrors": [   {
+      "fieldName": "appCode",
+      "errorMessage": "Application for bcx code cannot be found",
+      "fieldValue": "bcx"
+   }]
+
+"appCode": "bc4"
+	   "inputValidationErrors": [   {
+      "fieldName": "appCode",
+      "errorMessage": "appCode contains invalid characters or formatting is invalid",
+      "fieldValue": "bc4"
+   }]
+ [missing appCode]
+	   "inputValidationErrors": [   {
+      "fieldName": "appCode",
+      "errorMessage": "appCode is required but field is missing",
+      "fieldValue": null
+   }]
+
+"appCode": ""	   "inputValidationErrors": [   {
+      "fieldName": "appCode",
+      "errorMessage": "appCode is required but value is empty",
+      "fieldValue": ""
+   }]
+"companyName": "ABC D$LLAR CO"
+	"inputValidationErrors": [   {
+      "fieldName": "companyName",
+      "errorMessage": "companyName contains invalid characters or formatting is invalid",
+      "fieldValue": "ABC D$LLAR CO"
+   }]
+[missing companyName]
+	   "inputValidationErrors": [   {
+      "fieldName": "companyName",
+      "errorMessage": "companyName is required but field is missing",
+      "fieldValue": null
+   }]
+
+"companyName": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "companyName",
+      "errorMessage": "companyName is required but value is empty",
+      "fieldValue": ""
+   }]
+"companyFEIN": "20835992A"
+	   "inputValidationErrors": [   {
+      "fieldName": "companyFEIN",
+      "errorMessage": "companyFEIN contains invalid characters or formatting is invalid",
+      "fieldValue": "20835992A"
+   }]
+
+"firstName": "John^s"	   "inputValidationErrors": [   {
+      "fieldName": "firstName",
+      "errorMessage": "firstName contains invalid characters or formatting is invalid",
+      "fieldValue": "John^s"
+   }]
+[missing firstName]
+	     "inputValidationErrors": [   {
+      "fieldName": "firstName",
+      "errorMessage": "firstName is required but field is missing",
+      "fieldValue": null
+   }]
+"firstName": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "firstName",
+      "errorMessage": "firstName is required but value is empty",
+      "fieldValue": ""
+   }]
+"lastName": "$mith*"	   "inputValidationErrors": [   {
+      "fieldName": "lastName",
+      "errorMessage": "lastName contains invalid characters or formatting is invalid",
+      "fieldValue": "$mith*"
+   }]
+[missing lastName]
+	   "inputValidationErrors": [   {
+      "fieldName": "lastName",
+      "errorMessage": "lastName is required but field is missing",
+      "fieldValue": null
+   }]
+"lastName": "h
+	   "inputValidationErrors": [   {
+      "fieldName": "lastName",
+      "errorMessage": "lastName is required but value is empty",
+      "fieldValue": ""
+   }]
+   "emailAddress": "john.doe@comp^ny.c*m"	  "inputValidationErrors": [   {
+      "fieldName": "emailAddress",
+      "errorMessage": "emailAddress contains invalid characters or formatting is invalid",
+      "fieldValue": "john.doe@comp^ny.c*m"
+   }]
+[missing emailAddress]
+	   "inputValidationErrors": [   {
+      "fieldName": "emailAddress",
+      "errorMessage": "emailAddress is required but field is missing",
+      "fieldValue": null
+   }]
+"emailAddress": ""	   "inputValidationErrors": [   {
+      "fieldName": "emailAddress",
+      "errorMessage": "emailAddress is required but value is empty",
+      "fieldValue": ""
+   }]
+"streetAddress1": "14900 M@in Str**t"	   "inputValidationErrors": [   {
+      "fieldName": "streetAddress1",
+      "errorMessage": "streetAddress1 contains invalid characters or formatting is invalid",
+      "fieldValue": "14900 M@in Str**t"
+   }]
+[missing streetAddress1]
+	   "inputValidationErrors": [   {
+      "fieldName": "streetAddress1",
+      "errorMessage": "streetAddress1 is required but field is missing",
+      "fieldValue": null
+   }]
+"streetAddress1": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "streetAddress1",
+      "errorMessage": "streetAddress1 is required but value is empty",
+      "fieldValue": ""
+   }]
+"city": "N*w York!"	   "inputValidationErrors": [   {
+      "fieldName": "city",
+      "errorMessage": "city contains invalid characters or formatting is invalid",
+      "fieldValue": "N*w York!"
+   }]
+[missing city]
+	  "inputValidationErrors": [   {
+      "fieldName": "city",
+      "errorMessage": "city is required but field is missing",
+      "fieldValue": null
+   }]
+"city": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "city",
+      "errorMessage": "city is required but value is empty",
+      "fieldValue": ""
+   }]
+  "state": "VX"	   "inputValidationErrors": [   {
+      "fieldName": "state",
+      "errorMessage": "state 2-Letter code is invalid",
+      "fieldValue": "VX"
+   }]
+"state": "VAX"	   "inputValidationErrors": [   {
+      "fieldName": "state",
+      "errorMessage": "state must not be longer than 2 characters",
+      "fieldValue": "VAX"
+   }]
+[missing state]
+	   "inputValidationErrors": [   {
+      "fieldName": "state",
+      "errorMessage": "state is required but field is missing",
+      "fieldValue": null
+   }]
+"state": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "state",
+      "errorMessage": "state is required but value is empty",
+      "fieldValue": ""
+   }]
+ "zipCode": "2014745"
+	   "inputValidationErrors": [   {
+      "fieldName": "zipCode",
+      "errorMessage": "zipCode contains invalid characters or formatting is invalid",
+      "fieldValue": "2014745"
+   }]
+[missing zipCode]
+	   "inputValidationErrors": [   {
+      "fieldName": "zipCode",
+      "errorMessage": "zipCode is required but field is missing",
+      "fieldValue": null
+   }]
+"zipCode": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "zipCode",
+      "errorMessage": "zipCode is required but value is empty",
+      "fieldValue": ""
+   }]
+ "country": "USX"
+	   "inputValidationErrors": [   {
+      "fieldName": "country",
+      "errorMessage": "country 3-Letter code is invalid",
+      "fieldValue": "USX"
+   }]
+[missing country]
+	If "country" field is not provided, "country": "US" is automatically added as default.
+"country": ""	If "country" field has empty value, "country": "US" is automatically added as default.
+"mobilePhone": "70380269007777"	   "inputValidationErrors": [   {
+      "fieldName": "mobilePhone",
+      "errorMessage": "mobilePhone contains invalid characters or formatting is invalid",
+      "fieldValue": "70380269007777"
+   }]
+"mobilePhone": "#703-729-7508***"
+	IVS system will strip off the non-numeric characters. After stripping off, the value becomes “7037297508” which is now a valid US phone format.
+[missing mobilePhone]
+	   "inputValidationErrors": [   {
+      "fieldName": "mobilePhone",
+      "errorMessage": "mobilePhone is required but field is missing",
+      "fieldValue": null
+   }]
+"profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa^%$"
+	   "inputValidationErrors": [   {
+      "fieldName": "profilingSessionID",
+      "errorMessage": "profilingSessionID contains invalid characters or formatting is invalid",
+      "fieldValue": "8236EA586816-19c77d19-e778-442c-bcfa^%$"
+   }]
+[missing profilingSessionID]
+	   "inputValidationErrors": [   {
+      "fieldName": "profilingSessionID",
+      "errorMessage": "profilingSessionID is required but field is missing",
+      "fieldValue": null
+   }]
+"profilingSessionID": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "profilingSessionID",
+      "errorMessage": "profilingSessionID is required but value is empty",
+      "fieldValue": ""
+   }]
+  "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z#@!",
+	   "inputValidationErrors": [   {
+      "fieldName": "webSessionID",
+      "errorMessage": "webSessionID contains invalid characters or formatting is invalid",
+      "fieldValue": "rDDJL5AUy2eTmXjm3L_sb-Z#@!"
+   }]
+[missing webSessionID]
+	   "inputValidationErrors": [   {
+      "fieldName": "webSessionID",
+      "errorMessage": "webSessionID is required but field is missing",
+      "fieldValue": null
+   }]
+  "webSessionID": "",
+	   "inputValidationErrors": [   {
+      "fieldName": "webSessionID",
+      "errorMessage": "webSessionID is required but value is empty",
+      "fieldValue": ""
+   }]
+"trueIPAddress": "2001:0db8:85a3:0000:0000:8a2e:0370:7334*@!"
+	   "inputValidationErrors": [   {
+      "fieldName": "trueIPAddress",
+      "errorMessage": "trueIPAddress contains invalid characters or formatting is invalid",
+      "fieldValue": "2001:0db8:85a3:0000:0000:8a2e:0370:7334*@!"
+   }]
+[missing trueIPAddress]
+	   "inputValidationErrors": [   {
+      "fieldName": "trueIPAddress",
+      "errorMessage": "trueIPAddress is required but field is missing",
+      "fieldValue": null
+   }]
+"trueIPAddress": ""
+	   "inputValidationErrors": [   {
+      "fieldName": "trueIPAddress",
+      "errorMessage": "trueIPAddress is required but value is empty",
+      "fieldValue": ""
+   }]
+	
+
+
+
