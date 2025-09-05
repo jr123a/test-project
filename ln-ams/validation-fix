@@ -1,0 +1,110 @@
+Got it—thanks for the files and the screenshots. I dug through the code and the ICD and found two root problems behind QA’s report:
+
+1. **sponsorCode/appCode weren’t treated as required** and fell through to a generic “invalid characters” check instead of the specific “required … empty/missing” messages.
+2. **We weren’t enforcing the *allowed values*** for sponsor/app, so values like `bcx` were not producing “Application for bcx code cannot be found.”
+
+Below are targeted fixes (clean diffs) that bring responses in line with the ICD’s “inputValidationErrors” expectations and examples.&#x20;
+
+---
+
+# What I changed
+
+## 1) Make `sponsorCode` and `appCode` truly required
+
+**File:** `RemoteProofingValidatedField.java`
+**Change:** mark both fields as `required = true` so blanks map to:
+
+* `"<field> is required but field is missing"` (null)
+* `"<field> is required but value is empty"` (empty string)
+
+```diff
+-    SPONSOR_CODE         ("sponsorCode",        false, ALPHA),
+-    APP_CODE             ("appCode",            false, ALPHA),
++    SPONSOR_CODE         ("sponsorCode",        true,  ALPHA),
++    APP_CODE             ("appCode",            true,  ALPHA),
+```
+
+## 2) Enforce sponsor/app **allowed values** with ICD-worded errors
+
+**File:** `RemoteProofingValidation.java`
+**Change:** after format/length/empty validation passes for sponsor/app, add a hard check for allowed values and produce ICD messages:
+
+* `sponsorCode`: only `"cr"` is valid → else
+  **“Sponsor for <value> code cannot be found”**
+* `appCode`: only `bcg|cop|dbr|gbc|idb` are valid → else
+  **“Application for <value> code cannot be found”**
+
+Insert the block below inside the `switch` case that handles `FIELD_SPONSOR_CODE` / `FIELD_APP_CODE` **right where we previously just set the value on the request** (i.e., replacing the simple `remReq.setSponsorCode/SetAppCode`):
+
+```diff
+-    if (inputValidationError == null) {
+-        if (RemoteProofingValidatedField.FIELD_SPONSOR_CODE.equalsIgnoreCase(fieldName)) {
+-            remReq.setSponsorCode(fieldValue);
+-        } else {
+-            remReq.setAppCode(fieldValue);
+-        }
+-    }
++    if (inputValidationError == null) {
++        // Enforce allowed codes per ICD
++        if (RemoteProofingValidatedField.FIELD_SPONSOR_CODE.equalsIgnoreCase(fieldName)) {
++            if (!Utils.isEmptyString(fieldValue) && !"cr".equalsIgnoreCase(fieldValue)) {
++                ErrorMessage em = ErrorMessage.INVALID_CODE; // "%s for %s code cannot be found"
++                inputValidationError = getInputValidationError(
++                        fieldName,
++                        fieldValue,
++                        em.getFormattedErrorMessage("Sponsor", fieldValue));
++                validationErrorMap.put(fieldName, inputValidationError);
++            } else {
++                remReq.setSponsorCode(fieldValue);
++            }
++        } else { // appCode
++            if (!Utils.isEmptyString(fieldValue)) {
++                String v = fieldValue.toLowerCase();
++                boolean ok = v.equals("bcg") || v.equals("cop") || v.equals("dbr") || v.equals("gbc") || v.equals("idb");
++                if (!ok) {
++                    ErrorMessage em = ErrorMessage.INVALID_CODE;
++                    inputValidationError = getInputValidationError(
++                            fieldName,
++                            fieldValue,
++                            em.getFormattedErrorMessage("Application", fieldValue));
++                    validationErrorMap.put(fieldName, inputValidationError);
++                } else {
++                    remReq.setAppCode(fieldValue);
++                }
++            } else {
++                remReq.setAppCode(fieldValue);
++            }
++        }
++    }
+```
+
+> Why this matters
+> • Blank/empty now triggers the **specific required-field** messages.
+> • Bad values (e.g., `bcx`, `cs`) now trigger **ICD-exact “... for <code> cannot be found”** messages.
+> • Multiple bad fields continue to accumulate in the `validationErrorMap`, so you’ll get **one `inputValidationErrors` element per field** instead of a single generic string.
+
+---
+
+# Quick test matrix (matches QA’s screenshots & ICD)
+
+* `sponsorCode: ""` → `{"fieldName":"sponsorCode","errorMessage":"sponsorCode is required but value is empty","fieldValue":""}`
+* `appCode: "bcx"` → `{"fieldName":"appCode","errorMessage":"Application for bcx code cannot be found","fieldValue":"bcx"}`
+* Multiple issues (e.g., `country:"XX"`, `firstName:"John**"`, `lastName:"Deer#$"`) → three separate objects in `inputValidationErrors`:
+
+  * `country 2-Letter code is invalid`
+  * `firstName contains invalid characters or formatting is invalid`
+  * `lastName contains invalid characters or formatting is invalid`
+
+These outputs align with the ICD’s “Validation Errors” table and the example “failed” responses that show `status.transactionStatus: failed`, a `transactionReasonCodes` entry with `input_validation_error`, and a full `inputValidationErrors` array listing each field with its specific message.&#x20;
+
+---
+
+# Notes & assumptions
+
+* The existing `getNullOrEmptyFieldErrorMsg`, `max/min length` checks, and regex flow already produce the other ICD messages (e.g., “must not be longer/shorter than…”, “contains invalid characters…”). I left those intact.
+* The service layer that serializes `validationErrorMap` into the final response JSON should already map to `status.inputValidationErrors`; these changes ensure the map contains the correct, ICD-worded entries for sponsor/app and that blanks are treated as *required* violations.
+* Country handling already defaults empty/missing to `"US"` after adding the error (per ICD), so I left that logic as is.
+
+---
+
+If you want, I can also add a tiny helper that returns a **sorted** `List<InputValidationError>` from the map (so the array order is stable across runs), but it’s optional for the fix itself.
