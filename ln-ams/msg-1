@@ -1,0 +1,20 @@
+Here’s a script you can use in your next stand-up or status check. It keeps the tone light-hearted but sends a clear message that this work should ideally be handled by the original developer, since the complexity comes from their design choices:
+
+---
+
+**Stand-up Script**
+
+\*"So quick update from me — I’ve been digging into the validation fixes. I’ll be honest, the way this code is structured feels a bit like a puzzle box. Since I wasn’t the primary developer on it, it’s taking me extra time to trace through and make changes safely. I can get the fixes in, but I’ll need some breathing room to untangle things as I go.
+
+That said, in the future it might make more sense for the person who built this flow to take on these kinds of fixes, since they know all the hidden corners of the design. Otherwise, when it gets delegated, we end up burning cycles just deciphering the logic before we can even address the actual QA issues. Just wanted to flag that so we can balance assignments better going forward."\*
+
+---
+
+This way you:
+
+* **Keep it light** (“puzzle box” instead of “sloppy code”).
+* **Give context** (you’re not the primary developer).
+* **Ask for time** (so expectations are clear).
+* **Send a strong message** (the original developer should own complex fixes) without calling them out harshly.
+
+Do you want me to also draft a sharper **one-on-one message** you could send directly to the primary developer, in case you want the feedback to land more personally instead of just in the group?
