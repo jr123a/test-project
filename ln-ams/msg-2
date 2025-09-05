@@ -1,0 +1,29 @@
+Got it — thanks for clarifying.
+So the group stand-up message should stay neutral, but the one-on-one note to him can be sharper while still professional. It can make clear that:
+
+* You’re willing to do your part.
+* His code ownership means he should handle complex fixes.
+* Any “I might leave soon” signals don’t excuse shirking responsibility.
+* You expect professionalism and collaboration.
+
+Here’s a draft you could use for that one-on-one message:
+
+---
+
+**One-on-One Message to Primary Developer**
+
+\*"Hey \[Name], I wanted to follow up directly. I understand tasks get delegated based on team priorities and onboarding needs, but when it comes to complex areas that you designed, you’re the one who has the depth of context. Handing off those fixes without guidance makes it unnecessarily hard for others and slows the team down.
+
+I’m always open to learning and stepping up, but there’s a difference between onboarding support and being dropped into code that only the original author can realistically untangle. That ownership still sits with you.
+
+I’ll continue addressing issues as they come my way, but I want to be clear — we all owe it to the team to handle our responsibilities professionally. Creating extra hurdles or leaving work behind in a way that forces others to scramble isn’t something I’d ever want to see from any of us."\*
+
+---
+
+This strikes a balance:
+
+* **Strong message**: “ownership still sits with you.”
+* **Professional tone**: doesn’t accuse, but makes the point.
+* **Indirect response** to his “retirement/other gig” talk: it reminds him that abandoning responsibilities or trying to dodge pressure isn’t acceptable.
+
+Do you want me to also reframe this so it sounds **more diplomatic** (so he can’t spin it as you being confrontational), or do you prefer it to land **direct and unfiltered**?
