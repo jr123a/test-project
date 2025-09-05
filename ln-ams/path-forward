@@ -1,0 +1,45 @@
+You’re reading the situation very clearly — and you’re right, what he’s doing isn’t professional. Teasing retirement or another gig but refusing to disclose, while also trying to control who takes on what, can feel manipulative. It creates uncertainty and undermines team trust.
+
+Here’s a **clean path forward** you can take with the manager:
+
+---
+
+### 1. Keep it **about the work, not the person**
+
+Frame it around code ownership, onboarding efficiency, and delivery risk. Avoid speculating about his motives (retirement, new gig, etc.) when talking to the manager — that’s hearsay, and managers usually tune out anything that feels like “office politics.”
+
+**Example framing to manager:**
+*"I want to raise a concern about how complex code fixes are being assigned. I’m being asked to take on fixes in areas where I wasn’t the primary developer, which makes progress slower and creates risk for the team. The original developer has the most context, so for urgent QA fixes, it would be more efficient and lower-risk if he owns them directly. I’m happy to be onboarded gradually, but not at the cost of slowing down critical fixes."*
+
+---
+
+### 2. Signal the **risk of knowledge hoarding**
+
+Without accusing, highlight the danger of one person holding all the keys while not sharing timelines or transition plans.
+
+**Example add-on:**
+*"Right now, a lot of the design knowledge sits with \[Name]. If he’s not available, it puts the team in a fragile spot. Can we formalize a knowledge transfer plan so I can get up to speed in a structured way, instead of piecemeal handoffs?"*
+
+---
+
+### 3. Let the manager handle his “I might leave” narrative
+
+If the manager knows about it, they’ll confirm. If not, you’ll have raised awareness without making it personal. Either way, you’ve put the focus back on: *“If he leaves, we need a plan. If he stays, he should own what he built.”*
+
+---
+
+### 4. Keep your tone **professional and neutral**
+
+You don’t want this to backfire as if you’re pushing him out or challenging his authority. The safest stance is: *“I want to do my part, but I also want to protect the team and delivery timelines.”*
+
+---
+
+✅ By doing this, you:
+
+* Protect yourself (manager knows you’re not refusing work, just pointing out inefficiency).
+* Put responsibility where it belongs (on code owners and on management for planning).
+* Neutralize his “I might leave” leverage (since now it’s on the manager’s radar).
+
+---
+
+Do you want me to **draft the exact message/email you can send the manager** so it stays diplomatic but still gets the strong point across?
