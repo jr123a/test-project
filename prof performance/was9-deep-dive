@@ -1,0 +1,168 @@
+Here’s a focused **IVS on WebSphere 9 deep-dive checklist** you can run with Emer during the next troubleshooting window. It’s designed to pinpoint why the DR → EventCreate gap grows over time.
+
+# 0. Prep (before test window)
+
+* Freeze a short window: 15–30 min where COA will send a small, steady trickle (or EFX at 5%) to reproduce delay.
+* Turn on correlation IDs end-to-end (COA → IVS → DB rows). Include person\_id, event\_id, and a single correlation\_id in every log line.
+* Ensure clocks are aligned (UTC or same TZ) on COA app, IVS app, DB, and log collectors.
+
+# 1. WebSphere thread pools (likely culprit: saturation / queuing)
+
+Capture every 1–2 minutes during the window.
+
+* Where:
+
+  * Admin Console → Servers → Server Types → WebSphere application servers → <IVS server> → Thread pools
+  * Or JMX via wsadmin/jmxtrans/PMI
+* Pools to watch:
+
+  * WebContainer
+  * Default
+  * Any WorkManager / Async beans used by EventCreate path
+* Metrics:
+
+  * Active threads vs Maximum
+  * Pool size vs Maximum
+  * Pool percent used
+  * Queued requests / wait time (if PMI enabled)
+* What to look for:
+
+  * Active ≈ Max with queue growth = pre-event work is stuck waiting.
+* Quick mitigation to test hypothesis:
+
+  * Temporarily raise Max by +25 to +50 percent and see if DR → EventCreate shrinks.
+
+# 2. JDBC connection pools (second usual suspect)
+
+* Verify the IVS datasource(s) used by:
+
+  * ipa\_cvs\_md\_event writes
+  * ipa\_cvs\_md\_device\_reputation\_response reads
+* Metrics to capture:
+
+  * Pool size, in-use count, waiters, wait time, timeouts
+  * Statement cache size/hit rate
+* Checks:
+
+  * Driver level (post-upgrade change?), min/max pool too small, any new validation queries causing latency.
+* Quick mitigation:
+
+  * Increase max connections moderately, enable connection pool tracing for the window.
+
+# 3. JVM GC and heap pressure
+
+* Enable GC logging with timestamps:
+
+  * -Xlog\:gc\*:file=/var/log/ivs\_gc.log\:time,tags
+  * (Or IBM JVM equivalent if not OpenJ9/HotSpot.)
+* Watch for:
+
+  * Long pauses or frequent minor GCs that correlate with DR → EventCreate spikes.
+* Quick mitigation:
+
+  * If heap is tight, bump Xmx modestly or reduce allocation churn on the EventCreate path.
+
+# 4. Thread dumps when latency crosses threshold
+
+* Trigger 2–3 thread dumps \~5–10 seconds apart when average DR → EventCreate > N seconds (pick N, e.g., 20s).
+* Look for:
+
+  * Many threads blocked on JDBC, synchronized blocks, or executor queues
+  * Repeated stack traces showing the same hotspot (e.g., event creation DAO, JSON parsing, audit logging)
+* Tools:
+
+  * kill -3 on the JVM PID, or wsadmin jstack equivalent, or IBM Health Center/TAJR.
+
+# 5. App logs around EventCreate
+
+* Ensure INFO timing logs wrap the EventCreate call:
+
+  * Received request from COA (timestamp)
+  * Begin EventCreate (timestamp)
+  * DB insert/commit complete (timestamp)
+  * Supplier call initiated (timestamp)
+* Add MDC with correlation\_id, person\_id, event\_id.
+* What to confirm:
+
+  * Whether delay occurs before DB insert, during insert, or after commit.
+
+# 6. Database checks (Oracle assumed; adjust if different)
+
+a) Verify essential indexes exist and are used:
+
+```sql
+-- Event read/write path
+CREATE INDEX IX_EVENT_ORIG_PID_CD ON ipa_cvs_md_event (transaction_origin_id, person_id, create_date);
+
+-- DR response read path
+CREATE INDEX IX_DR_PID_CD ON ipa_cvs_md_device_reputation_response (person_id, create_date);
+```
+
+(If already present, confirm stats are current.)
+
+```sql
+EXEC DBMS_STATS.GATHER_TABLE_STATS(ownname => '<SCHEMA>', tabname => 'IPA_CVS_MD_EVENT', cascade => TRUE);
+EXEC DBMS_STATS.GATHER_TABLE_STATS(ownname => '<SCHEMA>', tabname => 'IPA_CVS_MD_DEVICE_REPUTATION_RESPONSE', cascade => TRUE);
+```
+
+b) Capture AWR/ASH for the test window (start and end snapshots).
+
+* Look for top waits:
+
+  * enq: TX row lock contention
+  * log file sync
+  * db file sequential/scattered read
+  * latch or library cache contention
+* Run a quick sample on hot SQL:
+
+```sql
+SELECT sql_id, executions, elapsed_time/1e6 AS secs, buffer_gets
+FROM v$sqlarea
+WHERE parsing_schema_name = '<SCHEMA>'
+ORDER BY elapsed_time DESC FETCH FIRST 10 ROWS ONLY;
+```
+
+* If row lock or log file sync dominates during delay spikes, the bottleneck is DB-side.
+
+# 7. Network I/O sanity checks
+
+* While the delay is DR → EventCreate, still capture:
+
+  * IVS NIC saturation, retransmits, drops
+  * Any TLS handshakes to internal services
+* Use a lightweight packet capture during the window to prove the delay isn’t socket-level.
+
+# 8. Compare deltas (decision point)
+
+Compute for the same transactions:
+
+* Δ\_COA\_outside = t\_COA\_call\_VP − t\_COA\_recv\_DR (from COA)
+* Δ\_IVS\_pre = ev.create\_date − dr.create\_date (from IVS DB)
+* Δ\_vendor = ev.completion\_datetime − ev.create\_date
+  Interpretation:
+* If Δ\_COA\_outside ≈ Δ\_IVS\_pre small and Δ\_IVS\_pre large → IVS internal issue.
+* If Δ\_COA\_outside large → COA dwell; push COA to fix queuing/capacity.
+
+# 9. Likely fixes once confirmed IVS-side
+
+* Right-size WebContainer and any async WorkManager pools for the EventCreate path.
+* Increase IVS JDBC pool and tune validation/timeout settings.
+* Ensure DB stats are fresh; add missing composite indexes used by EventCreate lookups.
+* Optimize synchronous logging on EventCreate path (switch heavy logs to async appender).
+* If an async queue is used, raise workers and ensure no single-threaded bottleneck.
+* Remove redundant retries or polling loops in IVS around creating/reading events.
+
+# 10. Evidence bundle to save from the window
+
+* PMI exports for thread pools and JDBC pools (CSV or screenshots)
+* GC log slice covering the spike
+* 2–3 thread dumps at the moment of elevated latency
+* AWR/ASH reports for the exact timestamps
+* IVS app log excerpt for 3–5 correlation\_ids showing the stalled interval
+
+# 11. Roll-forward validation
+
+* After each tweak (eg. raise pool, add index), rerun the same controlled window and re-measure DR → EventCreate median and p95.
+* Target: DR → EventCreate back to sub-second typical, single-digit seconds worst-case, no upward creep over time.
+
+If you want, I can turn this into a one-page runbook you can paste into your war room doc (with checkboxes and the exact counters to screenshot), plus a short email you can send to COA confirming the 2 timestamps and the correlation\_id format you need from them.
