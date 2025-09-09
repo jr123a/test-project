@@ -1,0 +1,33 @@
+Based on everything we’ve pieced together — your transcripts, Emer’s SQL, the Word doc emails, and Pei-lin’s Excel report — here’s my gut feel:
+
+### Where the issue likely lies
+
+* The **slowness is not in Equifax (DIT/SMFA)** itself.
+
+  * Excel shows Equifax phone verification was basically instantaneous (approve/deny returned right away, SMFA not even triggered).
+* The **delay consistently shows up between COA’s Device Reputation result and IVS Event Creation** (the red zone in the timeline).
+
+  * That’s *before* IVS even calls Equifax.
+* So the root cause is either:
+
+  1. **COA dwell time**: COA receives the DR result but holds onto it before calling IVS → VerifyPhone.
+  2. **IVS under WAS9**: IVS receives the call, but thread pool / JDBC / async handling is slow to create the event.
+
+### Evidence tilts toward IVS
+
+* The “snowball effect” Emer described (small delay → grows worse over time) is classic **queue saturation** (thread pool or JDBC waits) inside an app server (IVS/WAS9).
+* If it were COA holding requests, we’d expect more flat, consistent delays, not progressive creep-up.
+* Also, Pei-lin’s report shows IVS created 40 DIT events immediately, but *never even exercised SMFA*. That suggests COA did forward calls on time — the stall is more likely once IVS is processing them.
+
+### My gut call
+
+The issue lies **inside IVS after the WAS9 upgrade** — most likely thread pool or JDBC contention that causes the **DR → EventCreate gap** to grow as load continues.
+
+---
+
+⚡ **Short version you can say on a call:**
+“My gut feeling is the delays are not in Equifax at all but in IVS itself, right after DR, where event creation is lagging. The snowball pattern looks like WAS9 resource contention (threads, JDBC) rather than COA holding the call.”
+
+---
+
+Do you want me to sketch out a **WAS9 deep-dive checklist** you can drive with Emer in the next troubleshooting window (thread pools, JDBC, GC, async queues, DB waits) so you’re armed when they pivot the investigation into IVS?
