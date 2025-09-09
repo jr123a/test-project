@@ -1,0 +1,44 @@
+I’ve read through Emer’s message to the COA team (the **“Data Needed from COA Team”** email). Here’s a breakdown:
+
+### ✅ What Emer already asked COA for
+
+* Timestamp when COA **receives the Device Reputation (DR) response**
+* Timestamp when COA **calls IVS for Verify-Phone**
+* Correlation so those can be compared against IVS timestamps
+
+This lines up perfectly with the action plan we discussed.
+
+---
+
+### 🔎 What’s still missing / could be added
+
+To make the investigation faster and reduce back-and-forth, I’d suggest these additional asks (you can forward/update Emer’s note with these points if you agree):
+
+1. **Correlation ID / Transaction ID**
+
+   * Explicitly ask COA to include the **same correlation ID** (or person\_id / transaction\_id) that IVS logs use.
+   * This avoids ambiguity when matching their timestamps with Emer’s query results.
+
+2. **Clock sync confirmation**
+
+   * Confirm whether COA server clocks are in **UTC** and synced (e.g., NTP).
+   * If not, note the offset so timestamps align correctly with IVS data.
+
+3. **Sample size / window**
+
+   * Ask COA to provide data for at least **5–10 review flows** within the same 5–10 min test window.
+   * This ensures you have enough matching data points without relying on just one case.
+
+4. **Queuing metrics on their side** (optional, but valuable if they have them)
+
+   * Any thread pool / queue depth stats during the test window (similar to what we’ll check in IVS).
+   * If they recently downsized servers, this could show if their queues are building up before calling IVS.
+
+---
+
+⚡ **Suggested update to Emer’s email:**
+“Along with the two timestamps (receive DR and call IVS), please also include the correlation/transaction ID so we can line up with IVS logs. If your servers are not in UTC, let us know the offset. For completeness, it would also help to get a handful of transactions (5–10) from the same test window, and any queue/thread metrics you capture during that time.”
+
+---
+
+Do you want me to **rewrite Emer’s message with these additions baked in** so you can send it as an updated request to COA?
