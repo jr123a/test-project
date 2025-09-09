@@ -1,0 +1,54 @@
+Ah—got it. Two possibilities here:
+
+1. You meant **logs** (timing logs), not “locks.”
+2. You literally meant **locks** (DB/app synchronization).
+
+Either way, you’re right: in **production** we shouldn’t ship code changes just to add instrumentation. Here’s how to proceed **without modifying code**.
+
+# If you meant “logs” (timing around EventCreate)
+
+You can still get most of the signal with **ops-level instrumentation**:
+
+* **WebSphere PMI / Request Metrics (no code change):**
+  Turn on Request Metrics for the IVS app to capture servlet/URI timing and JDBC call counts/latency. This shows how long requests sit in the container before DB work starts, and whether JDBC time is spiking.
+
+* **JDBC pool stats & tracing (server-side):**
+  Enable connection pool metrics and (briefly) JDBC trace to see waits/timeout counts. You’ll know if the DR→EventCreate gap is actually “waiting for a connection.”
+
+* **AWR/ASH on the DB (no app change):**
+  Snapshot the exact windows; check top waits, hot SQL, log file sync, row locks, etc. You’ll see if inserts/reads on `…_event` or `…_device_reputation_response` are stalling.
+
+* **Thread dumps at threshold (ops action):**
+  When DR→EventCreate p95 crosses N seconds, capture 2–3 thread dumps 5–10s apart. If many threads are parked on JDBC/locks/queues, it will show up.
+
+* **Web/IHS/plugin access logs (edge timing):**
+  If you front IVS with IHS or a proxy, enable/request timing there to bound the “time-in-IVS” without app code.
+
+* **APM agent (if already deployed):**
+  If Dynatrace/AppD/New Relic is present, bump the sampling/detail level just for the window.
+
+# If you literally meant “locks”
+
+You don’t need (and shouldn’t add) app-level locking in prod to diagnose this. Instead:
+
+* **Avoid new DB locks in prod.** They can increase contention. Diagnose with **AWR/ASH** to see existing lock contention patterns first.
+* If you suspect a missing index causing row locks/long scans, you **can** add **indexes** and **gather stats** in prod safely (standard change window). That’s often the fastest non-code fix.
+* You can’t add SQL hints or change isolation without code/config changes; use **SQL Plan Baselines/Profiles** (DBA tool) if a specific query regressed under WAS9/driver changes.
+
+# Fast, safe levers (no code deploy)
+
+* **Right-size pools temporarily:** Increase WebContainer/WorkManager and JDBC max by \~25–50% during the test window; watch if DR→EventCreate drops.
+* **GC/heap check:** Enable GC logging; if pauses correlate with spikes, bump Xmx or adjust GC only if necessary.
+* **DB maintenance:** Rebuild missing/fragmented **indexes**; **gather stats** on `ipa_cvs_md_event` and `ipa_cvs_md_device_reputation_response`.
+* **Traffic knob:** Keep Equifax at a **low %** while testing so we can measure without snowballing.
+* **Ops-only observability:** PMI/Request Metrics + AWR/ASH + thread dumps at threshold = 80% of what code logs would have given you.
+
+# What to capture in the next window (no code changes)
+
+1. **PMI/Request Metrics export** every few minutes (WebContainer active/max, queue depth; JDBC in-use/waiters/waits).
+2. **AWR/ASH** covering the exact minutes where DR→EventCreate p95 rises.
+3. **2–3 thread dumps** right at the spike.
+4. **Edge/access timings** from IHS/proxy (if available).
+5. **COA timestamps** (recv DR, call IVS) so we can compare with `dr.create_date` and `ev.create_date`.
+
+If you want, I’ll write a tight **ops runbook** (checklist + exact PMI counters, AWR queries, and when to take thread dumps) that your on-call can execute without touching application code.
