@@ -1,0 +1,101 @@
+Perfect — here’s a **1-page Equifax Remote Proofing Runbook** in a checklist format, with SQL lookups at the bottom. You can keep this beside Postman/SQL Developer as a quick reference.
+
+---
+
+# 📄 Equifax Remote Proofing Runbook
+
+## ✅ Step-by-Step Test Flow
+
+☑ **Start with Device Reputation (CheckDevice)**
+
+* Triggered after “Continue” (Hold Mail) or page load (Informed Delivery).
+* Outcomes:
+
+  * **Pass** → Flow ends, user approved.
+  * **Reject** → Flow ends, user denied.
+  * **Review** → Only case that continues → Equifax SMFA.
+
+☑ **If Review → Run Equifax Link/SMFA**
+
+* Click **Send Link**, tap it on phone.
+* Page polls until Equifax returns decision.
+* Retry logic removed — only one poll cycle.
+
+☑ **Observe Phone Result (SMFA)**
+
+* Requires **whitelisted phone number** with Equifax.
+* Outcomes:
+
+  * **Green/Yellow** → Success
+  * **Red/Orange** → Fail
+
+☑ **Check DB for Trust Factors**
+
+* Raw payload logged.
+* Parsed into trust columns:
+
+  * `identity_trust`
+  * `address_trust`
+  * `phone_trust`
+* Final decision stored (`APPROVE / REVIEW / DENY`).
+
+☑ **Cross-check Decision Map**
+
+* Decision determined by trust permutations.
+* All “Y” = APPROVE.
+* Identity N = DENY.
+* Mixed = REVIEW.
+
+---
+
+## 🗄 SQL Quick Checks
+
+🔍 **1. View Raw Request/Response**
+
+```sql
+SELECT *
+FROM RP_AFX_IT_RESPONSE
+WHERE customer_unique_id = '<YOUR_TEST_ID>';
+```
+
+🔍 **2. View Parsed Trust Factors**
+
+```sql
+SELECT identity_trust,
+       address_trust,
+       phone_trust,
+       final_decision
+FROM RP_AFX_IT_DETAILS
+WHERE customer_unique_id = '<YOUR_TEST_ID>';
+```
+
+🔍 **3. Check Decision Mapping Table**
+
+```sql
+SELECT *
+FROM RP_AFX_ID_DECISION_MAP
+WHERE identity_trust = '<Y/N>'
+  AND address_trust  = '<Y/N>'
+  AND phone_trust    = '<Y/N>';
+```
+
+---
+
+## 🚦 Test Data Hints
+
+* **Linda Davis UAT + [medium\_confidence@usps.gov](mailto:medium_confidence@usps.gov)** → Review → triggers Equifax link.
+* **Jacob Indre Test** → Deny.
+* **Zoomconfidence email** → Review (device rep).
+* **Configured whitelisted phone** → Always Green (success).
+
+---
+
+👉 With this runbook:
+
+* You can **simulate Pass/Review/Deny** at device reputation.
+* You can **verify Equifax’s decision** in DB immediately.
+* You can explain outcomes clearly to teammates or management.
+
+---
+
+Do you want me to **make a printable PDF version** of this runbook so you can keep it as a desk reference?
