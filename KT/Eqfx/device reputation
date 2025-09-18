@@ -1,0 +1,42 @@
+Got it — I dug into the Equifax KT transcript you uploaded. Here’s what **MR explained about device reputation** and how it flows in IPS remote proofing:
+
+1. **Entry point**
+
+   * Device reputation is the **first step** in the Equifax proofing workflow.
+   * For flows like Informed Delivery or Hold Mail, once the user clicks the “Continue” button, the backend calls **LexisNexis Device Reputation** (sometimes called “check device”).
+
+2. **Possible outcomes**
+
+   * **Pass** → user is granted right away; the flow stops, it doesn’t even proceed to phone verification.
+   * **Reject** → process ends immediately, considered a hard fail.
+   * **Review** → only this case proceeds further down the flow (e.g., to Equifax Identity Proofing, phone verification, OTP).
+
+3. **Test setup**
+
+   * Equifax maps three inputs: **Identity trust, Address trust, Phone trust**.
+   * These combinations are stored in the `RP_AFX_IT_DETAILS` table and mapped in `RP_AFX_ID_DECISION_MAP`.
+   * Only one “all-Y” case yields **Approve**.
+   * If any of the three fails, it falls into **Review** (unless it’s a hard “N” on identity, which gives **Deny**).
+
+4. **Configured test users**
+
+   * Certain test names/emails are set up to force different device reputation results.
+
+     * **Medium-confidence email** (e.g., `zoomconfidence@...`) → triggers **Review**.
+     * **Linda Davis UET** or other test personas → simulate **Review/Approve** in Equifax.
+     * Some configured names (e.g., “Jacob Indre Test”) → force **Deny**.
+   * Phones must be whitelisted with Equifax to get “green” link results; otherwise you won’t see realistic outcomes.
+
+5. **Downstream impact**
+
+   * Only if device reputation yields “Review” does the flow continue into Experian/Equifax proofing (identity QAs, phone verification, OTP).
+   * “Pass” and “Reject” stop the flow right there.
+
+---
+
+✅ **In short:**
+Device reputation acts as a **gatekeeper**. Most cases short-circuit (Pass → success, Reject → fail). Only **Review** triggers the deeper Equifax checks. That’s why MR emphasized configuring test data carefully — so you can simulate each path (Pass/Review/Deny) and see how the rest of the system reacts.
+
+---
+
+Do you want me to also **diagram the decision map** (Pass/Reject/Review → next steps), so you can keep it handy when testing?
