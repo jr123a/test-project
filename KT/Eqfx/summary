@@ -1,0 +1,72 @@
+Awesome—here’s a fast, practical plan to get you fluent with the **Equifax** flow, using the new KT session you shared.
+
+# Quick mental model (what happens)
+
+1. **Device Reputation (LexisNexis RDP)** comes first.
+
+   * Results are **Pass / Review / Reject**.
+   * **Pass** ends the journey (no phone step). **Reject** routes to offline path. **Only “Review”** advances to the phone step.&#x20;
+   * Timing differs by product: for **Informed Delivery** it runs as the page loads; for **Hold Mail** it runs after you click **Continue**. &#x20;
+
+2. **Equifax decisioning (review path only):**
+
+   * You’ll see the **SMFA “Send Link”** step (Equifax link-based MFA). Tap the link on your phone; the web page **polls** until Equifax returns a result. A retry that used to add delay was removed.&#x20;
+   * Equifax evaluates three trusts and a final decision: **identity\_trust, address\_trust, phone\_trust → final decision**. Raw request/response go to one table; parsed, meaningful columns go to another. &#x20;
+   * The **decision map** table translates the Y/N combination of those three trusts into **APPROVE / REVIEW / DENY**. (e.g., only certain permutations approve.)&#x20;
+   * SMFA specifics: phones must be **pre-configured** with Equifax; link outcomes are color-coded (**green/yellow pass, red/orange fail**). &#x20;
+
+---
+
+# What to read & highlight (10–15 min)
+
+* **Device reputation entry points & outcomes** (Pass/Review/Reject; product timing). Highlight the lines above so you remember **“only Review proceeds.”** &#x20;
+* **Polling & the removed retry**—so delays you see aren’t from double polling anymore.&#x20;
+* **DB tables you’ll query after a run:**
+
+  * Raw request/response (Equifax) and the parsed details table with the three trust columns + final decision. &#x20;
+  * **Decision map** that turns trust permutations into APPROVE/REVIEW/DENY.&#x20;
+* **SMFA link behavior & phone whitelisting**; color meanings. &#x20;
+
+---
+
+# Hands-on lab (60–90 min)
+
+1. **Trigger a “Review” at device reputation**
+
+   * Use one of your test personas that yields **Review** (the doc and KT mention examples and even an email configuration that forces Review for device rep). Proceed to the phone page.&#x20;
+2. **Run the SMFA flow**
+
+   * Click **Send Link**, tap the link on your phone, **watch the polling**, and wait for the Equifax decision to return.&#x20;
+3. **Verify in the database**
+
+   * Check the **raw request/response** table for the exact payload, then the **details** table for: `identity_trust`, `address_trust`, `phone_trust`, and `final_decision`. &#x20;
+4. **Cross-check the business decision**
+
+   * Look up the same run in the **decision-map** reference table; confirm that your Y/N permutation matches the returned decision (APPROVE/REVIEW/DENY).&#x20;
+5. **Try three scenarios**
+
+   * **Approve path** (all three trusts = Y).
+   * **Review path** (one Y/N permutation that maps to Review).
+   * **Deny path** (identity or multiple trusts = N).
+   * Re-run and confirm the database mirrors the expected decision each time (use the same checks as steps 3–4).&#x20;
+6. **Color outcomes (phone configuration)**
+
+   * If your phone is whitelisted you’ll keep seeing **green**. To test **red**, you either need a phone configured as “red” or you can grab the stored SMFA URL from the DB and invoke it manually (Emer’s trick).&#x20;
+
+---
+
+# Troubleshooting cheat notes
+
+* **Never seeing SMFA?** That means device rep didn’t return **Review**—it was **Pass** or **Reject**. You need a Review to hit Equifax.&#x20;
+* **Long wait on the link page?** Polling is expected; the separate **retry** was removed to cut delay.&#x20;
+* **DB looks empty?** You likely didn’t reach the Equifax stage (again: no Review → no Equifax). Check device rep outcome.&#x20;
+
+---
+
+# What “good” looks like (finish line)
+
+* You can **predict** the decision (Approve/Review/Deny) from the three trusts and **confirm it** in the **decision-map** and **details** tables. &#x20;
+* You can explain why you did (or didn’t) see the **SMFA link** based on the **device-rep result** and product timing. &#x20;
+* You can point to the **exact payload** that Equifax returned for any test run.&#x20;
+
+If you want, I can turn this into a 1-page “runbook” (checkbox steps + the three SQL lookups) you can keep beside Postman/SQL Developer.
