@@ -1,0 +1,115 @@
+You’re spot on: this only blows up at prod scale. Here’s a **practical, low-env test plan** that lets you (a) reproduce the bottleneck, (b) validate the patch, and (c) show before/after numbers your team will trust.
+
+# 1) Define the experiment (what we’ll prove)
+
+**Hypothesis:** Full-page polling + WAS9 defaults causes thread/JDBC contention when many users sit on the SMFA validate page. Switching to targeted `<a4j:poll>` (and/or increasing poll interval) removes the contention and shrinks **DR → EventCreate**.
+
+**Primary KPIs**
+
+* p50/p95 **DR → EventCreate** (secs)
+* WebContainer **active/max** and **queued requests**
+* JDBC pool **in-use**, **waiters**, **avg wait** (ms)
+* Error rate/timeouts on Verify-Phone path
+* Requests/min to `verification_validate_smfa.xhtml`
+
+# 2) Seed lower env to force the SMFA path
+
+In lower envs, SMFA often doesn’t trigger. Force it so the validate page appears:
+
+* Use test profiles or toggles so **Device Reputation outcome = REVIEW**.
+* Route traffic to **Equifax DIT+SMFA** at a fixed % (e.g., 50–100% in lower env to ensure hits).
+* If needed, stub EFX responses, but keep the **same user-facing flow** so the page/polling pattern is exercised.
+
+# 3) Create **synthetic load** that matches prod pressure
+
+Goal: a realistic number of **concurrent sessions** parked on the validate page.
+
+Minimal two-track plan:
+
+* **Track A (traffic to SMFA page):** N virtual users land on `verification_validate_smfa.xhtml` and stay there, “polling” at the configured interval.
+* **Track B (normal Verify-Phone flows):** M virtual users trigger Verify-Phone end-to-end to generate DR rows and event creates.
+
+Start with something like:
+
+* **N = 250–500** concurrent SMFA sessions (or whatever maps to 10–20% of your prod peak).
+* **M = 10–20 RPS** mixed Verify-Phone calls.
+
+Tools: JMeter or Gatling. (Record one real user journey to the validate page; parameterize it; ramp users over 5–10 minutes; hold for 20 minutes.)
+
+# 4) Baseline (BEFORE patch)
+
+In the lower env **without** the XHTML patch (current full-page reload):
+
+* Run a **30-minute soak**:
+
+  * 10-min ramp, 15-min steady, 5-min ramp down.
+* Collect:
+
+  * WebSphere PMI snapshots every 60s (WebContainer threads, JDBC in-use/waiters).
+  * DB AWR/ASH (start/end covering steady state).
+  * App logs for a sample of correlation IDs to compute **DR → EventCreate**.
+  * Access logs: requests/min to the validate page.
+* Capture p50/p95 of **DR → EventCreate** and the max/avg **JDBC wait**.
+
+# 5) Apply change(s) in lower env
+
+* Deploy the **XHTML patch** (targeted `<a4j:poll>`, small render region, remote command).
+* If you can’t deploy code yet, at least **increase poll interval** via config (e.g., 30–60s) to show the directional effect.
+
+# 6) Re-run identical load (AFTER patch)
+
+Same user mix, ramp, and duration. Collect the same metrics.
+
+# 7) Side-by-side summary (what convinces people)
+
+Make a tiny table your team will love:
+
+| Metric                          | BEFORE |  AFTER |        Delta |
+| ------------------------------- | -----: | -----: | -----------: |
+| DR → EventCreate p50            |  4.2 s |  0.6 s |         −86% |
+| DR → EventCreate p95            | 31.8 s |  3.9 s |         −88% |
+| WebContainer active / max (avg) | 92/100 | 54/100 |       ↓ load |
+| WebContainer queued (p95)       |     18 |      0 |   eliminated |
+| JDBC in-use / max (avg)         |  38/40 |  17/40 | ↓ contention |
+| JDBC wait time (p95)            |  1.2 s |  40 ms |         −97% |
+| Validate page req/min           |    \~X |    \~X |  (same load) |
+| Errors/timeouts                 |      Y |    \~0 |   eliminated |
+
+(Plug in your real numbers.)
+
+# 8) Guardrails for “this fixes prod”
+
+* **Success criteria (lower env):** p95 **DR → EventCreate** < 5 s at steady state, **no queue growth**, JDBC wait \~0.
+* **Staging canary:** Repeat the same test in staging with **prod-like pools** and TLS settings. Confirm the same deltas.
+* **Prod rollout plan:**
+
+  * Enable **feature flag** or config to keep poll interval high initially (e.g., 60s).
+  * **Canary 5%** of COA sessions to the new page version for 30–60 minutes during steady traffic.
+  * Watch the KPIs live; if clean, ramp to 25% → 50% → 100%.
+
+# 9) If you also want to prove WAS9 tuning matters
+
+Do a micro-experiment (no code change) in lower env **before** patch:
+
+* Raise **WebContainer max** and **JDBC max** by \~50%.
+* Re-run the baseline load. If the gap shrinks materially, it strengthens the “contention” diagnosis and builds confidence the XHTML patch will help even more.
+
+# 10) Exactly what to capture (so comparisons are airtight)
+
+* PMI exports: WebContainer (active, pool size, queued), JDBC (in-use, waiters, wait time).
+* AWR/ASH reports for the 15-min steady state (top waits, hot SQL).
+* App logs for a fixed set of correlation IDs to compute the three deltas:
+
+  * **DR timestamp** (DR row create)
+  * **EventCreate timestamp** (event row insert)
+  * **EventComplete** (supplier done)
+* Access log counts to ensure **same load** before/after.
+* Screenshots of Grafana/AppMon if you have them.
+
+---
+
+## TL;DR plan to tell the team
+
+“We’ll force SMFA in lower env, hold 250–500 concurrent validate sessions, and compare DR→EventCreate before/after the targeted poll change. If p95 drops from tens of seconds to low single digits and thread/JDBC queues clear, we ship. Then we canary 5% in prod with the same KPIs. If clean, ramp to 100%.”
+
+If you want, I’ll generate a **ready-to-run JMeter (or Gatling) outline** for the two tracks and a one-page runbook your SRE can follow step-by-step.
