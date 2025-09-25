@@ -1,0 +1,111 @@
+Great starting point. I pulled and read `verification_validate_smfa.xhtml`. Here’s what I see and how it relates to the “polling” behavior and your prod symptoms.
+
+# What the page actually does
+
+* It’s a JSF/RichFaces page:
+  `template="/templates/verification-otp-nologout.xhtml"` with `h`, `f`, `ui`, `rich`, `a4j` namespaces.
+* On load it triggers two server-side listeners via `f:event type="preRenderView"`:
+
+  * `#{validateEquifaxSmfa.getColor()}`
+  * `#{validateEquifaxSmfa.checkIfUserFailedPhoneVerification()}`
+* It sets up a **client-side polling** loop using **JavaScript** (not `<a4j:poll>`):
+
+  ```js
+  var secondsBetweenPolling = 0;
+  secondsBetweenPolling = #{validateEquifaxSmfa.secondsBetweenPolling};
+  milliSecondsBetweenPolling = secondsBetweenPolling * 1000;
+  setTimeout(() => { window.location.reload(); }, milliSecondsBetweenPolling);
+
+  var pollingMinutes = 0;
+  pollingMinutes = #{validateEquifaxSmfa.pollingMinutes};
+  if (pollingMinutes == -1) {
+      validateEquifaxSmfa.redirectToUnableToVerify();
+  }
+  ```
+* It displays “didn’t receive your link?” text and injects the `pollingMinutes` value into the page.
+
+# Problems I see (and why they matter)
+
+1. **Full-page refresh polling**
+
+   * `setTimeout(()=> window.location.reload(), …)` forces a **full HTTP request + full JSF render** every N seconds.
+   * Each reload re-fires **both** `preRenderView` listeners, re-runs converters/validators, rebuilds the view, includes shared fragments, etc.
+   * Under load, this can quickly **consume WebContainer threads**, and if DB calls happen in the listeners, it can also **hold JDBC connections**. That is classic “snowball effect” fuel.
+
+2. **Calling a server bean from JavaScript**
+
+   * `validateEquifaxSmfa.redirectToUnableToVerify();` in plain JS **doesn’t actually invoke the server-side bean method**. Managed beans are not directly callable from browser JS.
+   * Unless there is an `<a4j:jsFunction>` or remote command wired (none is present in this file), this line is a **no-op**. Net effect: when `pollingMinutes == -1`, the page likely **does nothing** instead of navigating away, leaving users stuck to keep polling.
+
+3. **No `<a4j:poll>` or targeted AJAX region**
+
+   * Because it isn’t using `<a4j:poll>` with a **small render region** and a **server listener**, every poll costs a **full page** round-trip + render.
+   * With many users, this amplifies to container saturation and longer “DR → EventCreate” gaps observed elsewhere (threads busy rendering/polling instead of promptly creating events).
+
+4. **Potential “zero or tiny interval” hazard**
+
+   * The interval is driven by `#{validateEquifaxSmfa.secondsBetweenPolling}`. If this ever resolves to **0 or very small**, you’ll get a **reload storm** (tight loops of full page refreshes).
+   * Even “15s” at scale can be heavy if thousands of sessions are on this page.
+
+5. **Escaping disabled in multiple outputs**
+
+   * Several `h:outputText` use `escape="false"`. If any dynamic content comes from upstream, there’s a **risk of XSS**. That’s not the root cause here, but it’s a production concern.
+
+# What to do **now** (no code changes)
+
+* **Throttle the poll interval** via config:
+
+  * If `secondsBetweenPolling` comes from a property or DB value the bean reads, increase it (e.g., 30–60s) to reduce thread churn during the incident window.
+* **Gate the page entry**:
+
+  * If you can flip feature flags/config to keep users off this SMFA page when Equifax share > 0 (during active troubleshooting), do so; or reduce EFX routing % to minimize concurrent pollers.
+* **Watch server metrics while the page is active**:
+
+  * In WebSphere PMI: WebContainer active/max threads and queued requests, plus JDBC in-use/waiters.
+  * If these rise when many users are on this page, it corroborates the polling pressure hypothesis.
+
+# What to fix next (lightweight code/config changes)
+
+1. **Replace `window.location.reload()` with `<a4j:poll>` + small region update**
+
+   * Example pattern:
+
+     ```xml
+     <a4j:poll interval="#{validateEquifaxSmfa.secondsBetweenPolling * 1000}"
+               listener="#{validateEquifaxSmfa.checkStatus}"
+               render="statusPanel"
+               enabled="#{validateEquifaxSmfa.pollEnabled}" />
+     <h:panelGroup id="statusPanel">
+       <!-- show current status, minutes left, errors -->
+     </h:panelGroup>
+     ```
+   * This calls a **server method** that checks status and returns **just a small fragment**, not the whole page.
+
+2. **Use an AJAX hook to navigate when done / timed out**
+
+   * Define an `<a4j:jsFunction>` or RichFaces remote command that calls a server-side action method, then use `oncomplete` to `window.location = 'unable_to_verify.xhtml'` (or success page) when the bean says it’s time. No more client-side calls to bean methods that don’t exist on the client.
+
+3. **Move heavy work out of `preRenderView`**
+
+   * If `checkIfUserFailedPhoneVerification()` does DB or vendor calls, trigger it via the poll listener instead. Keep `preRenderView` light to avoid doing that work on every refresh.
+
+4. **Set sane lower bounds**
+
+   * Enforce a minimum poll interval in the bean (e.g., `max(15, configured)`) to guard against misconfiguration.
+
+5. **Render only what’s needed**
+
+   * Wrap dynamic text in a small `h:panelGroup` and only `render` that. Avoid re-rendering the whole template each tick.
+
+# Why this could tie to your prod symptom
+
+Even though the “DR → EventCreate” timing is measured elsewhere, the **same app server** is handling these SMFA validation pages. A full-page polling pattern under load can **starve the thread pool** and/or **JDBC pool**, which then **delays unrelated requests**—including those creating events after DR. That explains why things degrade when EFX is turned on (EFX routes more users into this SMFA validate page) and get better when it’s turned off.
+
+If you want, I can draft a minimal patch diff that:
+
+* Adds an `<a4j:poll>` with a server listener,
+* Replaces the no-op JS bean call with a proper remote command,
+* Wraps dynamic content in a small `render` region,
+* Introduces a defensive min poll interval.
+
+That change is low-risk and directly reduces server load from the polling loop.
