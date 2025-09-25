@@ -1,0 +1,67 @@
+Short answer: the upgrade nudged your system past a tipping point.
+
+Long answer: several **WAS 9–era deltas** can make an existing “okay-ish” design (full-page polling + heavy preRenderView work) tip into visible latency—especially when Equifax is on (more SMFA pages → more pollers).
+
+### Why it showed up after WebSphere 9
+
+1. **Thread pool & JDBC pool resets**
+
+   * During upgrades it’s common for **WebContainer / WorkManager** and **DataSource** sizes to revert to **defaults** or different values.
+   * If max threads or JDBC max connections ended up lower (or validation-on-borrow enabled), you get **more waiting**, which surfaces first under the heavier Equifax path.
+
+2. **Driver / datasource behavior changes**
+
+   * Oracle (or your DB) **JDBC driver version** likely changed with WAS9.
+   * Defaults like **validation query, auto-commit, keepAlive, statement cache size, login timeout** may have shifted—each adds a few ms per DB borrow. Multiply that by hundreds of poll hits = real contention.
+
+3. **JVM / GC differences**
+
+   * WAS 9 usually implies a **newer JVM** and **different GC/JIT** characteristics.
+   * Slightly longer or more frequent GC pauses reduce **effective thread throughput**, which exacerbates queue buildup when many sessions are polling.
+
+4. **Security stack / TLS overhead**
+
+   * Newer **cipher suites / FIPS** settings and stricter TLS defaults can add CPU per request.
+   * With Equifax on, more users land on the **SMFA validate page** that polls; small per-request overhead becomes **big** when multiplied by polling.
+
+5. **HTTP session & JSF rendering costs**
+
+   * Traditional WAS9 tightened some **session locking/serialization** and updated JSF/EL stacks.
+   * Your page was doing **full-page reloads** (not targeted AJAX) on a timer; under WAS9’s stack this costs a bit more per hit, again multiplying into **thread pressure**.
+
+6. **PMI/monitoring & logging differences**
+
+   * If **request metrics** or more verbose logging got enabled with the upgrade, every request does slightly more work. Full-page pollers pay that tax each tick.
+
+7. **Config drift**
+
+   * Seemingly minor items (e.g., **statement cache size back to default 10**, **min/max pool sizes**, **connection leak detection**, **TCP keepalive**) often drift during upgrades and only bite under bursty patterns like SMFA polling.
+
+### How this maps to your symptom (DR → EventCreate delay)
+
+* Equifax ON ⇒ more users on **SMFA validate** ⇒ **full-page polling** every N seconds.
+* WAS9 changes shave throughput just enough that **WebContainer threads** and/or **JDBC connections** sit at or near max.
+* Requests that should create events quickly (DR → EventCreate) **wait for threads/connections**, so the gap balloons and then **snowballs**.
+
+### Quick validations (no code change)
+
+* **Compare before/after**: WebContainer max, WorkManager pools, JDBC max, statement cache, validation-on-borrow, login timeout.
+* **PMI during spike**: Active vs max threads, queued requests; JDBC in-use, waiters, wait time.
+* **AWR/ASH**: Look for `log file sync`, row locks, or slow inserts/reads on the IVS event/DR tables.
+* **GC logs**: Correlate pauses with DR→EventCreate spikes.
+* **Edge counts**: How many concurrent sessions are on `verification_validate_smfa.xhtml` when EFX is enabled?
+
+### Fast mitigations (still no code change)
+
+* Temporarily **raise WebContainer/WorkManager/JDBC max** by 25–50%.
+* **Increase poll interval** via config/bean so you cut poll traffic immediately.
+* **Keep EFX traffic % low** while measuring.
+* **Gather DB stats** and confirm **composite indexes** are present/used on event/DR tables; refresh stats if stale.
+
+### Structural fix (low-risk code)
+
+* Replace full-page `window.location.reload()` with **`<a4j:poll>` + small render region** and a server listener (the patch I gave).
+* Enforce a **min poll interval** in the bean to prevent storming.
+* Move heavy checks **out of `preRenderView`** into the poll listener.
+
+Bottom line: WAS9 didn’t “create” the bug; it **exposed a fragile pattern** (full-page polling + heavy per-request work) by shaving a bit of throughput and resetting some resource knobs. Tuning the pools and taming the polling will get you back under the tipping point; the XHTML patch removes the root multiplier.
