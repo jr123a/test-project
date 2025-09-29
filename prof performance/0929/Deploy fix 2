@@ -1,0 +1,87 @@
+Great, the logs tell us exactly why deploys from IntelliJ keep failing:
+	•	A composition unit with name Gradle___IPSWebEAR_ear__exploded_ already exists
+	•	Later the same for Gradle___IPSWebEAR_ear
+	•	And an ADMA5108E ... cannot be uninstalled because it does not exist
+
+That means a stale Business-Level Application (BLA) / Composition Unit entry was left behind from a previous crashy deploy. IntelliJ tries to push the same name (the default “Gradle___…”) and WAS refuses it; the uninstall also fails because the config is inconsistent.
+
+Here’s how to clean it up and make your dev deploys reliable.
+
+1) Clean the “ghost” apps (offline, no console needed)
+
+Open an elevated cmd in %WAS_PROFILE_ROOT%\bin and run:
+
+wsadmin.bat -conntype NONE -lang jython -c ^
+"names = ['Gradle___IPSWebEAR_ear__exploded_', 'Gradle___IPSWebEAR_ear']; ^
+import sys; ^
+for n in names: ^
+  try: AdminApp.uninstall(n); print 'Uninstalled', n
+  except: print 'Uninstall skipped for', n; ^
+  try: AdminTask.deleteBLA('[-blaName ' + n + ']'); print 'Deleted BLA', n
+  except: print 'Delete BLA skipped for', n; ^
+AdminConfig.save(); print 'Saved.'"
+
+Then stop the server (if running), delete caches, and start fresh:
+	•	Delete %WAS_PROFILE_ROOT%\wstemp and %WAS_PROFILE_ROOT%\temp
+	•	Start server1
+
+(If the script errors, you can also remove the matching folders under %WAS_PROFILE_ROOT%\config\cells\<yourCell>\ for Applications/BusinessLevelApplications, but the script above usually fixes it.)
+
+2) Give IntelliJ a stable app name (avoid Gradle’s “exploded” name)
+
+In IntelliJ Run/Debug Configuration → your WebSphere target:
+	•	Application name: set it to something stable, e.g. IPSWebEAR
+	•	Package type: Prefer Packaged EAR (not “exploded”) for WAS 9
+	•	Connection: SOAP, correct port, and credentials (same as console)
+
+Now when you redeploy, WAS updates the same app instead of creating new “Gradle___…” entries.
+
+3) Or deploy via script from IntelliJ/Gradle (bulletproof)
+
+Create install_ipsweb.py:
+
+app = r'F:/path/to/IPSWebEAR.ear'
+appName = 'IPSWebEAR'
+node = 'EUCGroup00863Node02'
+server = 'server1'
+opts = ['-appname', appName, '-node', node, '-server', server,
+        '-usedefaultbindings', '-nouseMetaDataFromBinary']
+try:
+    AdminApp.view(appName)     # exists? then update
+    print 'Updating ' + appName
+    AdminApp.update(appName, 'app', ['-file', app] + opts)
+except:
+    print 'Installing ' + appName
+    AdminApp.install(app, opts)
+AdminConfig.save()
+print 'Done'
+
+Run (from %WAS_PROFILE_ROOT%\bin):
+
+wsadmin.bat -lang jython -conntype SOAP -host localhost -port 8879 ^
+  -user <adminUser> -password <adminPass> -f F:\path\install_ipsweb.py
+
+Wire this as an IntelliJ External Tool or a Gradle Exec task after build. This avoids the “composition unit already exists” loop forever.
+
+4) Make “monitoredDeployableApps” work (if you want the drop-in flow)
+
+Right now WAS is watching ${USER_INSTALL_ROOT}/monitoredDeployableApps (product dir), but you placed the EAR under the profile path. Either:
+	•	Move EAR to:
+F:\IBM\WebSphere\AppServer_1\monitoredDeployableApps\servers\server1\IPSWebEAR.ear
+
+or
+	•	Change the monitored path in Admin Console to ${WAS_PROFILE_ROOT}/monitoredDeployableApps, then use:
+%WAS_PROFILE_ROOT%\monitoredDeployableApps\servers\server1\IPSWebEAR.ear
+
+Add a sidecar properties file to force the app name:
+
+%...%\servers\server1\IPSWebEAR.ear.properties
+appName=IPSWebEAR
+
+5) One-time stability tweaks (recommended)
+	•	Ensure 64-bit JVM and bump heap on server1: -Xms1536m -Xmx3072m -Xgcpolicy:gencon
+	•	After the cleanup, if Admin Console pages ever NPE on “list applications”, clear wstemp/temp again.
+
+⸻
+
+Do #1 now to purge the ghost composition units, then either fix the IntelliJ app name (#2) or drive deploys with the wsadmin script (#3). After that, your iterative dev deploys will work without touching the console.
