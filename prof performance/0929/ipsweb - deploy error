@@ -1,0 +1,157 @@
+WebSphere Platform 9.0.5.20 [BASE 9.0.5.20 f5202422.01] [JAVA8 8.0.8.30 pwa6480sr8fp30-20240801_01] running with process name EUCGroup00863Node02Cell\EUCGroup00863Node02\server1 and process id 14796
+Full server name is EUCGroup00863Node02Cell\EUCGroup00863Node02\server1-14796
+Detailed IFix information: none
+Host Operating System is Windows 10, version 10.0
+Java version = 1.8.0_421, Java Runtime Version = 8.0.8.30 - pwa6480sr8fp30-20240801_01(SR8 FP30), Java Compiler = j9jit29, Java VM name = IBM J9 VM
+was.install.root = F:\IBM\WebSphere\AppServer_1
+user.install.root = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09
+Java Home = F:\IBM\WebSphere\AppServer_1\java\8.0\jre
+ws.ext.dirs = F:\IBM\WebSphere\AppServer_1/java/8.0/lib;F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/classes;F:\IBM\WebSphere\AppServer_1/classes;F:\IBM\WebSphere\AppServer_1/lib;F:\IBM\WebSphere\AppServer_1/installedChannels;F:\IBM\WebSphere\AppServer_1/lib/ext;F:\IBM\WebSphere\AppServer_1/web/help;F:\IBM\WebSphere\AppServer_1/deploytool/itp/plugins/com.ibm.etools.ejbdeploy/runtime
+Classpath = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/properties;F:\IBM\WebSphere\AppServer_1/properties;F:\IBM\WebSphere\AppServer_1/lib/startup.jar;F:\IBM\WebSphere\AppServer_1/lib/bootstrap.jar;F:\IBM\WebSphere\AppServer_1/lib/lmproxy.jar;F:\IBM\WebSphere\AppServer_1/lib/urlprotocols.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batchboot.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batch2.jar;F:\IBM\WebSphere\AppServer_1/java/8.0/lib/tools.jar
+Java Library path = F:\IBM\WebSphere\AppServer_1/lib/native/win/x86_64/;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin\compressedrefs;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Windows\system32;C:\Windows;F:\IBM\WebSphere\AppServer_1\lib\native\win\x86_64;F:\IBM\WebSphere\AppServer_1\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Java\jdk1.8.0_261\bin;C:\Workspace\tools\gradle-7.0.2\bin;C:\Program Files\PuTTY\;C:\Program Files\Git\cmd;C:\Users\QWPTG0\AppData\Local\Microsoft\WindowsApps;C:\Users\QWPTG0\AppData\Local\GitHubDesktop\bin;.;
+Orb Version = IBM Java ORB build orbdev-userlvl-20240612.2240
+Max file descriptor count = --
+************* End Display Current Environment *************
+[9/29/25 10:10:58:424 PDT] 00000045 SystemErr     R SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+[9/29/25 10:10:58:424 PDT] 00000045 SystemErr     R SLF4J: Defaulting to no-operation (NOP) logger implementation
+[9/29/25 10:10:58:424 PDT] 00000045 SystemErr     R SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R java.lang.NullPointerException
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.EditApplication.listAppsOnNode(EditApplication.java:1981)
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.EditApplication.listApplications(EditApplication.java:1894)
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.AppManagementImpl.listApplicationsAsSystem(AppManagementImpl.java:2874)
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.AppManagementImpl.access$400(AppManagementImpl.java:133)
+[9/29/25 10:14:51:099 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.AppManagementImpl$7.run(AppManagementImpl.java:994)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAs(ContextManagerImpl.java:5478)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAsSpecified(ContextManagerImpl.java:5659)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.application.AppManagementImpl.listApplications(AppManagementImpl.java:991)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at java.lang.reflect.Method.invoke(Method.java:508)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.misc.Trampoline.invoke(MethodUtil.java:83)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at java.lang.reflect.Method.invoke(Method.java:508)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at sun.reflect.misc.MethodUtil.invoke(MethodUtil.java:287)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at javax.management.modelmbean.RequiredModelMBean$4.run(RequiredModelMBean.java:1263)
+[9/29/25 10:14:51:100 PDT] 00000088 SystemErr     R 	at java.security.AccessController.doPrivileged(AccessController.java:716)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:85)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at javax.management.modelmbean.RequiredModelMBean.invokeMethod(RequiredModelMBean.java:1257)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at javax.management.modelmbean.RequiredModelMBean.invoke(RequiredModelMBean.java:1096)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.sun.jmx.interceptor.DefaultMBeanServerInterceptor.invoke(DefaultMBeanServerInterceptor.java:831)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.sun.jmx.mbeanserver.JmxMBeanServer.invoke(JmxMBeanServer.java:813)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.AdminServiceImpl$1.run(AdminServiceImpl.java:1353)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.security.util.AccessController.doPrivileged(AccessController.java:118)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.management.AdminServiceImpl.invoke(AdminServiceImpl.java:1246)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.core.mbean.MBeanHelper.invoke(MBeanHelper.java:203)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.appdeployment.ApplicationDeploymentController.setupCollectionForm(ApplicationDeploymentController.java:436)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.appdeployment.ApplicationDeploymentController.perform(ApplicationDeploymentController.java:306)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at org.apache.struts.tiles.TilesRequestProcessor.processTilesDefinition(Unknown Source)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at org.apache.struts.tiles.TilesRequestProcessor.processForwardConfig(Unknown Source)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at org.apache.struts.action.RequestProcessor.process(Unknown Source)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at org.apache.struts.action.ActionServlet.process(Unknown Source)
+[9/29/25 10:14:51:101 PDT] 00000088 SystemErr     R 	at org.apache.struts.action.ActionServlet.doGet(Unknown Source)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at javax.servlet.http.HttpServlet.service(HttpServlet.java:687)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at javax.servlet.http.HttpServlet.service(HttpServlet.java:790)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.servlet.ServletWrapper.service(ServletWrapper.java:1235)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:779)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:478)
+[9/29/25 10:14:51:102 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.servlet.ServletWrapperImpl.handleRequest(ServletWrapperImpl.java:179)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.core.servlet.WSCUrlFilter.setUpCommandAssistance(WSCUrlFilter.java:984)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.core.servlet.WSCUrlFilter.continueStoringTaskState(WSCUrlFilter.java:531)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.console.core.servlet.WSCUrlFilter.doFilter(WSCUrlFilter.java:352)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+[9/29/25 10:14:51:103 PDT] 00000088 SystemErr     R 	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+[9/29/25 10:14:51:104 PDT] 00000088 SystemErr     R 	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+************ Start Display Current Environment ************
+WebSphere Platform 9.0.5.20 [BASE 9.0.5.20 f5202422.01] [JAVA8 8.0.8.30 pwa6480sr8fp30-20240801_01] running with process name EUCGroup00863Node02Cell\EUCGroup00863Node02\server1 and process id 4764
+Full server name is EUCGroup00863Node02Cell\EUCGroup00863Node02\server1-4764
+Detailed IFix information: none
+Host Operating System is Windows 10, version 10.0
+Java version = 1.8.0_421, Java Runtime Version = 8.0.8.30 - pwa6480sr8fp30-20240801_01(SR8 FP30), Java Compiler = j9jit29, Java VM name = IBM J9 VM
+was.install.root = F:\IBM\WebSphere\AppServer_1
+user.install.root = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09
+Java Home = F:\IBM\WebSphere\AppServer_1\java\8.0\jre
+ws.ext.dirs = F:\IBM\WebSphere\AppServer_1/java/8.0/lib;F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/classes;F:\IBM\WebSphere\AppServer_1/classes;F:\IBM\WebSphere\AppServer_1/lib;F:\IBM\WebSphere\AppServer_1/installedChannels;F:\IBM\WebSphere\AppServer_1/lib/ext;F:\IBM\WebSphere\AppServer_1/web/help;F:\IBM\WebSphere\AppServer_1/deploytool/itp/plugins/com.ibm.etools.ejbdeploy/runtime
+Classpath = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/properties;F:\IBM\WebSphere\AppServer_1/properties;F:\IBM\WebSphere\AppServer_1/lib/startup.jar;F:\IBM\WebSphere\AppServer_1/lib/bootstrap.jar;F:\IBM\WebSphere\AppServer_1/lib/lmproxy.jar;F:\IBM\WebSphere\AppServer_1/lib/urlprotocols.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batchboot.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batch2.jar;F:\IBM\WebSphere\AppServer_1/java/8.0/lib/tools.jar
+Java Library path = F:\IBM\WebSphere\AppServer_1/lib/native/win/x86_64/;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin\compressedrefs;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Windows\system32;C:\Windows;F:\IBM\WebSphere\AppServer_1\lib\native\win\x86_64;F:\IBM\WebSphere\AppServer_1\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Java\jdk1.8.0_261\bin;C:\Workspace\tools\gradle-7.0.2\bin;C:\Program Files\PuTTY\;C:\Program Files\Git\cmd;C:\Users\QWPTG0\AppData\Local\Microsoft\WindowsApps;C:\Users\QWPTG0\AppData\Local\GitHubDesktop\bin;.;
+Orb Version = IBM Java ORB build orbdev-userlvl-20240612.2240
+Max file descriptor count = --
+************* End Display Current Environment *************
+[9/29/25 10:24:14:197 PDT] 00000065 SystemErr     R com.ibm.websphere.management.exception.AdminException: A composition unit with name Gradle___IPSWebEAR_ear__exploded_ already exists. Select a different application name.
+[9/29/25 10:24:14:197 PDT] 00000065 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._validateBLAInstall(ValidateBLATask.java:348)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._performTaskAsSystem(ValidateBLATask.java:132)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask$1.run(ValidateBLATask.java:104)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAs(ContextManagerImpl.java:5478)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAsSpecified(ContextManagerImpl.java:5659)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask.performTask(ValidateBLATask.java:101)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at com.ibm.ws.management.application.SchedulerImpl.run(SchedulerImpl.java:315)
+[9/29/25 10:24:14:198 PDT] 00000065 SystemErr     R 	at java.lang.Thread.run(Thread.java:825)
+[9/29/25 10:25:10:288 PDT] 00000073 SystemErr     R com.ibm.websphere.management.exception.AdminException: A composition unit with name Gradle___IPSWebEAR_ear__exploded_ already exists. Select a different application name.
+[9/29/25 10:25:10:288 PDT] 00000073 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._validateBLAInstall(ValidateBLATask.java:348)
+[9/29/25 10:25:10:288 PDT] 00000073 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._performTaskAsSystem(ValidateBLATask.java:132)
+[9/29/25 10:25:10:288 PDT] 00000073 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask$1.run(ValidateBLATask.java:104)
+[9/29/25 10:25:10:288 PDT] 00000073 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAs(ContextManagerImpl.java:5478)
+[9/29/25 10:25:10:289 PDT] 00000073 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAsSpecified(ContextManagerImpl.java:5659)
+[9/29/25 10:25:10:289 PDT] 00000073 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask.performTask(ValidateBLATask.java:101)
+[9/29/25 10:25:10:289 PDT] 00000073 SystemErr     R 	at com.ibm.ws.management.application.SchedulerImpl.run(SchedulerImpl.java:315)
+[9/29/25 10:25:10:289 PDT] 00000073 SystemErr     R 	at java.lang.Thread.run(Thread.java:825)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R com.ibm.websphere.management.exception.AdminException: A composition unit with name Gradle___IPSWebEAR_ear__exploded_ already exists. Select a different application name.
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._validateBLAInstall(ValidateBLATask.java:348)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._performTaskAsSystem(ValidateBLATask.java:132)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask$1.run(ValidateBLATask.java:104)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAs(ContextManagerImpl.java:5478)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAsSpecified(ContextManagerImpl.java:5659)
+[9/29/25 10:25:55:200 PDT] 00000077 SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask.performTask(ValidateBLATask.java:101)
+[9/29/25 10:25:55:201 PDT] 00000077 SystemErr     R 	at com.ibm.ws.management.application.SchedulerImpl.run(SchedulerImpl.java:315)
+[9/29/25 10:25:55:201 PDT] 00000077 SystemErr     R 	at java.lang.Thread.run(Thread.java:825)
+[9/29/25 10:26:12:924 PDT] 00000084 SystemErr     R com.ibm.websphere.management.exception.AdminException: ADMA5108E: Application Gradle___IPSWebEAR_ear__exploded_ cannot be uninstalled because it does not exist in the WebSphere Application Server configuration.
+[9/29/25 10:26:12:924 PDT] 00000084 SystemErr     R 	at com.ibm.ws.management.application.UninstallSchedulerImpl.setupTasks(UninstallSchedulerImpl.java:94)
+[9/29/25 10:26:12:924 PDT] 00000084 SystemErr     R 	at com.ibm.ws.management.application.SchedulerImpl.run(SchedulerImpl.java:303)
+[9/29/25 10:26:12:925 PDT] 00000084 SystemErr     R 	at java.lang.Thread.run(Thread.java:825)
+************ Start Display Current Environment ************
+WebSphere Platform 9.0.5.20 [BASE 9.0.5.20 f5202422.01] [JAVA8 8.0.8.30 pwa6480sr8fp30-20240801_01] running with process name EUCGroup00863Node02Cell\EUCGroup00863Node02\server1 and process id 10980
+Full server name is EUCGroup00863Node02Cell\EUCGroup00863Node02\server1-10980
+Detailed IFix information: none
+Host Operating System is Windows 10, version 10.0
+Java version = 1.8.0_421, Java Runtime Version = 8.0.8.30 - pwa6480sr8fp30-20240801_01(SR8 FP30), Java Compiler = j9jit29, Java VM name = IBM J9 VM
+was.install.root = F:\IBM\WebSphere\AppServer_1
+user.install.root = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09
+Java Home = F:\IBM\WebSphere\AppServer_1\java\8.0\jre
+ws.ext.dirs = F:\IBM\WebSphere\AppServer_1/java/8.0/lib;F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/classes;F:\IBM\WebSphere\AppServer_1/classes;F:\IBM\WebSphere\AppServer_1/lib;F:\IBM\WebSphere\AppServer_1/installedChannels;F:\IBM\WebSphere\AppServer_1/lib/ext;F:\IBM\WebSphere\AppServer_1/web/help;F:\IBM\WebSphere\AppServer_1/deploytool/itp/plugins/com.ibm.etools.ejbdeploy/runtime
+Classpath = F:\IBM\WebSphere\AppServer_1\profiles\AppSrv09/properties;F:\IBM\WebSphere\AppServer_1/properties;F:\IBM\WebSphere\AppServer_1/lib/startup.jar;F:\IBM\WebSphere\AppServer_1/lib/bootstrap.jar;F:\IBM\WebSphere\AppServer_1/lib/lmproxy.jar;F:\IBM\WebSphere\AppServer_1/lib/urlprotocols.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batchboot.jar;F:\IBM\WebSphere\AppServer_1/deploytool/itp/batch2.jar;F:\IBM\WebSphere\AppServer_1/java/8.0/lib/tools.jar
+Java Library path = F:\IBM\WebSphere\AppServer_1/lib/native/win/x86_64/;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin\compressedrefs;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Windows\system32;C:\Windows;F:\IBM\WebSphere\AppServer_1\lib\native\win\x86_64;F:\IBM\WebSphere\AppServer_1\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\bin;F:\IBM\WebSphere\AppServer_1\java\8.0\jre\bin;C:\Program Files\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\Java\jdk1.8.0_261\bin;C:\Workspace\tools\gradle-7.0.2\bin;C:\Program Files\PuTTY\;C:\Program Files\Git\cmd;C:\Users\QWPTG0\AppData\Local\Microsoft\WindowsApps;C:\Users\QWPTG0\AppData\Local\GitHubDesktop\bin;.;
+Orb Version = IBM Java ORB build orbdev-userlvl-20240612.2240
+Max file descriptor count = --
+************* End Display Current Environment *************
+[9/29/25 10:31:16:929 PDT] 0000006b SystemErr     R com.ibm.websphere.management.exception.AdminException: A composition unit with name Gradle___IPSWebEAR_ear already exists. Select a different application name.
+[9/29/25 10:31:16:930 PDT] 0000006b SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._validateBLAInstall(ValidateBLATask.java:348)
+[9/29/25 10:31:16:930 PDT] 0000006b SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask._performTaskAsSystem(ValidateBLATask.java:132)
+[9/29/25 10:31:16:930 PDT] 0000006b SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask$1.run(ValidateBLATask.java:104)
+[9/29/25 10:31:16:930 PDT] 0000006b SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAs(ContextManagerImpl.java:5478)
+[9/29/25 10:31:16:931 PDT] 0000006b SystemErr     R 	at com.ibm.ws.security.auth.ContextManagerImpl.runAsSpecified(ContextManagerImpl.java:5659)
+[9/29/25 10:31:16:931 PDT] 0000006b SystemErr     R 	at com.ibm.ws.management.bla.j2ee.ext.tasks.ValidateBLATask.performTask(ValidateBLATask.java:101)
+[9/29/25 10:31:16:931 PDT] 0000006b SystemErr     R 	at com.ibm.ws.management.application.SchedulerImpl.run(SchedulerImpl.java:315)
+[9/29/25 10:31:16:931 PDT] 0000006b SystemErr     R 	at java.lang.Thread.run(Thread.java:825)
