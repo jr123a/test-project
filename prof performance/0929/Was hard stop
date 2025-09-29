@@ -1,0 +1,71 @@
+Got it — when WAS is OOM’ing, both the Admin Console and stopServer can hang. Do this:
+
+1) Hard-stop the JVM
+
+Linux/AIX
+	•	Find PID: ps -ef | grep server1 | grep java
+	•	First try a thread dump (optional, for forensics): kill -3 <pid>
+	•	Then kill: kill -9 <pid>
+
+Windows
+	•	Find PID: tasklist | find "java"
+	•	Kill: taskkill /PID <pid> /F
+
+(If you run a nodeagent and/or dmgr for this server, kill those too if they won’t stop cleanly.)
+
+2) Clear caches (safe)
+
+rm -rf <profile_root>/wstemp  <profile_root>/temp
+
+On Windows, delete those folders in the profile.
+
+3) Raise heap OFFLINE (no console needed)
+
+Pick one method:
+
+A) Edit server.xml directly
+	•	File: <profile_root>/config/cells/<cell>/nodes/<node>/servers/server1/server.xml
+	•	Find the <jvmEntries ...> element and set:
+	•	initialHeapSize="1536"
+	•	maximumHeapSize="3072"
+	•	genericJvmArguments="-Xgcpolicy:gencon -Xverbosegclog:${SERVER_LOG_ROOT}/verbosegc.log"
+	•	Save the file.
+
+B) Use wsadmin offline (no connection)
+Linux:
+
+cd <profile_root>/bin
+./wsadmin.sh -conntype NONE -lang jython -c "
+srv = 'server1'
+sid = AdminConfig.getid('/Server:'+srv+'/')
+jvm = AdminConfig.list('JavaVirtualMachine', sid)
+AdminConfig.modify(jvm, [['initialHeapSize','1536'], ['maximumHeapSize','3072'],
+  ['genericJvmArguments','-Xgcpolicy:gencon -Xverbosegclog:${SERVER_LOG_ROOT}/verbosegc.log']])
+AdminConfig.save()"
+
+Windows: use wsadmin.bat with the same -c Jython.
+
+4) (Optional but powerful) Bootstrap with a temporary env override
+
+If you just want it up once so you can fix via console later:
+	•	Linux:
+export IBM_JAVA_OPTIONS="-Xms1536m -Xmx3072m -Xgcpolicy:gencon -Xverbosegclog:${WAS_PROFILE_ROOT}/logs/server1/verbosegc.log"
+	•	Windows (same shell):
+set IBM_JAVA_OPTIONS=-Xms1536m -Xmx3072m -Xgcpolicy:gencon -Xverbosegclog:%WAS_PROFILE_ROOT%\logs\server1\verbosegc.log
+Then start the server (Step 6). Remove/unset this after you make the permanent change.
+
+5) Also increase heap for the controller process
+	•	If this server is managed, bump the dmgr heap the same way (server.xml or wsadmin offline), or kill and restart dmgr with a larger heap too.
+
+6) Start cleanly
+
+<profile_root>/bin/startServer.sh server1
+
+(Windows: startServer.bat server1)
+
+7) If it still OOMs
+	•	Go higher: try -Xms2g -Xmx4g if the host has RAM.
+	•	Ensure it’s a 64-bit JVM.
+	•	Verify verbosegc.log in logs/server1/—if free heap is near zero at Full GC, increase heap; if plenty of free heap, a single huge allocation or scanning spike is the culprit (then set metadata-complete="true" in web.xml to reduce annotation scanning, and trim large/duplicate JARs).
+
+Ping me with your OS and profile path if you want the exact server.xml line edits or a ready-to-paste wsadmin command tailored to your cell/node names.
