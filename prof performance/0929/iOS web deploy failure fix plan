@@ -1,0 +1,105 @@
+You’ve got three workable ways to unblock dev deploys. Pick the one that fits your flow. I’ll start with the quickest.
+
+A) Make “Monitored Deployable Apps” actually work (fastest)
+
+Right now WAS is watching the wrong folder. In Base WAS, ${USER_INSTALL_ROOT} = the product dir, not the profile. Your EAR is under the profile path, so it’s ignored.
+	1.	In the Admin Console: Applications → Global deployment settings → Monitored Directory Deployment
+Change the path to:
+
+${WAS_PROFILE_ROOT}/monitoredDeployableApps
+
+Save.
+
+	2.	Ensure the required subfolder exists (and use it):
+
+%WAS_PROFILE_ROOT%\monitoredDeployableApps\servers\server1\
+
+Put your EAR there:
+
+%WAS_PROFILE_ROOT%\monitoredDeployableApps\servers\server1\IPSWebEAR.ear
+
+(Optional) Add a companion properties file if you need non-default options:
+
+IPSWebEAR.ear.properties
+appName=IPSWebEAR
+context.root=/IPSWeb
+
+
+	3.	Clear caches and restart once (only this time):
+	•	Stop server (force if needed), delete wstemp and temp under the profile, start server.
+	4.	Automate from IntelliJ/Gradle: add a copy task that drops the built EAR straight into that folder on every build:
+
+tasks.register('deployToWAS', Copy) {
+    dependsOn(':IPSWebEAR:assemble')
+    from("$rootDir/IPSWebEAR/build/libs/IPSWebEAR.ear")
+    into System.getenv('WAS_PROFILE_ROOT') + "/monitoredDeployableApps/servers/server1"
+}
+
+Run: gradle deployToWAS – WAS will pick it up in ~5 seconds.
+
+B) Deploy via wsadmin (rock-solid, works even if the console hangs)
+
+Wire IntelliJ to call wsadmin (offline or SOAP). Put this Jython in install_ipsweb.py:
+
+app = r'F:/path/to/IPSWebEAR.ear'
+appName = 'IPSWebEAR'
+node = 'YOUR_NODE_NAME'
+server = 'server1'
+opts = ['-appname', appName, '-node', node, '-server', server,
+        '-usedefaultbindings', '-deployejb', '-createMBeansForResources',
+        '-nouseMetaDataFromBinary']
+print AdminApp.isAppReady(appName)
+try:
+    # update if exists
+    print 'Updating...'
+    AdminApp.update(appName, 'app', ['-file', app] + opts)
+except:
+    print 'Installing...'
+    AdminApp.install(app, opts)
+AdminConfig.save()
+print 'OK'
+
+Run (Base/standalone):
+
+%WAS_PROFILE_ROOT%\bin\wsadmin.bat -lang jython -conntype SOAP -host localhost -port 8879 -user YOUR_USER -password YOUR_PASS -f install_ipsweb.py
+
+Notes:
+	•	If security is off: drop -user/-password.
+	•	If SOAP port differs, fix -port (see serverindex.xml or netstat -ano | find "8879").
+	•	If you want zero server connection (just edit config), use -conntype NONE, then restart server.
+
+In IntelliJ: Run/Debug Config → add an “External tool” that calls the command above, or add a Gradle task that executes it after build.
+
+C) Fix IntelliJ’s direct deployment (why it’s failing)
+
+Your IntelliJ “WebSphere Local” run shows:
+	•	“Waiting for all server connections…”
+	•	“Could not find admin client”
+This usually means a bad connector setup.
+
+Checklist:
+	1.	Protocol: use SOAP, not RMI.
+	•	IntelliJ → Settings → Application Servers → WebSphere → Connection: Protocol = SOAP.
+	2.	Port: match SOAP port (commonly 8879 on Base). Verify:
+…\profiles\AppSrv09\config\cells\<cell>\nodes\<node>\serverindex.xml → <SOAP_CONNECTOR_ADDRESS port="8879"/>
+	3.	Credentials: if Global Security is on, set the same user/pass you use for the admin console.
+	4.	Classpath/Jars: make sure IntelliJ knows your WAS home and profile (it needs the admin client jars).
+	5.	Heap for wsadmin (IntelliJ uses it under the hood): add -Xmx2048m to avoid OOM on install/update.
+	6.	Server actually started: start server first (or let IntelliJ start it) and wait until ADMUxxxx “started” appears in logs.
+	7.	If you get stuck mid-deploy, clear wstemp/temp and retry.
+
+Extra hardening (applies to all methods)
+	•	Use 64-bit JVM and bump heap on server and dmgr/nodeagent if present:
+	•	-Xms1536m -Xmx3072m -Xgcpolicy:gencon
+	•	Reduce annotation scanning spikes:
+	•	In your WAR web.xml: <web-app metadata-complete="true" ...> if safe.
+	•	Avoid fat/duplicate libs in WEB-INF/lib; they blow up scanning time/memory.
+
+⸻
+
+TL;DR
+	•	Your monitor directory wasn’t the one WAS was watching. Point it to ${WAS_PROFILE_ROOT} (or move the file to the product-root path) and it’ll start auto-deploying.
+	•	For a bulletproof dev loop, add a Gradle copy task (Option A) or a wsadmin script (Option B).
+	•	If you prefer IntelliJ push (Option C), switch to SOAP, set the real SOAP port, and supply credentials.
+
+If you paste me your actual node/cell names (and whether security is enabled), I’ll hand you the exact wsadmin command and a ready-to-drop .properties file for the monitored deploy.
