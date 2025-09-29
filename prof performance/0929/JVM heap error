@@ -1,0 +1,53 @@
+You’ve got a JVM OutOfMemoryError: Java heap space during app startup/deploy (the stack shows WebSphere scanning classes/annotations). This is WebSphere running out of heap while it indexes your WAR/EAR.
+
+Here’s the fastest way to fix it and keep it fixed:
+	1.	Bump the JVM heap (server1)
+
+	•	Admin Console → Servers → Server Types → WebSphere application servers → server1 → Java and Process Management → Process Definition → Java Virtual Machine.
+	•	Set:
+	•	Initial heap: 1024m (or 1536m)
+	•	Maximum heap: 2048m (or 3072m if you have RAM)
+	•	Ensure the JVM is 64-bit. Restart server1.
+
+	2.	Bump the heap for the process doing the deployment too
+
+	•	If you deploy via the Deployment Manager (dmgr), also raise dmgr heap the same way (dmgr → JVM settings) and restart dmgr.
+	•	If you use wsadmin, run it with a larger heap, e.g.:
+	•	Windows: wsadmin.bat -Xmx2048m
+	•	Linux/AIX: wsadmin.sh -Xmx2048m
+
+	3.	Turn on modern GC (IBM J9 / OpenJ9)
+
+	•	In the same JVM settings, add:
+	•	-Xgcpolicy:gencon
+	•	-Xverbosegclog:verbosegc.log
+	•	This helps fragmentation and gives you data if it happens again.
+
+	4.	Reduce what WebSphere has to scan (helps big EARs/WARs)
+
+	•	If your web.xml doesn’t rely on runtime annotation discovery, set:
+	•	<web-app metadata-complete="true" ...>
+This stops deep annotation scanning of third-party jars.
+	•	Remove/trim huge, unused libraries inside the app (fat jars, duplicate frameworks).
+
+	5.	Clear caches before retry
+
+	•	Stop the server.
+	•	Delete profile_root/temp and profile_root/wstemp.
+	•	Start the server and redeploy.
+
+	6.	If it still OOMs, go higher and verify
+
+	•	Try Max heap 3–4 GB if the host has memory.
+	•	Check verbosegc.log for “allocation failure” right before crash—if free heap is tiny at full GC, you need more heap; if plenty of free heap, you may be hitting a gigantic single allocation or class scanning blow-up.
+
+Useful thresholds I’ve seen work in WAS 9:
+	•	server1: -Xms1536m -Xmx3072m -Xgcpolicy:gencon
+	•	dmgr:   -Xms1024m -Xmx2048m -Xgcpolicy:gencon
+
+Optional hardening (only if you still struggle):
+	•	Split the EAR into smaller modules or turn very large static resources into a CDN/external.
+	•	Exclude test/sample jars from WEB-INF/lib.
+	•	JSP precompile OFF during deploy (reduces peak memory at install time).
+
+Do the heap increases first (items 1 and 2), clear temp/wstemp, then redeploy. That usually resolves this specific OOM on class/annotation scanning.
