@@ -1,0 +1,88 @@
+Here’s a structured breakdown of the LN AMS demo from MR, tying it together with the sample request style you shared from the screenshots and the RemoteRest.json collection:
+
+⸻
+
+1. High-Level Summary
+	•	The demo showed how LN AMS (LexisNexis Address Management System) integrates into the USPS identity proofing workflow.
+	•	Two levels of checks:
+	•	Level 1: Device + Email Risk Assessment.
+	•	Level 2: Business Address + ID checks through AMS.
+	•	The workflow can branch depending on pass/fail results, and a passive mode option allows cascading checks regardless of AMS results.
+	•	Leadership decision: currently AMS is bypassed in production (only checks residential vs business), but framework is in place for future use.
+
+⸻
+
+2. Workflow Steps
+
+Step 1: Device & Email Risk (Level 1)
+	•	Endpoint: CheckDevice (from RemoteRest.json) ￼
+	•	Request includes:
+	•	sponsorCode, customerUniqueID, firstName, lastName, emailAddress,
+	•	Address details, phone, session IDs, and IP.
+	•	Outcomes:
+	•	If fail (e.g., invalid email), workflow stops.
+	•	If pass, continue to Level 2.
+
+⸻
+
+Step 2: AMS Checks (Level 2)
+	•	Verifies business identity using:
+	•	companyName + address.
+	•	Outcomes:
+	•	If AMS fails, proceed to BID (Business ID) Check or ID verification.
+	•	If AMS passes, normally workflow ends here unless passive mode is enabled.
+
+⸻
+
+Step 3: Passive Mode
+	•	Configurable flag: amsPassiveMode = true.
+	•	Behavior:
+	•	Even if AMS passes, still proceed to BID/ID check.
+	•	Used to make flow more restrictive (i.e., AMS + BID both must pass).
+	•	This was demoed in Postman by toggling configuration in SponsorConfiguration.
+
+⸻
+
+Step 4: Final Decision
+	•	Possible outcomes:
+	•	Fail at Level 1 → Workflow stops.
+	•	Pass Level 1, Fail Level 2 → Final = Fail.
+	•	Pass Level 1, Pass Level 2 → Final = Pass.
+	•	Passive Mode ON → BID check still called, outcome depends on both AMS + BID.
+
+⸻
+
+3. Sample Request (from your screenshots & RemoteRest.json)
+
+Example payload to CheckDevice (/RemoteRest/resources/remote/CheckDevice):
+
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "2023051704",
+  "firstName": "Emer",
+  "lastName": "Credo",
+  "emailAddress": "medium_confidence@usps.gov",
+  "streetAddress1": "42981 Bonnieblue Ct",
+  "city": "Ashburn",
+  "state": "VA",
+  "zipCode": "20147",
+  "mobilePhone": "5711234567",
+  "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+  "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+  "trueIPAddress": "127.0.0.1"
+}
+
+	•	This triggers Level 1 (Device + Email Risk).
+	•	If successful, the same company/address data is reused for Level 2 AMS checks.
+
+⸻
+
+4. Key Takeaways
+	•	AMS is currently limited but kept in workflow for future expansion.
+	•	Passive Mode ensures BID check always runs, even if AMS passes.
+	•	The system is designed for flexibility: USPS can tighten or relax rules by changing configurations.
+	•	In production, AMS is bypassed due to limited fraud prevention capability, but integration framework is complete.
+
+⸻
+
+Would you like me to draw a simple flow diagram (showing Level 1 → Level 2 → Passive Mode branch → Final decision) so it’s easier to visualize the workflow?
