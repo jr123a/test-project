@@ -1,0 +1,93 @@
+Got it—here’s a hardened, drop-in version that avoids the usual Oracle gotchas (nulls, NLS month names, interval casting). If your prior run threw a syntax/type/NLS error, this will resolve it.
+
+Detail query (no NLS issues, null-safe, interval + seconds)
+
+-- RP/DR latency breakdown (detail, null-safe, NLS-safe)
+WITH base AS (
+  SELECT
+      dr.person_id,
+      dr.event_id,
+      dr.create_date            AS dr_create_dt,
+      dr.received_response_date AS dr_response_dt,
+      dr.update_date            AS dr_update_dt,
+      rp.create_date            AS rp_create_dt,
+      rp.update_date            AS rp_update_dt
+  FROM ips_own.rp_device_reputation dr
+  JOIN ips_own.rp_event rp
+    ON rp.person_id = dr.person_id
+   AND rp.event_id  = dr.event_id
+  WHERE rp.create_date BETWEEN TO_DATE('2025-10-20 15:00:00','YYYY-MM-DD HH24:MI:SS')
+                           AND TO_DATE('2025-10-20 16:10:00','YYYY-MM-DD HH24:MI:SS')
+)
+SELECT
+  person_id,
+  event_id,
+
+  -- readable timestamps (avoid NLS-dependent MON by using ISO)
+  TO_CHAR(dr_create_dt, 'YYYY-MM-DD HH24:MI:SS') AS devicePRStartTime,
+  TO_CHAR(dr_response_dt, 'YYYY-MM-DD HH24:MI:SS') AS deviceResponseAt,
+  TO_CHAR(dr_update_dt, 'YYYY-MM-DD HH24:MI:SS') AS drDataUpdateAt,
+  TO_CHAR(rp_create_dt, 'YYYY-MM-DD HH24:MI:SS') AS rpEventStartTime,
+  TO_CHAR(rp_update_dt, 'YYYY-MM-DD HH24:MI:SS') AS rpEventCompleted,
+
+  -- seconds (null-safe)
+  ROUND( NVL((dr_response_dt - dr_create_dt) * 86400, 0) ) AS deviceResponseSec,
+  ROUND( NVL((rp_update_dt  - rp_create_dt)  * 86400, 0) ) AS rpEventProcessingSec,
+  ROUND( NVL((rp_create_dt  - dr_create_dt)  * 86400, 0) ) AS replicationSec,       -- TMS→RP_EVENT
+  ROUND( NVL((dr_update_dt  - dr_response_dt) * 86400, 0) ) AS drPostRespInternalSec,
+
+  -- pretty intervals (return NULL if any side is NULL to avoid type errors)
+  CASE WHEN dr_response_dt IS NOT NULL AND dr_create_dt IS NOT NULL
+    THEN NUMTODSINTERVAL( (dr_response_dt - dr_create_dt) * 86400, 'SECOND') END AS deviceResponseINT,
+  CASE WHEN rp_update_dt IS NOT NULL AND rp_create_dt IS NOT NULL
+    THEN NUMTODSINTERVAL( (rp_update_dt  - rp_create_dt)  * 86400, 'SECOND') END AS rpEventProcessingINT,
+  CASE WHEN rp_create_dt IS NOT NULL AND dr_create_dt IS NOT NULL
+    THEN NUMTODSINTERVAL( (rp_create_dt  - dr_create_dt)  * 86400, 'SECOND') END AS replicationINT,
+  CASE WHEN dr_update_dt IS NOT NULL AND dr_response_dt IS NOT NULL
+    THEN NUMTODSINTERVAL( (dr_update_dt  - dr_response_dt) * 86400, 'SECOND') END AS drPostRespInternalINT
+
+FROM base
+ORDER BY rp_create_dt DESC;
+
+Summary (avg + p95; numeric only, no GROUP BY traps)
+
+WITH base AS (
+  SELECT
+      dr.create_date            AS dr_create_dt,
+      dr.received_response_date AS dr_response_dt,
+      dr.update_date            AS dr_update_dt,
+      rp.create_date            AS rp_create_dt,
+      rp.update_date            AS rp_update_dt
+  FROM ips_own.rp_device_reputation dr
+  JOIN ips_own.rp_event rp
+    ON rp.person_id = dr.person_id
+   AND rp.event_id  = dr.event_id
+  WHERE rp.create_date BETWEEN TO_DATE('2025-10-20 15:00:00','YYYY-MM-DD HH24:MI:SS')
+                           AND TO_DATE('2025-10-20 16:10:00','YYYY-MM-DD HH24:MI:SS')
+)
+SELECT
+  COUNT(*) AS samples,
+
+  ROUND(AVG( (dr_response_dt - dr_create_dt) * 86400 )) AS avg_deviceResponseSec,
+  ROUND(AVG( (rp_update_dt  - rp_create_dt)  * 86400 )) AS avg_rpEventProcessingSec,
+  ROUND(AVG( (rp_create_dt  - dr_create_dt)  * 86400 )) AS avg_replicationSec,
+
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (dr_response_dt - dr_create_dt) * 86400)
+    AS p95_deviceResponseSec,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (rp_update_dt - rp_create_dt) * 86400)
+    AS p95_rpEventProcessingSec,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (rp_create_dt - dr_create_dt) * 86400)
+    AS p95_replicationSec
+FROM base
+WHERE dr_response_dt IS NOT NULL
+  AND rp_update_dt  IS NOT NULL
+  AND dr_create_dt  IS NOT NULL
+  AND rp_create_dt  IS NOT NULL;
+
+Why this fixes common errors
+	•	NLS month mismatch (ORA-01843 / 01861): uses ISO YYYY-MM-DD HH24:MI:SS in TO_DATE.
+	•	Interval datatype errors (ORA-30081 / 00932): NUMTODSINTERVAL only runs when both sides are non-null.
+	•	Null arithmetic pitfalls: wrapped differences with NVL (for seconds) and CASE (for intervals).
+	•	Ambiguous joins/duplicates: explicit join on (person_id, event_id) only.
+
+If you still hit an error, paste the exact ORA-code and I’ll tailor a pinpoint patch.
