@@ -1,0 +1,110 @@
+Perfect—here’s a drop-in Oracle SQL you can run. It shows the three latencies everyone asked for, plus readable timestamps. I’m giving you a “detail” grid and a “summary” roll-up.
+
+1) Detail rows (per event/person)
+
+-- RP/DR latency breakdown (detail)
+WITH base AS (
+  SELECT
+      dr.person_id,
+      dr.event_id,
+      dr.create_date              AS dr_create_dt,          -- DeviceReputation start
+      dr.received_response_date   AS dr_response_dt,        -- DR response back
+      dr.update_date              AS dr_update_dt,          -- DR/TMS internal update
+      rp.create_date              AS rp_create_dt,          -- when record lands in RP_EVENT
+      rp.update_date              AS rp_update_dt           -- when RP_EVENT finishes/updates
+      -- ,rp.kba_supplier_id       AS kba_supplier_id       -- keep if you want supplier join
+  FROM ips_own.rp_device_reputation dr
+  JOIN ips_own.rp_event rp
+    ON rp.person_id = dr.person_id
+   AND rp.event_id  = dr.event_id
+  WHERE rp.create_date BETWEEN TO_DATE('20-OCT-2025 15:00:00','dd-mon-yyyy hh24:mi:ss')
+                           AND TO_DATE('20-OCT-2025 16:10:00','dd-mon-yyyy hh24:mi:ss')
+    AND rp.update_date IS NOT NULL
+    AND dr.received_response_date IS NOT NULL
+)
+SELECT
+  person_id                                       AS person_id,
+  event_id                                        AS event_id,
+
+  -- nice, readable timestamps
+  TO_CHAR(dr_create_dt,   'dd-mon-yyyy hh24:mi:ss') AS devicePRStartTime,
+  TO_CHAR(dr_response_dt, 'dd-mon-yyyy hh24:mi:ss') AS deviceResponseAt,
+  TO_CHAR(dr_update_dt,   'dd-mon-yyyy hh24:mi:ss') AS drDataUpdateAt,
+  TO_CHAR(rp_create_dt,   'dd-mon-yyyy hh24:mi:ss') AS rpEventStartTime,
+  TO_CHAR(rp_update_dt,   'dd-mon-yyyy hh24:mi:ss') AS rpEventCompleted,
+
+  -- raw seconds (easy to sort/avg)
+  ROUND( (dr_response_dt - dr_create_dt) * 86400 )     AS deviceResponseSec,
+  ROUND( (rp_update_dt  - rp_create_dt)  * 86400 )     AS rpEventProcessingSec,
+  ROUND( (rp_create_dt  - dr_create_dt)  * 86400 )     AS replicationSec,         -- **ASKED FOR** (TMS→RP_EVENT)
+  ROUND( (dr_update_dt  - dr_response_dt) * 86400 )    AS drPostRespInternalSec,  -- optional internal DR/TMS
+
+  -- pretty intervals
+  NUMTODSINTERVAL((dr_response_dt - dr_create_dt) * 86400, 'SECOND') AS deviceResponseINT,
+  NUMTODSINTERVAL((rp_update_dt  - rp_create_dt)  * 86400, 'SECOND') AS rpEventProcessingINT,
+  NUMTODSINTERVAL((rp_create_dt  - dr_create_dt)  * 86400, 'SECOND') AS replicationINT,
+  NUMTODSINTERVAL((dr_update_dt  - dr_response_dt) * 86400, 'SECOND') AS drPostRespInternalINT
+
+FROM base
+ORDER BY rp_create_dt DESC;
+
+The key new column everyone wanted is replicationSec / replicationINT, computed as:
+rp_create_dt - dr_create_dt → “TMS/batch replication delay” (time from DR/TMS to the row appearing in RP_EVENT).
+
+If you also want the time to complete RP after it lands, keep rpEventProcessingSec/INT (rp_update_dt - rp_create_dt). And your original “device reputation time” is deviceResponseSec/INT (dr_received_response_date - dr_create_date).
+
+⸻
+
+2) Quick summary (averages, 95th percentile) for the window
+
+-- Roll-up latencies for the same time window
+WITH base AS (
+  SELECT
+      dr.create_date            AS dr_create_dt,
+      dr.received_response_date AS dr_response_dt,
+      dr.update_date            AS dr_update_dt,
+      rp.create_date            AS rp_create_dt,
+      rp.update_date            AS rp_update_dt
+  FROM ips_own.rp_device_reputation dr
+  JOIN ips_own.rp_event rp
+    ON rp.person_id = dr.person_id
+   AND rp.event_id  = dr.event_id
+  WHERE rp.create_date BETWEEN TO_DATE('20-OCT-2025 15:00:00','dd-mon-yyyy hh24:mi:ss')
+                           AND TO_DATE('20-OCT-2025 16:10:00','dd-mon-yyyy hh24:mi:ss')
+    AND rp.update_date IS NOT NULL
+    AND dr.received_response_date IS NOT NULL
+)
+SELECT
+  COUNT(*) AS samples,
+  -- averages (seconds)
+  ROUND(AVG( (dr_response_dt - dr_create_dt) * 86400 )) AS avg_deviceResponseSec,
+  ROUND(AVG( (rp_update_dt  - rp_create_dt)  * 86400 )) AS avg_rpEventProcessingSec,
+  ROUND(AVG( (rp_create_dt  - dr_create_dt)  * 86400 )) AS avg_replicationSec,
+
+  -- p95 (seconds) – Oracle’s PERCENTILE_DISC
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (dr_response_dt - dr_create_dt) * 86400)
+    AS p95_deviceResponseSec,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (rp_update_dt - rp_create_dt) * 86400)
+    AS p95_rpEventProcessingSec,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY (rp_create_dt - dr_create_dt) * 86400)
+    AS p95_replicationSec
+FROM base;
+
+
+⸻
+
+Notes / gotchas
+	•	Oracle date arithmetic returns days; multiplying by 86400 converts to seconds.
+	•	If you want “live now,” swap the BETWEEN with:
+
+rp.create_date >= SYSDATE - (30/1440)  -- last 30 minutes
+
+
+	•	If a step can be missing (nullable timestamps), wrap differences with CASE WHEN x IS NOT NULL AND y IS NOT NULL THEN ... END to avoid null rows.
+	•	Supplier join (optional) if you want to group by vendor:
+
+LEFT JOIN ips_own.ref_kba_supplier s ON rp.kba_supplier_id = s.kba_supplier_id
+
+then add s.supplier_name to SELECT and GROUP BY in the summary.
+
+Want me to tailor these to your exact column names from the screenshot (aliases like DevicePRStartTime, RPEventTime, etc.) or add a “current-time” version you can keep pinned?
