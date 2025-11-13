@@ -1,0 +1,112 @@
+Gotcha, we’re back on the code side only 👍
+Let’s ignore telemetry and Alex’s tool and just harden this filter defensively.
+
+From your screenshot I can see the method:
+	•	Looks at queryString
+	•	Only checks it if it contains do= or cmd=
+	•	Does a couple of string searches (script, alert)
+	•	Then runs the excludePatterns loop
+
+That leaves a lot of gaps (other params, URL-encoded payloads, other dangerous chars, etc.).
+
+Below is a drop-in replacement style implementation that:
+	1.	Checks all query strings (not just do / cmd).
+	2.	Normalizes/decodes once.
+	3.	Uses allow-list patterns and a dangerous-chars / keywords block list.
+	4.	Avoids over-aggressive stripping – it just rejects and logs.
+
+Adjust patterns as needed for your app, but this is a much saner default.
+
+// At top of class
+private static final Pattern DANGEROUS_CHARS = Pattern.compile(
+        "[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]"
+);
+
+private static final Pattern SUSPICIOUS_KEYWORDS = Pattern.compile(
+        "(?i)(script|onerror|onload|javascript:|alert\\s*\\()"
+);
+
+// Example allow-list for "simple" query strings you expect on these endpoints.
+// Tweak this or replace with per-parameter validation if needed.
+private static final Pattern SAFE_QUERY_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9_=&%+\\-.,]*$"
+);
+
+private boolean matchExcludePattern(HttpServletRequest hsr, NameValue nv) {
+
+    String[] excludePatternsArr = excludePatterns.split(",");
+    int index = hsr.getRequestURL().indexOf("IPSWeb");
+    int slashIndex = (index >= 0) ? index + "IPSWeb".length() : 0;
+    int urlLength = hsr.getRequestURL().length();
+
+    String urlAfterRoot = hsr.getRequestURL().substring(slashIndex, urlLength);
+    String queryString = hsr.getQueryString();
+    nv.setBooleanValue(false);
+
+    // === XSS / injection hardening for query string ===
+    if (StringUtils.isNotBlank(queryString)) {
+        // Work with both raw and decoded forms
+        String decoded;
+        try {
+            decoded = URLDecoder.decode(queryString, StandardCharsets.UTF_8.name());
+        } catch (IllegalArgumentException ex) {
+            // Malformed encoding is suspicious
+            CustomLogger.warn(this.getClass(),
+                    "Malformed query string encoding detected: " + queryString);
+            throw new SecurityException("Invalid query string encoding detected.");
+        }
+
+        // Quick allow-list check (keeps out obviously invalid junk)
+        if (!SAFE_QUERY_PATTERN.matcher(queryString).matches()
+                || !SAFE_QUERY_PATTERN.matcher(decoded).matches()) {
+            CustomLogger.warn(this.getClass(),
+                    "Query string failed allow-list validation: " + decoded);
+            throw new SecurityException("Invalid query string detected.");
+        }
+
+        // Block high-risk characters and encoded equivalents
+        if (DANGEROUS_CHARS.matcher(queryString).find()
+                || DANGEROUS_CHARS.matcher(decoded).find()) {
+            CustomLogger.warn(this.getClass(),
+                    "Dangerous characters detected in query string: " + decoded);
+            throw new SecurityException("Potential XSS attack detected.");
+        }
+
+        // Block obviously suspicious keywords / patterns
+        if (SUSPICIOUS_KEYWORDS.matcher(decoded).find()) {
+            CustomLogger.warn(this.getClass(),
+                    "Suspicious keyword pattern detected in query string: " + decoded);
+            throw new SecurityException("Potential XSS attack detected.");
+        }
+
+        // If we got here, query string looks acceptable
+        nv.setBooleanValue(true);
+    }
+
+    // === Existing exclude-pattern logic (unchanged) ===
+    for (String pattern : excludePatternsArr) {
+        pattern = pattern.trim();
+        if (pattern.isEmpty()) {
+            continue;
+        }
+
+        if (hsr.getServletPath().startsWith(pattern)
+                || urlAfterRoot.startsWith(pattern)) {
+            // Web-service resource; allow request through
+            return true;
+        }
+    }
+
+    // No web-service resource patterns matched
+    return false;
+}
+
+What changed vs your original logic (in plain English)
+	•	No more do= / cmd= gate – every query string is inspected.
+	•	No silent “sanitize and continue” – we don’t mutate the query; we reject on bad input.
+	•	Checks both raw and URL-decoded forms, so %3Cscript%3E can’t sneak past.
+	•	Looks for high-risk characters and their encoded forms (<, >, ", ', ;, (), {}, and %3C, %3E, etc.).
+	•	Looks for obvious script markers (script, onerror, javascript:, alert() in a case-insensitive way.
+	•	Uses a simple allow-list (SAFE_QUERY_PATTERN) to quickly reject junk; you can relax or tighten this based on what your endpoints really accept.
+
+If you paste your current method text (not as a photo) I can align the signature/variable names exactly, but this should be very close to a drop-in replacement.
