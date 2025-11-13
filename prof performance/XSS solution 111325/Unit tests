@@ -1,0 +1,164 @@
+Nice, this is a perfect place to lock things in with tests.
+Below is a JUnit 5 + Mockito test class that exercises all the main paths of the new logic.
+
+You can tweak package / class / imports as needed, but this should be very close to drop-in.
+
+package com.usps.ipsweb.filter;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.lang.reflect.Field;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+// Simple stub for whatever NameValue type you use
+class TestNameValue {
+    private boolean value;
+    public void setBooleanValue(boolean v) { this.value = v; }
+    public boolean getBooleanValue() { return value; }
+}
+
+public class IPSCustRegSessionFilterTest {
+
+    private IPSCustRegSessionFilter filter;
+    private HttpServletRequest request;
+    private TestNameValue nameValue;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        filter = new IPSCustRegSessionFilter();
+
+        // Set excludePatterns via reflection (adjust if you have a setter)
+        Field f = IPSCustRegSessionFilter.class.getDeclaredField("excludePatterns");
+        f.setAccessible(true);
+        // example: one web-service resource prefix
+        f.set(filter, "/IPSWeb/services");
+
+        request = mock(HttpServletRequest.class);
+        nameValue = new TestNameValue();
+
+        when(request.getRequestURL())
+                .thenReturn(new StringBuffer("https://host/IPSWeb/verification_user_information.xhtml"));
+        when(request.getServletPath())
+                .thenReturn("/IPSWeb/verification_user_information.xhtml");
+    }
+
+    @Test
+    void validQuery_shouldPassValidation() {
+        // do/cmd present, but no dangerous chars/keywords
+        when(request.getQueryString())
+                .thenReturn("do=view&id=12345");
+
+        assertDoesNotThrow(() ->
+                filter.matchExcludePattern(request, wrap(nameValue))
+        );
+        assertTrue(nameValue.getBooleanValue(), "Expected NameValue to be set to true for valid query");
+    }
+
+    @Test
+    void dangerousChars_shouldThrowSecurityException() {
+        // contains < and >
+        when(request.getQueryString())
+                .thenReturn("do=view&id=<test>");
+
+        SecurityException ex = assertThrows(SecurityException.class, () ->
+                filter.matchExcludePattern(request, wrap(nameValue))
+        );
+        assertTrue(ex.getMessage().toLowerCase().contains("xss"), "Expected XSS message");
+    }
+
+    @Test
+    void encodedDangerousChars_shouldThrowSecurityException() {
+        // %3C = '<', %3E = '>'
+        when(request.getQueryString())
+                .thenReturn("do=view&id=%3Cscript%3E");
+
+        assertThrows(SecurityException.class, () ->
+                filter.matchExcludePattern(request, wrap(nameValue))
+        );
+    }
+
+    @Test
+    void suspiciousKeywordWithoutAngles_shouldThrowSecurityException() {
+        // keyword only, no < >
+        when(request.getQueryString())
+                .thenReturn("cmd=alert(1)");
+
+        assertThrows(SecurityException.class, () ->
+                filter.matchExcludePattern(request, wrap(nameValue))
+        );
+    }
+
+    @Test
+    void malformedEncoding_shouldThrowSecurityException() {
+        // intentionally broken percent-encoding
+        when(request.getQueryString())
+                .thenReturn("do=view&id=%E0%A4%A");
+
+        assertThrows(SecurityException.class, () ->
+                filter.matchExcludePattern(request, wrap(nameValue))
+        );
+    }
+
+    @Test
+    void noQueryString_shouldNotValidateAndReturnFalse() {
+        when(request.getQueryString()).thenReturn(null);
+
+        boolean result = filter.matchExcludePattern(request, wrap(nameValue));
+
+        assertFalse(result, "No exclude pattern should match");
+        assertFalse(nameValue.getBooleanValue(), "NameValue should remain false when no query string");
+    }
+
+    @Test
+    void excludePattern_match_shouldBypassAndReturnTrue() {
+        // This path matches the /IPSWeb/services prefix and should return true
+        when(request.getServletPath()).thenReturn("/IPSWeb/services/someService");
+        when(request.getQueryString()).thenReturn(null);
+
+        boolean result = filter.matchExcludePattern(request, wrap(nameValue));
+
+        assertTrue(result, "Expected excludePatterns match to return true");
+    }
+
+    // --- Helper to adapt TestNameValue to your NameValue type if needed ---
+
+    private NameValue wrap(TestNameValue tn) {
+        // If your real NameValue is compatible, replace this with the actual instance.
+        // For now, this assumes NameValue is an interface/class you can wrap or adapt.
+        return new NameValue() {
+            @Override
+            public void setBooleanValue(boolean value) {
+                tn.setBooleanValue(value);
+            }
+            // add other methods as needed for your real NameValue type
+        };
+    }
+}
+
+How to adapt this quickly
+	•	Package & class names
+Change com.usps.ipsweb.filter and IPSCustRegSessionFilter to match your real package/class.
+	•	NameValue
+If you already have a concrete NameValue class:
+	•	Delete the TestNameValue + wrap() bits.
+	•	Use your real NameValue directly (and assert on whatever getter it has).
+	•	excludePatterns
+If there’s a real setter like setExcludePatterns(String) use that instead of reflection.
+
+Coverage you’re getting
+
+These tests cover:
+	1.	Valid query – passes.
+	2.	Dangerous characters < / > – blocked.
+	3.	Encoded dangerous characters %3C / %3E – blocked.
+	4.	Suspicious keyword alert( in do/cmd – blocked.
+	5.	Malformed encoding – blocked.
+	6.	No query string – no validation, no crash.
+	7.	Exclude pattern match – bypass logic returns true.
+
+You can run this once you paste in your final filter implementation; if any test fails, we can tweak the patterns/messages to line up with your actual code.
