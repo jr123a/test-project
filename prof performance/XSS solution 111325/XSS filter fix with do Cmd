@@ -1,0 +1,111 @@
+Got it, thanks for clarifying 😊
+We’ll do both:
+	1.	Run the general XSS validation for any query string.
+	2.	Have an extra do/cmd-specific block for stricter checks / logging.
+
+Here’s a cleaned-up version you can drop in (merge with your imports / logger):
+
+// At class level
+private static final Pattern DANGEROUS_CHARS = Pattern.compile(
+        "[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]"
+);
+
+private static final Pattern SUSPICIOUS_KEYWORDS = Pattern.compile(
+        "(?i)(script|onerror|onload|javascript:|alert\\s*\\()"
+);
+
+private static final Pattern SAFE_QUERY_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9_=&%+\\-.,]*$"
+);
+
+private boolean matchExcludePattern(HttpServletRequest hsr, NameValue nv) {
+
+    String[] excludePatternsArr = excludePatterns.split(",");
+    int index = hsr.getRequestURL().indexOf("IPSWeb");
+    int slashIndex = (index >= 0) ? index + "IPSWeb".length() : 0;
+
+    String urlAfterRoot = hsr.getRequestURL().substring(slashIndex);
+    String queryString  = hsr.getQueryString();
+    nv.setBooleanValue(false);
+
+    // =========================
+    // 1) GLOBAL XSS VALIDATION
+    // =========================
+    if (StringUtils.isNotBlank(queryString)) {
+
+        String decoded;
+        try {
+            decoded = URLDecoder.decode(queryString, StandardCharsets.UTF_8.name());
+        } catch (IllegalArgumentException ex) {
+            CustomLogger.warn(this.getClass(),
+                    "Malformed query string encoding: " + queryString);
+            throw new SecurityException("Invalid query string encoding detected.");
+        }
+
+        // Allow-list style check
+        if (!SAFE_QUERY_PATTERN.matcher(queryString).matches()
+                || !SAFE_QUERY_PATTERN.matcher(decoded).matches()) {
+            CustomLogger.warn(this.getClass(),
+                    "Query failed allow-list validation: " + decoded);
+            throw new SecurityException("Invalid query string detected.");
+        }
+
+        // Block dangerous characters / encoded equivalents
+        if (DANGEROUS_CHARS.matcher(queryString).find()
+                || DANGEROUS_CHARS.matcher(decoded).find()) {
+            CustomLogger.warn(this.getClass(),
+                    "Dangerous characters detected in query string: " + decoded);
+            throw new SecurityException("Potential XSS attack detected.");
+        }
+
+        // Block obvious script keywords
+        if (SUSPICIOUS_KEYWORDS.matcher(decoded).find()) {
+            CustomLogger.warn(this.getClass(),
+                    "Suspicious keyword in query string: " + decoded);
+            throw new SecurityException("Potential XSS attack detected.");
+        }
+
+        // Passed global validation
+        nv.setBooleanValue(true);
+    }
+
+    // =========================================
+    // 2) EXTRA CHECKS WHEN do= / cmd= PRESENT
+    // =========================================
+    boolean hasDoOrCmd =
+            StringUtils.isNotBlank(queryString) &&
+            (queryString.contains("do=") || queryString.contains("cmd="));
+
+    if (hasDoOrCmd) {
+        // keep team-familiar behavior but just add stronger logging / message
+        CustomLogger.warn(this.getClass(),
+                "High-risk params (do/cmd) present in query string: " + queryString);
+        // you can optionally add even stricter rules here if needed
+        // e.g. only allow alphanum for do/cmd values, etc.
+    }
+
+    // =========================
+    // 3) EXISTING EXCLUDE LOGIC
+    // =========================
+    for (String pattern : excludePatternsArr) {
+        pattern = pattern.trim();
+        if (pattern.isEmpty()) {
+            continue;
+        }
+        if (hsr.getServletPath().startsWith(pattern)
+                || urlAfterRoot.startsWith(pattern)) {
+            // Web service resource; skip EntReqSessionFilter
+            return true;
+        }
+    }
+
+    // No web-service resource patterns found
+    return false;
+}
+
+What this does now:
+	•	Every request with a query string goes through the global XSS checks.
+	•	If do= or cmd= are present, you still have a distinct log path (“high-risk params present”), so your team sees their familiar wording/behavior.
+	•	Attacks that don’t use do/cmd are no longer free to bypass the filter.
+
+If you want, next I can show a quick unit-test style example with a few “good” and “bad” query strings so you can regression-test this filter quickly in CAT.
