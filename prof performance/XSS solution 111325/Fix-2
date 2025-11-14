@@ -1,0 +1,137 @@
+Got it, thanks for the close-up — that helps.
+
+You’re right: the decoded value is just
+
+appURL=https://devpx-custreg.usps.com/entreg/secure/IdentityConfirmAction_input
+
+No spaces, nothing weird. The reason this keeps biting you is that we’re trying to validate the entire query string with one regex, which is brittle (it has to understand all param shapes, including full URLs). That’s why appURL=… keeps tripping the “invalid query” check.
+
+Let’s fix this properly by:
+	1.	Validating per parameter, not the whole query blob.
+	2.	Giving special rules for appURL, do, and cmd, and a generic safe rule for everything else.
+	3.	Still using the XSS checks (DANGEROUS_CHARS, SUSPICIOUS_KEYWORDS) on the decoded values.
+
+Below is a replacement for the validation block that will accept your appURL=https://devpx-custreg... but still block XSS payloads.
+
+⸻
+
+1. Patterns (class-level)
+
+// Characters we never allow in parameter values
+private static final Pattern DANGEROUS_CHARS = Pattern.compile(
+        "[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]"
+);
+
+// Obvious JS/XSS keywords
+private static final Pattern SUSPICIOUS_KEYWORDS = Pattern.compile(
+        "(?i)(script|onerror|onload|javascript:|alert\\s*\\()"
+);
+
+// Generic "safe" value for most params
+private static final Pattern GENERIC_VALUE_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9_.,:@+\\- ]*$"
+);
+
+// appURL must be a USPS https URL
+private static final Pattern APP_URL_PATTERN = Pattern.compile(
+        "^https://[a-zA-Z0-9.-]+\\.usps\\.com/[a-zA-Z0-9_./\\-]*$"
+);
+
+// do/cmd should be simple operation names (adjust as needed)
+private static final Pattern DO_CMD_VALUE_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9_]+$"
+);
+
+
+⸻
+
+2. New query-validation block inside matchExcludePattern
+
+Drop this in where you currently do the SAFE_QUERY_PATTERN checks:
+
+String rawQuery = hsr.getQueryString();
+nv.setBooleanValue(false);
+
+if (StringUtils.isNotBlank(rawQuery)) {
+
+    // Split into individual name=value pairs
+    String[] pairs = rawQuery.split("&");
+    for (String pair : pairs) {
+        if (pair.isEmpty()) {
+            continue;
+        }
+
+        int eqIdx = pair.indexOf('=');
+        String name  = (eqIdx >= 0) ? pair.substring(0, eqIdx) : pair;
+        String valuePart = (eqIdx >= 0 && eqIdx + 1 < pair.length())
+                ? pair.substring(eqIdx + 1)
+                : "";
+
+        String decodedValue;
+        try {
+            decodedValue = URLDecoder.decode(valuePart, StandardCharsets.UTF_8.name());
+        } catch (IllegalArgumentException ex) {
+            CustomLogger.warn(this.getClass(),
+                    "Malformed encoding in query parameter '" + name + "': " + valuePart);
+            throw new SecurityException("Invalid query string encoding detected.");
+        }
+
+        // Global XSS checks on decoded value
+        if (DANGEROUS_CHARS.matcher(decodedValue).find()
+                || SUSPICIOUS_KEYWORDS.matcher(decodedValue).find()) {
+            CustomLogger.warn(this.getClass(),
+                    "Potential XSS attack in param '" + name + "': " + decodedValue);
+            throw new SecurityException("Potential XSS attack detected.");
+        }
+
+        // Per-parameter allow-list
+        if ("appURL".equals(name)) {
+            if (!APP_URL_PATTERN.matcher(decodedValue).matches()) {
+                CustomLogger.warn(this.getClass(),
+                        "appURL failed allow-list validation: " + decodedValue);
+                throw new SecurityException("Invalid appURL value detected.");
+            }
+        } else if ("do".equals(name) || "cmd".equals(name)) {
+            if (!DO_CMD_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                CustomLogger.warn(this.getClass(),
+                        "do/cmd param failed validation: " + decodedValue);
+                throw new SecurityException("Invalid do/cmd value detected.");
+            }
+        } else {
+            if (!GENERIC_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                CustomLogger.warn(this.getClass(),
+                        "Param '" + name + "' failed generic validation: " + decodedValue);
+                throw new SecurityException("Invalid query parameter value detected.");
+            }
+        }
+    }
+
+    // If we got here, query string passed all checks
+    nv.setBooleanValue(true);
+}
+
+Leave your existing excludePatterns loop as it is after this block.
+
+⸻
+
+Why this will fix your current error
+	•	For your failing case:
+	•	name = "appURL"
+	•	decodedValue = "https://devpx-custreg.usps.com/entreg/secure/IdentityConfirmAction_input"
+	•	DANGEROUS_CHARS and SUSPICIOUS_KEYWORDS don’t match (no <, > or script etc).
+	•	APP_URL_PATTERN does match that URL (https, USPS host, normal path).
+	•	So no exception is thrown; the request passes validation.
+
+At the same time, something like:
+
+appURL=https://evil.com/<script>alert(1)</script>
+
+or
+
+cmd=alert(1)
+
+would fail one of the checks and be blocked.
+
+⸻
+
+If you paste this in and redeploy, hit the same registration URL again — it should no longer 500. If you see any other legit parameter get blocked, send me the exact name=value from the log and I’ll adjust that specific pattern without weakening the XSS protections.
