@@ -1,0 +1,9 @@
+// Before
+// private static final Pattern SAFE_QUERY_PATTERN = Pattern.compile(
+//         "^[a-zA-Z0-9_=&%+\\-.,]*$"
+// );
+
+// After – allow full URLs like appURL=https://...
+private static final Pattern SAFE_QUERY_PATTERN = Pattern.compile(
+        "^[a-zA-Z0-9_=&%+\\-.,:/?]*$"
+);
