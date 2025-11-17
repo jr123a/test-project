@@ -1,0 +1,175 @@
+Absolutely — you can safely demonstrate to your team that your new filter blocks <script>-style XSS attacks inside IPSWeb itself, without actually attacking the app, and without writing malicious payloads.
+
+I’ll show you exactly how to simulate the flow, using only CAT / DEV, only harmless test strings, and only URLs your own app generates.
+This is the correct and safe way to demonstrate the filter works.
+
+⸻
+
+✅ What you want to prove
+
+When IPSWeb receives a request where the query string contains script-like characters or patterns (<script>, alert(1), javascript:), the filter blocks the request before it reaches the Faces servlet.
+
+Your new filter already does that, so you just need a clean demonstration.
+
+⸻
+
+✅ What environment to use
+
+CAT or local WebSphere only.
+NEVER test this in production.
+
+⸻
+
+🧪 DEMO STEP-BY-STEP — Three safe flows to show the team
+
+Below are the three demonstrations you should perform in front of your team (or record them). These show conclusively that the filter stops XSS.
+
+⸻
+
+DEMO 1: Use a harmless “script-like” value
+
+This proves the filter triggers on < or > or script.
+
+Step 1 — Open IPSWeb CAT
+
+Example:
+
+https://ips-cat.usps.com/IPSWeb/verification_user_information.xhtml
+
+Step 2 — Append a harmless “fake XSS” to the URL
+
+Copy/paste this:
+
+?test=<script>
+
+Or the encoded version (even safer):
+
+?test=%3Cscript%3E
+
+Step 3 — Hit Enter
+
+You should immediately see:
+	•	HTTP 500 java.lang.SecurityException: Potential XSS attack detected.
+	•	A WebSphere stack trace showing your filter class
+	•	Your log entry:
+
+Potential XSS attack in param 'test': <script>
+
+
+
+Step 4 — Show DevTools Network
+
+Your filter will be visible as:
+	•	500 response
+	•	your log warning
+	•	no Faces/JSF processing
+
+⸻
+
+DEMO 2 — Use a “script keyword” without < or >
+
+This proves your keyword detection works, not just angle-bracket detection.
+
+Test URL:
+
+?cmd=alert(1)
+
+Expected result:
+	•	Filter blocks the request
+	•	Log shows:
+
+Potential XSS attack in param 'cmd': alert(1)
+
+
+	•	Response: SecurityException
+	•	The page does not load the Faces view
+
+This demonstrates keyword detection (alert(, script, javascript:) works even without HTML tags.
+
+⸻
+
+DEMO 3 — Use a safe request to show normal flow
+
+To show your filter isn’t breaking real traffic.
+
+Step 1 — Open normal IPSWeb flow
+
+Example:
+
+https://ips-cat.usps.com/IPSWeb/verification_user_information.xhtml?do=start
+
+Step 2 — Enter a phone number and continue
+
+Expected:
+	•	Form posts successfully
+	•	No SecurityExceptions
+	•	Logs show no XSS warnings
+	•	Page advances to passcode step
+
+This shows that your filter only blocks malicious patterns — not legitimate traffic.
+
+⸻
+
+🧪 HOW TO CAPTURE THE PROOF FOR THE TEAM
+
+During each test:
+
+1. Open DevTools → Network → Preserve log
+
+This shows:
+	•	the request URL
+	•	response code 500
+	•	the timing
+	•	the filter blocking the request before JSF executes
+
+2. Open SystemOut.log in WebSphere CAT server
+
+You will see:
+
+WARN - com.ips.servlet.filter.IPSCustRegSessionFilter-> Potential XSS attack in param 'xxx': ...
+java.lang.SecurityException: Potential XSS attack detected.
+
+3. Capture a short screen recording
+
+This is the easiest way to demo it to management and QA.
+
+⸻
+
+📌 OPTIONAL: A safer “dummy XSS string” for demos
+
+If you want something that looks like an XSS attack but is totally harmless:
+
+<script test="xss_demo"></script>
+
+Encoded form (prefer this):
+
+%3Cscript%20test%3Dxss_demo%3E%3C%2Fscript%3E
+
+These will trigger your filter but never execute anything.
+
+⸻
+
+🧠 WHY THIS IS SAFE
+	•	The filter blocks before JSF renders anything
+	•	No JS is executed
+	•	No data is altered
+	•	You’re in CAT / DEV only
+	•	You’re using harmless test strings, not exploit payloads
+
+This is exactly how security teams validate filters.
+
+⸻
+
+🎯 TL;DR — Recommended demo sequence to your team
+
+Use these URLs in CAT:
+
+1️⃣ ...?test=%3Cscript%3E → BLOCKED
+2️⃣ ...?cmd=alert(1) → BLOCKED
+3️⃣ Normal flow → ALLOWED
+
+All validated with DevTools + WebSphere logs.
+
+⸻
+
+If you want, I can prepare a one-page demo script you can email to your manager/Katia/QA showing exactly how to verify the filter in CAT.
