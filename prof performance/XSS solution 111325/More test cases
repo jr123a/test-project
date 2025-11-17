@@ -1,0 +1,259 @@
+Nice, this is exactly the right time to formalize tests and UX. I’ll break it into:
+	1.	Concrete test cases you can run from the browser / DevTools / Postman.
+	2.	Ideas for the 2048-length test.
+	3.	How to replace the raw 500 with a friendly error page + suggested wording.
+
+All examples assume you’re in CAT/DEV, never prod.
+
+⸻
+
+1) Test cases for the current filter
+
+Recap of what’s in the filter now
+
+For each decoded param value, you have:
+	•	DANGEROUS_CHARS
+
+[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]
+
+
+	•	SUSPICIOUS_KEYWORDS
+
+(?i)(script|onerror|onload|javascript:|alert\s*\()
+
+
+	•	DO_CMD_VALUE_PATTERN (for do / cmd only)
+
+^[a-zA-Z0-9_]+$
+
+
+	•	Length check: decodedValue.length() > 2048 → reject.
+
+Below are test URLs / query strings you can use. You don’t have to use exactly these endpoints; pick any IPSWeb page (e.g. verification_user_information.xhtml) and append the query.
+
+A. DANGEROUS_CHARS – should be BLOCKED
+
+1. Simple <script>
+	•	Query:
+?test=<script>
+	•	Encoded:
+?test=%3Cscript%3E
+	•	Expected:
+	•	Filter throws SecurityException
+	•	Page shows error page (once you wire it)
+	•	Log:
+Potential XSS attack in param 'test': <script>
+
+2. Angle brackets only
+	•	Query: ?name=John<
+	•	Encoded: ?name=John%3C
+	•	Expected: blocked (because of < / %3C).
+
+3. Quotes and braces
+	•	Query: ?q="test"
+	•	Query: ?data={test}
+	•	Expected: blocked (because of " or {).
+
+⸻
+
+B. SUSPICIOUS_KEYWORDS – should be BLOCKED (even without <)
+
+4. JavaScript scheme
+	•	Query: ?url=javascript:alert(1)
+	•	Expected: blocked, log shows keyword match.
+
+5. On-event handlers
+	•	Query: ?img=onerror=alert(1)
+	•	Query: ?x=OnLoad=doSomething
+	•	Expected: blocked (case-insensitive onerror / onload).
+
+6. Alert without tags
+	•	Query: ?cmd=alert(1)
+	•	Expected: blocked, shows it’s not just about </>.
+
+⸻
+
+C. do / cmd strict allow-list – GOOD and BAD examples
+
+7. Valid do / cmd
+	•	?do=viewUser → allowed
+	•	?cmd=verify_phone → allowed
+
+8. Invalid do / cmd – special chars
+	•	?do=view-user → blocked (hyphen not allowed by ^[a-zA-Z0-9_]+$)
+	•	?cmd=delete(); → blocked (parentheses/semicolon trigger DANGEROUS_CHARS and regex).
+
+If team wants hyphen to be allowed in do/cmd, we can loosen the DO_CMD_VALUE_PATTERN, but this is a good test to demonstrate current behavior.
+
+⸻
+
+D. Parameters like appURL, db, etc. – should be ALLOWED
+
+These prove you fixed the earlier false positives.
+
+9. appURL with USPS URL
+	•	?appURL=https://devpx-custreg.usps.com/entreg/secure/IdentityConfirmAction_input
+	•	Expected: allowed, no SecurityException.
+
+10. Opaque token (db)
+	•	?db=eAHjW!XqPQAE!QKS
+	•	Expected: allowed (no dangerous chars / keywords).
+
+11. Combination query
+	•	?appURL=https://devpx-custreg.usps.com/entreg/secure/IdentityConfirmAction_input&db=eAHjW!XqPQAE!QKS&do=start
+	•	Expected: allowed if do=start matches the do pattern.
+
+⸻
+
+E. Mixed – one bad param among good ones
+
+12. One param bad, others OK
+	•	?db=eAHjW!XqPQAE!QKS&test=%3Cscript%3E&do=start
+
+Expected:
+	•	Entire request is blocked (filter throws),
+	•	Log shows Potential XSS attack in param 'test'.
+
+This demonstrates that any bad param stops the request, even if others are clean.
+
+⸻
+
+2) Tests for the 2048-length limit
+
+You mainly want to prove:
+	•	<= 2048 → allowed
+	•	> 2048 → blocked
+
+How to simulate quickly
+
+Use the browser console or a REST client like Postman / curl.
+
+Example (using query string in browser console)
+
+In DevTools console, on any IPSWeb page:
+
+// Builds a URL with a 2048-character 'a...' value
+var base = window.location.origin + "/IPSWeb/verification_user_information.xhtml";
+var val2048 = "a".repeat(2048);
+var val2049 = "b".repeat(2049);
+
+// 1) Open allowed length
+window.open(base + "?long=" + val2048, "_blank");
+
+// 2) Open blocked length (should trigger length check)
+window.open(base + "?long=" + val2049, "_blank");
+
+Expected:
+	•	long=2048 chars → passes filter
+	•	long=2049 chars → filter logs
+Param 'long' exceeded max length: 2049
+and throws SecurityException.
+
+(If you don’t want to use console, you can do the same with Postman or a small local curl script.)
+
+⸻
+
+3) Improving the user-facing error page
+
+Right now the user sees a raw 500 with stack-trace-ish text:
+
+500: java.lang.SecurityException: Invalid query parameter value detected.
+
+You’re right, that’s ugly and confusing.
+
+A. What we want instead
+	•	HTTP status: 400 (Bad Request) or 403 (Forbidden), not 500.
+	•	A friendly USPS-branded page.
+	•	Something that doesn’t reveal internal class names or security details.
+	•	Still logs full details in SystemOut for us.
+
+B. Suggested wording for the error page
+
+Pick one of these message sets and put it on a reused template (e.g. securityError.xhtml or existing generic error page):
+
+Option 1 – simple
+
+We couldn’t complete your request
+
+For security reasons, the page you requested contained characters that aren’t allowed.
+Please use your browser’s Back button and try again, or return to the USPS.com home page.
+
+Option 2 – slightly more detailed
+
+Your request couldn’t be processed
+
+Our system detected unexpected characters in the web address or form data.
+This may happen if a link was copied incorrectly or if your browser sent an invalid request.
+
+Please:
+– Use the Back button and re-enter your information, without special characters, or
+– Return to the USPS.com home page and start your session again.
+
+If the problem continues, please contact USPS technical support and provide the time of this error.
+
+No mention of “XSS”, “SecurityException”, class names, etc. Those stay in the logs.
+
+C. How to wire it in the filter (high-level idea)
+
+In doFilter, instead of letting the SecurityException bubble and cause a 500, catch it and forward/redirect to the error page.
+
+Sketch (you’ll adapt to your filter):
+
+public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+        throws IOException, ServletException {
+
+    HttpServletRequest request  = (HttpServletRequest) req;
+    HttpServletResponse response = (HttpServletResponse) res;
+
+    try {
+        NameValue nv = new NameValue(); // or your actual type
+        boolean isExcluded = matchExcludePattern(request, nv);
+        if (!isExcluded) {
+            chain.doFilter(request, response);
+        } else {
+            chain.doFilter(request, response); // or bypass logic
+        }
+    } catch (SecurityException ex) {
+        // Log full details for us
+        CustomLogger.warn(this.getClass(),
+                "Security filter blocked request: " + ex.getMessage(), ex);
+
+        // Set appropriate status
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+        // Forward to friendly error page
+        request.setAttribute("errorCode", "SEC-4001");
+        request.setAttribute("errorMessage",
+                "We couldn’t complete your request because it contained invalid characters.");
+
+        RequestDispatcher rd =
+                request.getRequestDispatcher("/IPSWeb/securityError.xhtml");
+        rd.forward(request, response);
+    }
+}
+
+You can:
+	•	Reuse an existing generic error page and just pass in a message, or
+	•	Create a small JSF/JSP page securityError.xhtml based on your standard template.
+
+⸻
+
+4) How to present this to your team
+
+When you show the demo:
+	1.	Run a valid request (normal flow) → show it works.
+	2.	Run a few blocked test cases from above (<script>, cmd=alert(1)) with DevTools open.
+	3.	Show:
+	•	Friendly error page,
+	•	SystemOut log line with param/value and “Potential XSS attack detected”,
+	•	No JSF stack trace leaked to the user.
+
+That neatly proves:
+	•	The filter is active,
+	•	It blocks real XSS patterns,
+	•	It doesn’t break legitimate traffic,
+	•	The UX is user-friendly.
+
+If you want, I can next:
+	•	Turn these test cases into a small QA test matrix table you can paste into Jira, or
+	•	Draft the content of securityError.xhtml using your IPSWeb look & feel (header/footer placeholders).
