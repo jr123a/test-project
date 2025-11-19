@@ -1,0 +1,105 @@
+Great, this is a clean refactor and you don’t need to change much.
+
+You basically want:
+	•	matchExcludePattern(...) to be “allowed” to throw a SecurityException.
+	•	doFilter(...) to catch that and forward to a friendly error page, instead of returning a raw 500.
+
+Below is a concrete implementation you can paste in and tweak paths / types as needed.
+
+⸻
+
+1) Update matchExcludePattern signature
+
+You’re already throwing SecurityException inside this method, so just make that explicit in the signature (purely for clarity):
+
+// before
+// private boolean matchExcludePattern(HttpServletRequest hsr, NameValue nv) {
+
+// after
+private boolean matchExcludePattern(HttpServletRequest hsr, NameValue nv) throws SecurityException {
+    // ... your existing logic ...
+    // throw new SecurityException("Potential XSS attack detected.");
+}
+
+You don’t have to change anything inside the method; just keep throwing SecurityException where you detect XSS / invalid query.
+
+⸻
+
+2) Wrap the call in doFilter with try/catch and forward to error page
+
+Here’s a full doFilter example showing how to catch the SecurityException and redirect/forward to a nicer page.
+
+Adjust:
+	•	NameValue construction if it’s different in your code.
+	•	Error page path: "/IPSWeb/securityError.xhtml" → point it to your existing template page.
+
+@Override
+public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+        throws IOException, ServletException {
+
+    HttpServletRequest request  = (HttpServletRequest) req;
+    HttpServletResponse response = (HttpServletResponse) res;
+
+    try {
+        NameValue nv = new NameValue(); // or however you currently create it
+
+        // This can now throw SecurityException
+        boolean isExcluded = matchExcludePattern(request, nv);
+
+        // Your existing logic – keep whatever you already had here
+        // e.g. if (isExcluded) { chain.doFilter(request, response); return; } ...
+        chain.doFilter(request, response);
+
+    } catch (SecurityException se) {
+        // 1) Log full details for debugging / audit
+        CustomLogger.warn(
+                this.getClass(),
+                "Security filter blocked request from " + request.getRemoteAddr()
+                        + " URI=" + request.getRequestURI()
+                        + " : " + se.getMessage(),
+                se);
+
+        // 2) If response is already committed, we can't change it
+        if (response.isCommitted()) {
+            return;
+        }
+
+        // 3) Reset any partial output
+        response.reset();
+
+        // 4) Set a user-appropriate status code (400/403 instead of 500)
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+        // 5) Put friendly info on the request for the error page to render
+        request.setAttribute("errorCode", "SEC-4001");
+        request.setAttribute(
+                "errorMessage",
+                "We could not complete your request because it contained invalid or unexpected characters."
+        );
+
+        // 6) Forward to your existing USPS-styled error page
+        RequestDispatcher rd =
+                request.getRequestDispatcher("/IPSWeb/securityError.xhtml");
+        rd.forward(request, response);
+    }
+}
+
+
+⸻
+
+3) Suggested message for securityError.xhtml
+
+On securityError.xhtml (or whichever template you reuse), you can show:
+
+We couldn’t complete your request.
+
+For security reasons, the page you requested contained characters that are not allowed.
+Please use your browser’s Back button and try again, or return to USPS.com and start a new session.
+
+If the problem continues, please contact USPS technical support and provide the time of this error.
+
+Use #{requestScope.errorMessage} or similar if you want to drive it from the attributes we set in the filter.
+
+⸻
+
+If you paste your current doFilter snippet next, I can merge this into your exact existing logic so you can just drop it in without worrying about missing branches.
