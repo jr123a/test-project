@@ -1,0 +1,149 @@
+Thanks for the extra context. Now it is clear this is not just a slow Equifax response. You have two coupled problems:
+
+1. Equifax call is intermittently timing out or throwing runtime errors (SocketTimeoutException / NullPointerException / UnexpectedRollbackException).
+2. When that happens, IPS Web is re entering verifyPhone -> getPhoneVerificationResponse in a tight loop, spewing logs until disk fills.
+
+So the best path forward has to fix BOTH: make the Equifax client more resilient, and stop the looping behavior immediately when a hard error happens.
+
+What the screenshot shows
+
+* The timeout is thrown inside Apache Wink client during POST:
+  CommonRestServiceImpl.sendInitiateDITRequest(CommonRestServiceImpl.java:460) at the resource.post(String.class, requestJsonStr) line.
+* That exception is wrapped as ClientRuntimeException and bubbles up into PhoneVerificationServiceImpl.verifyPhone -> getPhoneVerificationResponse.
+
+Given Ops sees infinite repeats for the same user ID, that means somewhere above this call you have logic like:
+
+* a polling loop waiting for Equifax DIT response
+* or a retry on any exception without max attempts / backoff
+* or a transaction rollback that causes the same message / request to be re processed immediately
+
+Best fix plan (do in this order)
+
+Step 1: Stop the infinite loop (highest priority)
+You need a guardrail in PhoneVerificationServiceImpl.getPhoneVerificationResponse (or wherever the retry/poll loop is) so ANY Equifax exception causes an exit after a small, bounded number of tries.
+
+Pattern to add:
+
+* attempt counter
+* max attempts (suggest 3)
+* exponential backoff (even 1s, 2s, 4s is enough)
+* after max attempts, set a failure status in DB so the workflow will not requeue / repoll
+
+Pseudo code:
+
+```java
+int maxAttempts = 3;
+for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+  try {
+    return equifaxClient.call(...);
+  } catch (SocketTimeoutException | ClientRuntimeException e) {
+    log.warn("Equifax verifyPhone attempt {} failed for user {}", attempt, userId, e);
+
+    if (attempt == maxAttempts) {
+      markPhoneVerificationFailed(userId, "EQUIFAX_TIMEOUT");
+      throw new PhoneVerificationException("Equifax timeout", e); // DO NOT swallow
+    }
+
+    Thread.sleep(1000L * (long)Math.pow(2, attempt - 1)); // backoff
+  }
+}
+```
+
+Key point: after max attempts, throw a custom exception and mark status FAILED. Do not return null and do not continue polling.
+
+Also add a "last failure timestamp" check so if a request already failed in last X minutes, you do not retry again for that same transaction.
+
+Step 2: Catch runtime exceptions before they flip the transaction to rollback only
+The UnexpectedRollbackException in logs suggests this call happens inside a Spring transactional block, and a RuntimeException marks it rollback only. When the transaction ends, Spring throws UnexpectedRollbackException and your outer workflow probably re tries the whole operation.
+
+Fix:
+
+* Catch Equifax runtime exceptions inside the transactional method
+* Convert to a checked exception or a controlled failure path
+* Ensure you do not let a RuntimeException escape the @Transactional boundary unless you truly want rollback
+
+Example:
+
+```java
+@Transactional
+public PhoneVerificationResult verifyPhone(...) {
+  try {
+    EquifaxResponse r = equifaxClient.call(...);
+    // normal path
+  } catch (Exception e) {
+    markPhoneVerificationFailed(userId, "EQUIFAX_ERROR");
+    // throw checked exception so Spring does not auto rollback and requeue
+    throw new PhoneVerificationException("Equifax failure", e);
+  }
+}
+```
+
+If rollback is still required for DB consistency, then explicitly handle requeue logic so it is delayed and bounded, not immediate infinite re entry.
+
+Step 3: Fix the actual SocketTimeoutException at the client
+Right now Wink defaults can be too low or unset, so read timeout hits and you fail immediately. You need explicit connect and read timeouts on the Wink client.
+
+In getClientResource(webServiceURL) add config like this (exact API depends on your wink setup, but idea is same):
+
+```java
+ClientConfig config = new ClientConfig();
+config.connectTimeout = 10_000; // 10s connect
+config.readTimeout = 30_000;    // 30s socket/read
+
+RestClient client = new RestClient(config);
+Resource resource = client.resource(webServiceURL);
+return resource;
+```
+
+If you are using Wink with Apache HttpClient under the hood, set these properties in the ClientConfig or system properties:
+
+* connect timeout around 10 seconds
+* socket/read timeout around 30 to 45 seconds
+
+The timeout increase reduces frequency of false failures, but do NOT remove the max retry guard from Step 1. Equifax can still be down.
+
+Step 4: Null safety for the intermittent NullPointerException
+The Ops email shows NPEs also trigger the same loop. Common NPE spots in this flow:
+
+* responseJson == null and later code dereferences it
+* missing field in Equifax payload
+* parse failure returning null
+
+Fix in CommonRestServiceImpl:
+
+* if responseJson is null, return a controlled error response, not null
+
+```java
+String resp = resource.post(String.class, requestJsonStr);
+if (resp == null || resp.isBlank()) {
+  throw new PhoneVerificationException("Empty response from Equifax");
+}
+JSONObject responseJson = JSONObject.parse(resp);
+if (responseJson == null) {
+  throw new PhoneVerificationException("Unparseable response from Equifax");
+}
+```
+
+Then handle that exception via Step 1 and Step 2 logic.
+
+Step 5: Log throttling
+Even with max retries, each attempt currently logs full stack traces at ERROR. That is why disks fill.
+
+Change:
+
+* log WARN for first two attempts with short message
+* log ERROR only once when max attempts exhausted
+* include userId, transactionId, attempt
+
+That alone reduces log volume by 100x.
+
+What I would tell Emer and Karthik as summary
+
+1. Root cause is intermittent Equifax latency/errors plus missing retry limits, causing infinite retry/poll loop.
+2. Immediate fix is to add bounded retries + backoff + fail status to stop looping.
+3. Secondary fix is to set explicit Wink client timeouts to 30 to 45 seconds.
+4. Also harden null checks to prevent NPE based loops.
+5. Catch Equifax exceptions inside transactional boundary to avoid UnexpectedRollbackException driven reprocessing.
+6. Reduce log level and frequency.
+
+If you want, paste the relevant portion of PhoneVerificationServiceImpl.getPhoneVerificationResponse (especially any while/for retry block). I will point out the exact lines to change and draft a patch consistent with your IPS Web code style.
