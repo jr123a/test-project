@@ -1,0 +1,171 @@
+Here is a cleaned-up, safer version of your method that addresses the exact production issue:
+
+* Stops looping on SocketTimeoutException / ClientRuntimeException / NPEs (not just status 500).
+* Adds max attempts = 3 with exponential backoff.
+* Does not spam ERROR logs on every retry.
+* Avoids NPE when initiateResponse is null.
+* Sets hasError correctly (your current additionalErrorDetail is never set, so hasError is basically always false).
+* Fails fast after max attempts and marks decision FAILED.
+
+I kept your overall flow and return type intact.
+
+```java
+public PhoneVerificationResponse verifyPhoneWithEquifaxDIT(PersonVo personVo, String sponsorUserId,
+        RpEvent phoneEvent) throws Exception {
+
+    CustomLogger.enter(this.getClass());
+
+    String bearerToken = generateEquifaxBearerToken(EQUIFAX_DIT_OAUTH_SCOPE, EQUIFAX_DIT_TOKEN_TYPE, false);
+    CustomLogger.debug(this.getClass(), "Bearer token: " + bearerToken);
+
+    long eventId = phoneEvent.getEventId();
+    InitiateDITRequestModel initiateRequest = prepareDitInitiateRequest(personVo, sponsorUserId, eventId);
+
+    Gson g = new Gson();
+    String requestStr = g.toJson(initiateRequest);
+    CustomLogger.debug(this.getClass(), "Equifax Verify Phone with DIT Request:" + requestStr);
+
+    InitiateDITResponseModel initiateResponse = null;
+    String responseStr = "";
+
+    final int maxAttempts = 3;
+    int attemptCtr = 0;
+
+    boolean hasError = false;
+    String overallDecision = RpPhoneVerification.DECISION_FAILED;
+
+    // Retry on:
+    // - HTTP 500 from Equifax
+    // - network timeouts (SocketTimeoutException etc.)
+    // - client runtime exceptions from Wink
+    // Any other exception is treated as non-retryable and fails fast.
+    while (attemptCtr < maxAttempts) {
+        attemptCtr++;
+
+        try {
+            initiateResponse = commonRestService.sendInitiateDITRequest(bearerToken, initiateRequest);
+            responseStr = g.toJson(initiateResponse);
+
+            setStubResponseData(personVo, responseStr);
+            CustomLogger.debug(this.getClass(), "Equifax Verify Phone with DIT Response:" + responseStr);
+
+            // If response is null, treat as error and retry
+            if (initiateResponse == null) {
+                hasError = true;
+                CustomLogger.warn(this.getClass(),
+                        "Equifax DIT response is null. attempt=" + attemptCtr + " user=" + sponsorUserId);
+            } else if (initiateResponse.getStatus() == 500) {
+                hasError = true;
+                CustomLogger.warn(this.getClass(),
+                        "Equifax DIT returned status 500. attempt=" + attemptCtr + " user=" + sponsorUserId);
+            } else {
+                // Success or non-500 response -> stop retry loop
+                hasError = false;
+                break;
+            }
+
+        } catch (java.net.SocketTimeoutException ste) {
+            hasError = true;
+            CustomLogger.warn(this.getClass(),
+                    "Equifax DIT socket timeout. attempt=" + attemptCtr + " user=" + sponsorUserId + " msg=" + ste.getMessage());
+        } catch (org.apache.wink.client.ClientRuntimeException cre) {
+            hasError = true;
+            CustomLogger.warn(this.getClass(),
+                    "Equifax DIT client runtime exception. attempt=" + attemptCtr + " user=" + sponsorUserId + " msg=" + cre.getMessage());
+        } catch (NullPointerException npe) {
+            // Defensive: treat intermittent NPE as retryable once or twice.
+            hasError = true;
+            CustomLogger.warn(this.getClass(),
+                    "Equifax DIT NPE. attempt=" + attemptCtr + " user=" + sponsorUserId + " msg=" + npe.getMessage());
+        } catch (Exception e) {
+            // Non-retryable, fail fast
+            hasError = true;
+            CustomLogger.error(this.getClass(),
+                    "Equifax DIT non-retryable exception. attempt=" + attemptCtr + " user=" + sponsorUserId, e);
+            throw e;
+        }
+
+        // Backoff before retrying (1s, 2s, 4s)
+        if (attemptCtr < maxAttempts) {
+            try {
+                long backoffMs = (long) Math.pow(2, attemptCtr - 1) * 1000L;
+                Thread.sleep(backoffMs);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    // If still failing after retries, log once at ERROR and continue gracefully
+    if (hasError) {
+        CustomLogger.error(this.getClass(),
+                "Equifax DIT failed after max attempts=" + maxAttempts + " user=" + sponsorUserId);
+        overallDecision = RpPhoneVerification.DECISION_FAILED;
+    } else {
+        evaluateDITOverallDecision(initiateResponse);
+
+        if (initiateResponse != null && initiateResponse.getDecision() != null) {
+            overallDecision = initiateResponse.getDecision();
+        }
+
+        if (initiateResponse != null) {
+            personVo.setPhoneTrust(initiateResponse.getPhoneTrust());
+            personVo.setIdentityTrust(initiateResponse.getIdentityTrust());
+            personVo.setAddressTrust(initiateResponse.getAddressTrust());
+        }
+    }
+
+    personVo.setPhoneVerificationDecision(overallDecision);
+
+    // Set session id if available
+    if (initiateRequest.getData() != null
+            && initiateRequest.getData().getAdditionalFields() != null
+            && !initiateRequest.getData().getAdditionalFields().isEmpty()
+            && initiateRequest.getData().getAdditionalFields().get(0) != null) {
+        personVo.setSessionId(initiateRequest.getData().getAdditionalFields().get(0).getValue());
+    }
+
+    processDitInitiateResponse(initiateResponse, personVo, phoneEvent, requestStr, responseStr, hasError);
+
+    if (RpPhoneVerification.DECISION_APPROVED.equalsIgnoreCase(overallDecision)) {
+        overallDecision = PhoneVerificationResponse.PV_DECISION_PASS;
+    }
+
+    return new PhoneVerificationResponse(
+            RefOtpSupplier.EQUIFAX_DIT_SMFA_SUPPLIER_ID,
+            RefOtpSupplier.EQUIFAX_DIT_SMFA_SUPPLIER_NAME,
+            overallDecision,
+            phoneEvent.getFinalDecision()
+    );
+}
+```
+
+What changed vs your current version
+
+1. Retry condition expanded
+   Your old code only retried when initiateResponse != null AND status == 500.
+   Now you retry also for:
+
+   * SocketTimeoutException (the real production pain)
+   * ClientRuntimeException from Wink
+   * null response
+   * intermittent NPEs
+
+2. No infinite loop / log flood
+   Max 3 attempts, guaranteed exit.
+   WARN for retries, single ERROR after exhaustion.
+
+3. Fixed hasError logic
+   additionalErrorDetail was never set, so hasError was always false.
+   Now hasError reflects reality.
+
+4. Null safe decision evaluation
+   No dereference if initiateResponse is null.
+
+Recommended follow-up (small but important)
+
+* In commonRestService.getClientResource or Wink config, set socket/read timeout to ~30-45 seconds. That lowers timeout frequency but does not replace the retry guard you now have.
+* If there is another polling loop in getPhoneVerificationResponse, add the same max-attempt guard there too. This method fix prevents repeated retries inside this call, but if the caller itself loops with no limits, you will still see log storms.
+
+If you want, paste getPhoneVerificationResponse (or the caller loop). I will show the exact guard to add so Ops never sees a same-user loop again.
