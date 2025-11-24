@@ -1,0 +1,90 @@
+Yep, the do-while *would* stop after 3 tries **if it actually stayed inside that loop**. The reason you’re seeing “infinite” retries in production is that the loop is **not the thing looping**. What’s looping is the *entire verifyPhone flow* getting re-invoked from above.
+
+Here’s the exact mechanics in your code:
+
+### 1. Your retry loop only runs on a very narrow condition
+
+The do-while retries **only when**:
+
+* `initiateResponse != null` **and**
+* `initiateResponse.getStatus() == 500`
+
+```java
+} while (attmptCtr <= 3 && (initiateResponse != null && initiateResponse.getStatus() == 500));
+```
+
+So the loop is **not entered for**:
+
+* SocketTimeoutException
+* ClientRuntimeException
+* NullPointerException
+* Any other thrown exception
+* null/empty response
+
+### 2. When a timeout happens, the loop never gets a response to check
+
+On a timeout, this line throws:
+
+```java
+initiateResponse = commonRestService.sendInitiateDITRequest(...)
+```
+
+So:
+
+* `initiateResponse` is never set
+* control jumps **out of this method immediately**
+* the do-while condition is never evaluated again
+* your local `attmptCtr` dies with the stack frame
+
+So you don’t get “3 tries then stop” — you get **1 thrown exception and exit**.
+
+### 3. The “infinite loop” is happening one layer above
+
+From Karthik’s email, the repeated log lines are:
+
+`verifyPhone -> getPhoneVerificationResponse -> Exception occurred during the Equifax call for user X`
+
+Those repeating lines with the same user ID mean:
+
+* some **outer orchestration/polling/retry mechanism** is calling `verifyPhone/getPhoneVerificationResponse` again and again for the same transaction whenever ANY exception escapes.
+
+Common sources in IPSWeb:
+
+* a polling loop in `getPhoneVerificationResponse` waiting for Equifax state change
+* a workflow engine / JMS / scheduler that retries on failure
+* Spring transactional rollback causing the same unit of work to be reprocessed
+  (this matches the UnexpectedRollbackException case)
+
+Because your method throws runtime exceptions upward, the outer layer treats it as “retryable” and re-invokes the whole thing. **Each re-invoke resets `attmptCtr` back to 0.**
+
+So the system behavior looks like:
+
+```
+Outer layer calls verifyPhoneWithEquifaxDIT()
+  attemptCtr starts at 0
+  timeout happens -> exception thrown -> method exits
+
+Outer layer catches/handles failure and immediately retries whole verifyPhone flow
+  attemptCtr starts at 0 again
+  timeout happens -> exception thrown -> exits
+...repeat forever...
+```
+
+That’s why disk fills — every full re-entry logs ERROR again.
+
+### Quick analogy you can use in the meeting
+
+“The 3-attempt loop is like three knocks on a door *only if the door answers with 500*. But when Equifax doesn’t answer at all (timeout), we walk away after the first knock — and the workflow outside keeps coming back and starting over, so we’re knocking once per visit forever.”
+
+### Bottom line to tell the team
+
+* The **inner loop is capped**, but it **doesn’t apply to exceptions** like SocketTimeoutException.
+* Those exceptions escape and trigger **outer retries with no cap**, so the overall transaction loops infinitely.
+
+That’s exactly why the fix I suggested:
+
+1. catches those exceptions inside this method,
+2. retries up to 3 **including timeouts**,
+3. then marks a failure and exits cleanly — preventing the outer layer from re-entering forever.
+
+If you want, paste the relevant part of `getPhoneVerificationResponse` (or wherever the polling/retry is). I’ll point to the exact outer loop that’s re-invoking this and show the guard to add there too.
