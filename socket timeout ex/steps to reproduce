@@ -1,0 +1,165 @@
+Great question, and yeah, given this is legacy code, the **fastest way forward is to *simulate* the failure locally** instead of waiting for real Equifax timeouts.
+
+You basically want to reproduce two things:
+
+1. `ClientRuntimeException` / timeout path in `sendInitiateDITRequest`
+2. `initiateResponse == null` / NPE path in `verifyPhoneWithEquifaxDIT`
+
+Below are concrete, practical ways you can do that on your local without fully understanding all of IPS.
+
+---
+
+## Approach 1 – Easiest: inject a controlled “failure trigger” in code
+
+Since this is your **local** sandbox, you can safely add a tiny “test hook” that only fires for special data (e.g., a fake phone number or sponsorUserId).
+
+### Step 1: Pick a test marker
+
+For example:
+
+* Phone number: `9999999999`
+* Or sponsor user id: `TEST_TIMEOUT`
+
+You’ll drive your UI/workflow using that data.
+
+### Step 2: In `sendInitiateDITRequest`, simulate the timeout / runtime error
+
+Right at the top of `sendInitiateDITRequest`, add something like:
+
+```java
+public InitiateDITResponseModel sendInitiateDITRequest(String bearerToken,
+        InitiateDITRequestModel initiateRequest) {
+
+    CustomLogger.enter(this.getClass());
+
+    // TEST HOOK – only for local debugging
+    try {
+        String testPhone = null;
+        if (initiateRequest != null
+                && initiateRequest.getData() != null
+                && initiateRequest.getData().getPhone() != null) {
+            testPhone = initiateRequest.getData().getPhone().getNumber();
+        }
+
+        if ("9999999999".equals(testPhone)) {
+            // Simulate a slow Equifax that causes timeout
+            Thread.sleep(60_000L); // longer than your read timeout
+
+            // Or simulate the exact exception path you care about
+            throw new ClientRuntimeException(
+                    new java.net.SocketTimeoutException("Simulated read timeout for local testing"));
+        }
+    } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+    }
+
+    // existing code continues...
+```
+
+Now, when you run the workflow with phone `9999999999`, `sendInitiateDITRequest` will **always go into the `ClientRuntimeException` catch block** and return `initiateResponse = null`, just like production timeout cases.
+
+### Step 3: Hit the flow from UI / workflow
+
+* Use your normal path (whatever page / workflow drives phone verification).
+* Enter the test phone number `9999999999` and submit.
+* Set breakpoints in:
+
+  * `sendInitiateDITRequest`
+  * `verifyPhoneWithEquifaxDIT`
+* Watch how:
+
+  * `sendInitiateDITRequest` logs the `ClientRuntimeException` and returns `null`
+  * `verifyPhoneWithEquifaxDIT` receives `initiateResponse == null`
+  * Then you can see whether `evaluateDITOverallDecision(initiateResponse)` causes an NPE and whether the outer code re-invokes it.
+
+This exactly recreates the “null response + NPE + loop” behavior in a controlled way.
+
+---
+
+## Approach 2 – Simulate a null / malformed response without messing with network
+
+If you want to reproduce the **NPE path** directly:
+
+Inside `sendInitiateDITRequest`, after the happy-path call, temporarily force `initiateResponse` to null for a special test case:
+
+```java
+responseJson = JSONObject.parse(
+        resource.contentType(MediaType.APPLICATION_JSON)
+                .header(HEADER_AUTHORIZATION, authorization)
+                .header(HEADER_ACCEPT, "*/*")
+                .post(String.class, requestJsonStr));
+
+if (responseJson != null) {
+    initiateResponse = g.fromJson(responseJson.toString(), InitiateDITResponseModel.class);
+    initiateResponse.setStatus(200);
+}
+
+// TEST HOOK – force null response for a special sponsorUserId / phone
+String testPhone = null;
+if (initiateRequest != null
+        && initiateRequest.getData() != null
+        && initiateRequest.getData().getPhone() != null) {
+    testPhone = initiateRequest.getData().getPhone().getNumber();
+}
+if ("9999999999".equals(testPhone)) {
+    initiateResponse = null; // simulate Equifax returning nothing / parse failure
+}
+```
+
+Then run the same workflow:
+
+* You’ll end up with `initiateResponse == null` in `verifyPhoneWithEquifaxDIT`.
+* That lets you see exactly *where* the NPE is thrown and how many times the outer layer calls this method.
+
+---
+
+## Approach 3 – Config-based: point Equifax URL to a “bad” endpoint
+
+If you prefer **not** to touch code much:
+
+1. Find where `EQUIFAX_DIT_INITIATE_ENDPT` is configured (properties/XML).
+2. For **local only**, set it to something like:
+
+   * A non-routable host: `http://10.255.255.1:9999/equifax-dit`
+     (will usually give you `ConnectException` / `ClientRuntimeException`)
+   * Or a local mock endpoint that accepts connection but doesn’t respond for a long time.
+
+For example, if you spin up a tiny local server that just:
+
+* accepts the POST
+* sleeps for 60 seconds
+* then responds (or doesn’t respond at all)
+
+your Wink client will **hit its read timeout** and throw `ClientRuntimeException`, going into the same code path as production.
+
+But this is more setup than Approach 1. For fast debugging, I’d **start with the code hook**.
+
+---
+
+## What to watch for in the debugger
+
+Once you have any of the above in place:
+
+1. Put breakpoints in:
+
+   * `sendInitiateDITRequest`
+   * `verifyPhoneWithEquifaxDIT`
+   * any outer method that logs `Exception occurred during the Equifax call for user: ...`
+
+2. Run one test transaction with your “special” phone/user.
+
+3. Check:
+
+   * How many times does `verifyPhoneWithEquifaxDIT` get called per request?
+   * What is `initiateResponse` value each time?
+   * Where exactly does the NPE (or other exception) occur?
+   * Does the outer workflow re-invoke the method immediately after the exception?
+
+That will give you **proof** of the looping behavior and the null/exception path, which you can then show to the team along with the fix you implement.
+
+---
+
+If you tell me:
+
+* which field you can easily control from the UI (phone, sponsorUserId, etc.),
+  I can give you a tiny, copy-paste “test hook” snippet customized around that field so you don’t have to guess.
