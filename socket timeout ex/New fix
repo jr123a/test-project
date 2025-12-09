@@ -1,0 +1,250 @@
+Gotcha. Here’s a copy-paste ready version of the method, plus the companion sendInitiateDITRequest that it expects.
+
+I’m assuming your coworker has already changed sendInitiateDITRequest to accept PersonVo as the first argument (as shown in your diff). This version:
+	•	Treats timeouts / runtime errors / null response as a clean FAIL (no NPE).
+	•	Uses personVo.hasError() as the main flag to short-circuit and return a failure response.
+	•	Never calls evaluateDITOverallDecision with null.
+	•	Still calls processDitInitiateResponse with a correct hasError flag.
+
+⸻
+
+1) verifyPhoneWithEquifaxDIT (EquifaxServiceImpl.java)
+
+public PhoneVerificationResponse verifyPhoneWithEquifaxDIT(PersonVo personVo,
+                                                           String sponsorUserId,
+                                                           RpEvent phoneEvent) throws Exception {
+    CustomLogger.enter(this.getClass());
+
+    String bearerToken = generateEquifaxBearerToken(EQUIFAX_DIT_OAUTH_SCOPE,
+                                                    EQUIFAX_DIT_TOKEN_TYPE,
+                                                    false);
+    CustomLogger.debug(this.getClass(), "Bearer token: " + bearerToken);
+
+    long eventId = phoneEvent.getEventId();
+    InitiateDITRequestModel initiateRequest = prepareDitInitiateRequest(personVo, sponsorUserId, eventId);
+
+    Gson g = new Gson();
+    String requestStr = g.toJson(initiateRequest);
+    CustomLogger.debug(this.getClass(), "Equifax Verify Phone with DIT Request:" + requestStr);
+
+    InitiateDITResponseModel initiateResponse = null;
+    AdditionalErrorDetailModel additionalErrorDetail = null;
+    String responseStr = "";
+
+    boolean hasError = false;
+    String overallDecision = RpPhoneVerification.DECISION_FAILED;   // default fail
+
+    try {
+        // Reset error flag before calling the REST client
+        personVo.setHasError(false);
+        personVo.setErrorMessage(null);
+
+        // Single Equifax call – no internal retry loop here
+        initiateResponse = commonRestService.sendInitiateDITRequest(personVo, bearerToken, initiateRequest);
+        responseStr = g.toJson(initiateResponse);
+
+        // If the REST layer marked an error (timeout, runtime, etc.)
+        if (personVo.hasError()) {
+            hasError = true;
+            CustomLogger.error(this.getClass(),
+                    "Equifax DIT error flagged in PersonVo: " + personVo.getErrorMessage());
+        } else if (initiateResponse == null) {
+            // Defensive: null response means something went wrong
+            hasError = true;
+            CustomLogger.error(this.getClass(),
+                    "Equifax DIT returned null InitiateDITResponseModel.");
+        } else {
+            // Normal path – inspect response
+            additionalErrorDetail = initiateResponse.getAdditionalErrorDetails();
+
+            if (additionalErrorDetail == null) {
+                // No additional error → treat as success / business decision
+                hasError = false;
+                evaluateDITOverallDecision(initiateResponse);
+
+                if (initiateResponse.getDecision() != null) {
+                    overallDecision = initiateResponse.getDecision();
+                }
+
+                // Set trust values in PersonVo so they are available in Cust Reg assertions
+                personVo.setPhoneTrust(initiateResponse.getPhoneTrust());
+                personVo.setIdentityTrust(initiateResponse.getIdentityTrust());
+                personVo.setAddressTrust(initiateResponse.getAddressTrust());
+            } else {
+                // Additional error detail present → mark as error
+                hasError = true;
+                overallDecision = RpPhoneVerification.DECISION_FAILED;
+            }
+        }
+
+        // For logging/diagnostics
+        CustomLogger.debug(this.getClass(),
+                "Equifax Verify Phone with DIT Response:" + responseStr);
+
+    } catch (Exception e) {
+        // Catch any unexpected runtime here so they don't bubble up
+        // and cause the outer workflow to loop endlessly.
+        hasError = true;
+        overallDecision = RpPhoneVerification.DECISION_FAILED;
+        personVo.setHasError(true);
+        personVo.setErrorMessage("Exception during Equifax DIT call: " + e.getMessage());
+
+        CustomLogger.error(this.getClass(),
+                "Exception during Equifax DIT call", e);
+    }
+
+    // Set decision on PersonVo regardless
+    personVo.setPhoneVerificationDecision(overallDecision);
+
+    // Set session id if it is available from DIT for the Customer Registration assertion
+    if (initiateRequest != null
+            && initiateRequest.getData() != null
+            && initiateRequest.getData().getAdditionalFields() != null
+            && !initiateRequest.getData().getAdditionalFields().isEmpty()
+            && initiateRequest.getData().getAdditionalFields().get(0) != null) {
+        personVo.setSessionId(initiateRequest.getData().getAdditionalFields().get(0).getValue());
+    }
+
+    // Persist DIT response / audit with correct error flag
+    processDitInitiateResponse(initiateResponse, personVo, phoneEvent, requestStr, responseStr, hasError);
+
+    // Map DIT decision to PhoneVerificationResponse decision
+    if (RpPhoneVerification.DECISION_APPROVED.equalsIgnoreCase(overallDecision)) {
+        overallDecision = PhoneVerificationResponse.PV_DECISION_PASS;
+    }
+
+    return new PhoneVerificationResponse(
+            RefOtpSupplier.EQUIFAX_DIT_SMFA_SUPPLIER_ID,
+            RefOtpSupplier.EQUIFAX_DIT_SMFA_SUPPLIER_NAME,
+            overallDecision,
+            phoneEvent.getFinalDecision());
+}
+
+
+⸻
+
+2) sendInitiateDITRequest (CommonRestServiceImpl.java)
+
+Here’s the companion update that makes the above method work correctly.
+Key points:
+	•	On ClientWebException (HTTP 4xx/5xx) → build a populated InitiateDITResponseModel with proper status (your existing behavior).
+	•	On ClientRuntimeException / other Exception → mark personVo.hasError = true and set an error message (so the caller can bail out cleanly), and return null.
+
+@Override
+public InitiateDITResponseModel sendInitiateDITRequest(PersonVo personVo,
+                                                       String bearerToken,
+                                                       InitiateDITRequestModel initiateRequest) {
+    CustomLogger.enter(this.getClass());
+
+    InitiateDITResponseModel initiateResponse = null;
+    Gson g = new Gson();
+
+    try {
+        String webServiceURL = getIpsPropertyValue(EQUIFAX_DIT_INITIATE_ENDPT);
+        String authorization = String.format(BEARER_TOKEN_FMT, bearerToken);
+        String requestJsonStr = g.toJson(initiateRequest);
+
+        CustomLogger.debug(this.getClass(), "Equifax DIT Web Service URL:" + webServiceURL);
+        CustomLogger.debug(this.getClass(), "Equifax DIT Web Service Authorization:" + authorization);
+        CustomLogger.debug(this.getClass(), "Equifax DIT Web Service Request Body:" + requestJsonStr);
+
+        Resource resource = getClientResource(webServiceURL);
+
+        JSONObject responseJson = JSONObject.parse(
+                resource.contentType(MediaType.APPLICATION_JSON)
+                        .header(HEADER_AUTHORIZATION, authorization)
+                        .header(HEADER_ACCEPT, "*/*")
+                        .post(String.class, requestJsonStr));
+
+        if (responseJson != null) {
+            initiateResponse = g.fromJson(responseJson.toString(), InitiateDITResponseModel.class);
+            initiateResponse.setStatus(200);
+        }
+    } catch (ClientWebException e) {
+        // HTTP error from Equifax – keep your existing parsing logic
+        JSONObject entity = null;
+        try {
+            entity = JSONObject.parse(e.getResponse().getEntity(String.class));
+        } catch (IOException e1) {
+            CustomLogger.error(this.getClass(),
+                    "IOException while parsing ClientWebException entity: " + e1.getMessage(), e1);
+        }
+
+        String errorResponseStr = g.toJson(entity);
+        int status = e.getResponse().getStatusCode();
+        String errorMessage = e.getResponse().getMessage();
+
+        AdditionalErrorDetailModel errorDetail = new AdditionalErrorDetailModel();
+        if (entity != null) {
+            errorDetail.setDeveloperMessage((String) entity.get(KEY_DEVELOPER_MESSAGE));
+            errorDetail.setErrorCode((String) entity.get(KEY_ERROR_CODE));
+            errorDetail.setErrorType((String) entity.get(KEY_ERROR_TYPE));
+        }
+
+        initiateResponse = new InitiateDITResponseModel();
+        initiateResponse.setAdditionalErrorDetails(errorDetail);
+
+        if (entity != null) {
+            initiateResponse.setCorrelationId((String) entity.get(KEY_CORRELATION_ID));
+            initiateResponse.setError((String) entity.get(KEY_ERROR));
+            initiateResponse.setMessage(((String) entity.get(KEY_MESSAGE)) + ". " + errorMessage);
+            initiateResponse.setTransactionId((String) entity.get(KEY_TRANSACTION_ID));
+            initiateResponse.setTimestamp((String) entity.get(KEY_TIMESTAMP));
+
+            JSONObject faultJson = (JSONObject) entity.get(KEY_FAULT);
+            if (faultJson != null) {
+                String faultstring = (String) faultJson.get(KEY_FAULT_STRING);
+                JSONObject faultDetail = (JSONObject) faultJson.get(KEY_DETAIL);
+
+                FaultModel faultModel = new FaultModel();
+                faultModel.setFaultstring(faultstring);
+
+                if (faultDetail != null) {
+                    String errorcode = (String) faultJson.get(KEY_ERROR_CODE);
+                    FaultDetailModel faultDetailModel = new FaultDetailModel();
+                    faultDetailModel.setErrorcode(errorcode);
+                    faultModel.setDetail(faultDetailModel);
+                }
+            }
+        }
+
+        initiateResponse.setStatus(status);
+
+        CustomLogger.debug(this.getClass(),
+                "ClientWebException occurred during Equifax DIT web service call.");
+        CustomLogger.debug(this.getClass(),
+                "ClientWebException error response body:" + errorResponseStr);
+    } catch (ClientRuntimeException e) {
+        // Timeouts / low-level client errors
+        CustomLogger.error(this.getClass(),
+                "ClientRuntimeException occurred in getting Resource response from the web service: "
+                        + e.getMessage(), e);
+
+        if (personVo != null) {
+            personVo.setHasError(true);
+            personVo.setErrorMessage("Equifax DIT ClientRuntimeException: " + e.getMessage());
+        }
+    } catch (Exception e) {
+        // Any other unexpected exception
+        CustomLogger.error(this.getClass(),
+                "Generic Exception occurred in getting Resource response from the web service: "
+                        + e.getMessage(), e);
+
+        if (personVo != null) {
+            personVo.setHasError(true);
+            personVo.setErrorMessage("Equifax DIT Exception: " + e.getMessage());
+        }
+    }
+
+    return initiateResponse;
+}
+
+
+⸻
+
+If you paste these two methods in:
+	•	You’ll eliminate the NPE on evaluateDITOverallDecision(null).
+	•	Timeouts / runtime issues will set personVo.hasError = true, causing verifyPhoneWithEquifaxDIT to return a clean FAIL instead of throwing.
+	•	That should stop the outer workflow from re-invoking the same transaction in a loop and filling the logs.
+
+If your project has slightly different field names on PersonVo (for hasError / errorMessage), just tweak those lines and you’re good.
