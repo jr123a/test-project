@@ -1,0 +1,103 @@
+This is a very common gotcha 👍 — nothing is wrong with your script.
+
+You’re just running the command from the wrong directory / PATH.
+
+⸻
+
+Why this is happening
+
+wsadmin (or wsadmin.bat) is not on the Windows PATH by default.
+
+It lives inside your WebSphere installation, here:
+
+C:\Program Files\IBM\WebSphere\AppServer\bin
+
+So from C:\Users\QWPTGO> Windows simply cannot find it.
+
+⸻
+
+Fastest way to run it (recommended)
+
+Option A: Run wsadmin using full path (one-time, safest)
+
+From Command Prompt:
+
+cd "C:\Program Files\IBM\WebSphere\AppServer\bin"
+
+Then run:
+
+wsadmin.bat -lang jython
+
+You should now see the wsadmin> prompt.
+
+To run your script:
+
+wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+
+Then (after reviewing output):
+
+wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" apply
+
+
+⸻
+
+Even easier (zero typing errors)
+
+Option B: Use the WebSphere Command Prompt shortcut
+
+WebSphere installs a shortcut that pre-sets PATH and JAVA.
+	1.	Start Menu
+	2.	Search for “WebSphere”
+	3.	Open “WebSphere Command Prompt” (or similar)
+
+Then you can run directly:
+
+wsadmin.bat -lang jython
+
+or your script:
+
+wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+
+
+⸻
+
+Quick sanity check (important)
+
+Before running the script, verify wsadmin is connecting to the correct profile:
+
+At the wsadmin> prompt, run:
+
+print AdminControl.getCell()
+
+You should see something like:
+
+EUCGroup00863Node02Cell
+
+If that matches your Windows 11 WAS profile, you’re good.
+
+⸻
+
+Why I do NOT recommend adding wsadmin to PATH (for now)
+
+You can add:
+
+C:\Program Files\IBM\WebSphere\AppServer\bin
+
+to PATH, but:
+	•	Multiple WAS versions can conflict
+	•	Easier to accidentally run against the wrong install later
+
+For now, explicit path or WebSphere Command Prompt is safest.
+
+⸻
+
+Next step after this works
+
+Once wsadmin launches successfully, your CSV-driven J2C script will run cleanly.
+After that, we can:
+	•	Script JDBC providers
+	•	Script DataSources
+	•	Script JMS / resource env entries
+	•	Or export/import entire security config
+
+You’re very close — this is just a PATH issue, not a WebSphere issue.
