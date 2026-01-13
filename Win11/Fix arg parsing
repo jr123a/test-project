@@ -1,0 +1,196 @@
+Got it. Below is the complete, clean, ready-to-use Jython script for WebSphere J2C alias creation from CSV, including the argument parsing (csvPath, dryrun|apply) exactly matching what we discussed and what your screenshots expect.
+
+You can copy-paste this entire file as-is into:
+
+C:\Workspace\Jython\create_j2c_from_csv.py
+
+
+⸻
+
+✅ create_j2c_from_csv.py (FULL FILE)
+
+# ============================================================
+# Script: create_j2c_from_csv.py
+#
+# Purpose:
+#   Create or update WebSphere J2C authentication aliases
+#   from a CSV file.
+#
+# CSV Format (header required):
+#   Alias,User ID,DEV Password
+#
+# Usage:
+#   wsadmin.bat -lang jython -f create_j2c_from_csv.py <csvPath> <dryrun|apply>
+#
+# Examples:
+#   wsadmin.bat -lang jython -f create_j2c_from_csv.py C:\Workspace\Jython\J2CAliases-DEV.csv dryrun
+#   wsadmin.bat -lang jython -f create_jc_from_csv.py C:\Workspace\Jython\J2CAliases-DEV.csv apply
+# ============================================================
+
+import sys
+import csv
+
+# ------------------------------------------------------------
+# Usage / exit helper
+# ------------------------------------------------------------
+def usage_and_exit():
+    print ""
+    print "Usage:"
+    print "  create_j2c_from_csv.py <csvPath> <dryrun|apply>"
+    print ""
+    print "Example:"
+    print "  wsadmin.bat -lang jython -f create_j2c_from_csv.py C:\\Workspace\\Jython\\J2CAliases-DEV.csv dryrun"
+    print ""
+    sys.exit(1)
+
+# ------------------------------------------------------------
+# Argument parsing
+# ------------------------------------------------------------
+if len(sys.argv) != 2:
+    usage_and_exit()
+
+csvPath = sys.argv[0]
+mode = sys.argv[1].lower()
+
+if mode not in ["dryrun", "apply"]:
+    usage_and_exit()
+
+print "[J2C] CSV: %s" % csvPath
+print "[J2C] Mode: %s" % mode
+
+# ------------------------------------------------------------
+# Read CSV
+# ------------------------------------------------------------
+rows = []
+
+try:
+    f = open(csvPath, "r")
+    reader = csv.DictReader(f)
+
+    for row in reader:
+        alias = row.get("Alias", "").strip()
+        userId = row.get("User ID", "").strip()
+        password = row.get("DEV Password", "").strip()
+
+        if not alias or not userId or not password:
+            print "[WARN] Skipping line: missing alias/userId/password"
+            continue
+
+        rows.append((alias, userId, password))
+
+    f.close()
+
+except:
+    print "[ERROR] Unable to read CSV file:", csvPath
+    raise
+
+print "[J2C] Rows found (excluding header/blank): %d" % len(rows)
+
+# ------------------------------------------------------------
+# Get existing auth data (safe fallback)
+# ------------------------------------------------------------
+existingAliases = []
+
+try:
+    authData = AdminTask.listAuthData()
+    if authData:
+        for line in authData.splitlines():
+            if "(" in line:
+                existingAliases.append(line.split("(")[0].strip())
+except:
+    print "[WARN] Could not list existing auth data. Will attempt create."
+
+# ------------------------------------------------------------
+# Process rows
+# ------------------------------------------------------------
+created = 0
+updated = 0
+skipped = 0
+failed = 0
+
+for (alias, userId, password) in rows:
+
+    exists = alias in existingAliases
+
+    if mode == "dryrun":
+        action = "UPDATE" if exists else "CREATE"
+        print '[J2C][DRYRUN] Would %s alias="%s" userId="%s"' % (action, alias, userId)
+        continue
+
+    try:
+        if exists:
+            AdminTask.modifyAuthData(
+                '[-alias "%s" -userId "%s" -password "%s"]'
+                % (alias, userId, password)
+            )
+            updated += 1
+            print '[J2C] UPDATED alias="%s"' % alias
+        else:
+            AdminTask.createAuthData(
+                '[-alias "%s" -userId "%s" -password "%s"]'
+                % (alias, userId, password)
+            )
+            created += 1
+            print '[J2C] CREATED alias="%s"' % alias
+
+    except:
+        failed += 1
+        print '[ERROR] FAILED alias="%s" (check wsadmin logs)' % alias
+
+# ------------------------------------------------------------
+# Save config (apply only)
+# ------------------------------------------------------------
+if mode == "apply":
+    AdminConfig.save()
+    print "[J2C] AdminConfig.save() complete"
+
+# ------------------------------------------------------------
+# Summary
+# ------------------------------------------------------------
+print ""
+print "================ SUMMARY ================"
+print "Mode     :", mode
+print "Created  :", created
+print "Updated  :", updated
+print "Skipped  :", skipped
+print "Failed   :", failed
+print "========================================="
+
+
+⸻
+
+✅ Correct command (IMPORTANT – copy exactly)
+
+From:
+
+C:\Program Files\IBM\WebSphere\AppServer\bin
+
+Dry run
+
+wsadmin.bat -lang jython -f C:\Workspace\Jython\create_j2c_from_csv.py C:\Workspace\Jython\J2CAliases-DEV.csv dryrun
+
+Apply
+
+wsadmin.bat -lang jython -f C:\Workspace\Jython\create_j2c_from_csv.py C:\Workspace\Jython\J2CAliases-DEV.csv apply
+
+
+⸻
+
+🔑 Why this version works (based on your errors)
+	•	Correct sys.argv length for wsadmin
+	•	No Unix-style parsing
+	•	Windows-safe paths
+	•	Explicit CSV headers
+	•	Handles existing aliases cleanly
+	•	Safe dryrun mode
+	•	Uses AdminConfig.save() only on apply
+
+⸻
+
+If you want next:
+	•	Rollback script
+	•	Export J2C aliases to CSV
+	•	Environment-based password switch (DEV/SIT/PROD)
+	•	Datasource + J2C wiring script
+
+Say the word.
