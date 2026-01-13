@@ -1,0 +1,262 @@
+I can do that, but first: please don’t paste/share this CSV content (it contains real passwords/secrets). Treat it like a credential file.
+
+Below is a wsadmin Jython script that reads your CSV and creates or updates J2C (JAASAuthData) aliases automatically. No manual UI work needed.
+
+Assumptions (matches your CSV screenshot)
+	•	Header is: Alias,User ID,DEV Password
+	•	Each row is: alias,userId,password
+	•	If a row has missing alias/userId/password, it will skip and warn (so you don’t create broken entries).
+
+⸻
+
+1) Save this script as: create_j2c_from_csv.py
+
+# create_j2c_from_csv.py
+# Usage:
+#   wsadmin.bat -lang jython -f create_j2c_from_csv.py "C:\Workspace\Jython\J2CAliases-DEV.csv" apply
+#   wsadmin.bat -lang jython -f create_j2c_from_csv.py "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+#
+# Notes:
+# - Creates/updates Global Security -> JAAS - J2C authentication data (JAASAuthData)
+# - Uses AdminTask.createAuthData / AdminTask.modifyAuthData
+# - Skips rows with missing alias/userId/password (warns)
+
+import sys
+import os
+
+def log(msg):
+    print("[J2C] " + msg)
+
+def warn(msg):
+    print("[J2C][WARN] " + msg)
+
+def die(msg):
+    print("[J2C][ERROR] " + msg)
+    sys.exit(1)
+
+def normalize_header(h):
+    # Normalize header names like "User ID" -> "userid"
+    return "".join([c for c in h.strip().lower() if c.isalnum()])
+
+def parse_csv(csv_path):
+    # Minimal CSV parser that handles commas and quotes in a reasonable way.
+    # (Jython usually has csv module, but this keeps it portable.)
+    rows = []
+    if not os.path.exists(csv_path):
+        die("CSV not found: " + csv_path)
+
+    f = open(csv_path, "r")
+    try:
+        lines = f.read().splitlines()
+    finally:
+        f.close()
+
+    if len(lines) == 0:
+        die("CSV is empty: " + csv_path)
+
+    # Basic CSV splitting with quote support
+    def split_csv_line(line):
+        out = []
+        cur = ""
+        in_quotes = 0
+        i = 0
+        while i < len(line):
+            ch = line[i]
+            if ch == '"':
+                # Toggle quote (double quotes inside quoted string -> treat as literal quote)
+                if in_quotes and i + 1 < len(line) and line[i + 1] == '"':
+                    cur += '"'
+                    i += 1
+                else:
+                    in_quotes = 0 if in_quotes else 1
+            elif ch == "," and not in_quotes:
+                out.append(cur)
+                cur = ""
+            else:
+                cur += ch
+            i += 1
+        out.append(cur)
+        return [c.strip() for c in out]
+
+    header_cols = split_csv_line(lines[0])
+    header_map = {}
+    for idx, col in enumerate(header_cols):
+        header_map[normalize_header(col)] = idx
+
+    # Accept common variants
+    def idx_for(*names):
+        for n in names:
+            k = normalize_header(n)
+            if k in header_map:
+                return header_map[k]
+        return None
+
+    alias_i = idx_for("Alias")
+    user_i  = idx_for("User ID", "UserId", "User")
+    pass_i  = idx_for("DEV Password", "Password", "DevPassword")
+
+    if alias_i is None or user_i is None or pass_i is None:
+        die("CSV header must contain Alias, User ID, DEV Password (or close variants). Found: " + str(header_cols))
+
+    for line_no in range(1, len(lines)):
+        line = lines[line_no].strip()
+        if line == "":
+            continue
+        cols = split_csv_line(line)
+
+        # Pad missing columns
+        while len(cols) < len(header_cols):
+            cols.append("")
+
+        alias = cols[alias_i].strip()
+        user  = cols[user_i].strip()
+        pwd   = cols[pass_i].strip()
+
+        rows.append((line_no + 1, alias, user, pwd))
+    return rows
+
+def list_existing_aliases():
+    # Returns a set of existing aliases
+    aliases = {}
+    try:
+        raw = AdminTask.listAuthData("[]")
+        # Typical output format includes lines that contain "(alias): <value>"
+        # We'll do a robust search for "alias" tokens.
+        for line in str(raw).splitlines():
+            s = line.strip()
+            # Examples seen in WAS: "alias myAlias" or "alias: myAlias"
+            if "alias" in s.lower():
+                # try multiple splits
+                parts = s.replace(":", " ").replace("=", " ").split()
+                for i in range(len(parts) - 1):
+                    if parts[i].lower() == "alias":
+                        aliases[parts[i + 1]] = 1
+    except:
+        # If listAuthData fails, we still proceed (creates might work), but updates may not.
+        warn("Could not list existing auth data (AdminTask.listAuthData). Will attempt create and fallback to modify.")
+    return aliases
+
+def create_or_update(alias, user, pwd, description, mode, existing_aliases):
+    # Build AdminTask arguments safely (quote values)
+    # NOTE: This does not print the password.
+    create_cmd = '[-alias "{0}" -userId "{1}" -password "{2}" -description "{3}"]'.format(
+        alias.replace('"', '\\"'),
+        user.replace('"', '\\"'),
+        pwd.replace('"', '\\"'),
+        description.replace('"', '\\"')
+    )
+
+    modify_cmd = '[-alias "{0}" -userId "{1}" -password "{2}" -description "{3}"]'.format(
+        alias.replace('"', '\\"'),
+        user.replace('"', '\\"'),
+        pwd.replace('"', '\\"'),
+        description.replace('"', '\\"')
+    )
+
+    if mode == "dryrun":
+        if alias in existing_aliases:
+            log('DRYRUN would UPDATE alias="{0}" userId="{1}"'.format(alias, user))
+        else:
+            log('DRYRUN would CREATE alias="{0}" userId="{1}"'.format(alias, user))
+        return 0
+
+    # APPLY
+    try:
+        if alias in existing_aliases:
+            AdminTask.modifyAuthData(modify_cmd)
+            log('UPDATED alias="{0}" userId="{1}"'.format(alias, user))
+        else:
+            AdminTask.createAuthData(create_cmd)
+            log('CREATED alias="{0}" userId="{1}"'.format(alias, user))
+        return 1
+    except:
+        # Fallback: if create failed because it exists (or list was wrong), try modify
+        try:
+            AdminTask.modifyAuthData(modify_cmd)
+            log('UPDATED (fallback) alias="{0}" userId="{1}"'.format(alias, user))
+            return 1
+        except:
+            warn('FAILED alias="{0}" (check wsadmin output / logs)'.format(alias))
+            return -1
+
+def main():
+    if len(sys.argv) < 1:
+        die('Usage: wsadmin -lang jython -f create_j2c_from_csv.py "<csvPath>" [apply|dryrun]')
+
+    csv_path = sys.argv[0]
+    mode = "apply"
+    if len(sys.argv) >= 2:
+        mode = sys.argv[1].strip().lower()
+
+    if mode not in ["apply", "dryrun"]:
+        die("Mode must be apply or dryrun")
+
+    log("CSV: " + csv_path)
+    log("Mode: " + mode)
+
+    rows = parse_csv(csv_path)
+    log("Rows found (excluding header/blank): " + str(len(rows)))
+
+    existing = list_existing_aliases()
+
+    ok = 0
+    skipped = 0
+    failed = 0
+
+    for (line_no, alias, user, pwd) in rows:
+        if alias == "" or user == "" or pwd == "":
+            warn("Skipping line {0}: missing alias/userId/password".format(line_no))
+            skipped += 1
+            continue
+
+        # You can choose a consistent description format:
+        desc = alias  # or "" or "Imported from CSV"
+        rc = create_or_update(alias, user, pwd, desc, mode, existing)
+        if rc > 0:
+            ok += 1
+            # keep local state consistent if we created new
+            existing[alias] = 1
+        elif rc == 0:
+            ok += 1
+        else:
+            failed += 1
+
+    if mode == "apply":
+        try:
+            AdminConfig.save()
+            log("AdminConfig.save() complete.")
+        except:
+            warn("AdminConfig.save() failed. You may need to save changes manually or check permissions.")
+
+    log("DONE. ok={0} skipped={1} failed={2}".format(ok, skipped, failed))
+
+main()
+
+
+⸻
+
+2) Run it
+
+From a WAS 9 command prompt (the same one you use for wsadmin):
+
+Dry run (recommended first)
+
+wsadmin.bat -lang jython -f create_j2c_from_csv.py "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+
+Apply (creates/updates + saves)
+
+wsadmin.bat -lang jython -f create_j2c_from_csv.py "C:\Workspace\Jython\J2CAliases-DEV.csv" apply
+
+
+⸻
+
+3) Quick sanity checks before you run “apply”
+
+In your CSV screenshot, I can already see at least one bad row like:
+	•	EquifaxSandboxStateClientID,, (missing user/password)
+
+The script will skip those and tell you which line number, so you can fix the CSV later without blocking the rest.
+
+⸻
+
+If you tell me your WebSphere topology (standalone profile vs ND [Network Deployment]) and whether you’re using security domain, I can tweak the script to target a specific scope. But as-is, this works for the normal “Global security -> JAAS - J2C auth data” setup you’re showing.
