@@ -1,0 +1,229 @@
+Yep — your DRYRUN is fine, but your APPLY is failing because the script is trying to use AdminTask.listAuthData / AdminTask.createAuthData, and on your setup it cannot list existing auth data and then fails every create.
+
+The fastest way to unblock you is: stop using AdminTask for J2C auth and create/modify them using AdminConfig instead (more reliable, doesn’t choke on special characters, and works even when AdminTask behaves weird).
+
+Also: your output shows this twice:
+	•	Skipping line 25: missing alias/userId/password
+	•	Skipping line 31: missing alias/userId/password
+
+So your CSV has blank/malformed rows at those line numbers. That part is OK (script can skip), but just be aware.
+
+⸻
+
+What to do right now (quick)
+
+1) Replace your script with this version (AdminConfig-based)
+
+Save as:
+C:\Workspace\Jython\create_j2c_from_csv.py
+
+# create_j2c_from_csv.py
+# Usage:
+#   wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+#   wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" apply
+
+import sys
+import os
+
+try:
+    import csv
+except:
+    csv = None
+
+def log(msg):
+    print("[J2C] " + msg)
+
+def warn(msg):
+    print("[J2C][WARN] " + msg)
+
+def err(msg):
+    print("[J2C][ERROR] " + msg)
+
+def usage_and_exit():
+    log("Usage: create_j2c_from_csv.py <csvPath> <dryrun|apply>")
+    sys.exit(1)
+
+if len(sys.argv) < 3:
+    usage_and_exit()
+
+csv_path = sys.argv[1]
+mode = sys.argv[2].strip().lower()
+
+if mode not in ("dryrun", "apply"):
+    usage_and_exit()
+
+if not os.path.isfile(csv_path):
+    err("CSV not found: " + csv_path)
+    sys.exit(2)
+
+# Get the Security config object for the current cell
+cell = AdminControl.getCell()
+security_cfg = AdminConfig.getid("/Cell:%s/Security:/" % cell)
+
+if not security_cfg:
+    err("Could not locate Security config object for cell: " + cell)
+    sys.exit(3)
+
+def load_existing_authdata():
+    # Returns map: alias -> configId
+    m = {}
+    ids = AdminConfig.list("JAASAuthData").splitlines()
+    for cid in ids:
+        try:
+            alias = AdminConfig.showAttribute(cid, "alias")
+            if alias:
+                m[alias] = cid
+        except:
+            pass
+    return m
+
+def create_auth(alias, user_id, password):
+    attrs = [
+        ["alias", alias],
+        ["userId", user_id],
+        ["password", password],
+        ["description", alias],
+    ]
+    AdminConfig.create("JAASAuthData", security_cfg, attrs)
+
+def update_auth(config_id, user_id, password):
+    attrs = [
+        ["userId", user_id],
+        ["password", password],
+    ]
+    AdminConfig.modify(config_id, attrs)
+
+existing = load_existing_authdata()
+
+rows_total = 0
+ok = 0
+skipped = 0
+failed = 0
+
+log("CSV: " + csv_path)
+log("Mode: " + mode)
+log("Cell: " + cell)
+
+# Read CSV safely
+def iter_rows():
+    f = open(csv_path, "rb")
+    try:
+        if csv:
+            reader = csv.reader(f)
+            for r in reader:
+                yield r
+        else:
+            # fallback: basic split (should be ok if no commas in values)
+            for line in f:
+                yield [x.strip() for x in line.split(",")]
+    finally:
+        f.close()
+
+first = True
+line_no = 0
+
+for r in iter_rows():
+    line_no += 1
+    # Skip header row if present
+    if first:
+        first = False
+        if len(r) >= 3 and (r[0].strip().lower() == "alias"):
+            continue
+
+    # Normalize row
+    if r is None:
+        skipped += 1
+        continue
+
+    # Some CSV readers return empty list for blank lines
+    if len(r) == 0:
+        warn("Skipping line %d: blank line" % line_no)
+        skipped += 1
+        continue
+
+    # Ensure at least 3 columns: Alias, User ID, DEV Password
+    # If extra commas exist, join the tail back into password (rare, but safer).
+    alias = r[0].strip() if len(r) > 0 else ""
+    user_id = r[1].strip() if len(r) > 1 else ""
+    password = ""
+    if len(r) > 2:
+        password = ",".join(r[2:]).strip()
+
+    rows_total += 1
+
+    if not alias or not user_id or not password:
+        warn("Skipping line %d: missing alias/userId/password" % line_no)
+        skipped += 1
+        continue
+
+    # Allow literal "None" to be treated as skip
+    if password.strip().lower() == "none":
+        warn("Skipping line %d (%s): password is 'None'" % (line_no, alias))
+        skipped += 1
+        continue
+
+    action = "UPDATE" if alias in existing else "CREATE"
+    log("%s alias='%s' userId='%s'" % (("DRYRUN would " + action) if mode == "dryrun" else action, alias, user_id))
+
+    if mode == "dryrun":
+        ok += 1
+        continue
+
+    try:
+        if alias in existing:
+            update_auth(existing[alias], user_id, password)
+        else:
+            create_auth(alias, user_id, password)
+            # refresh local map so duplicates later in file update same object
+            existing = load_existing_authdata()
+        ok += 1
+    except:
+        failed += 1
+        warn("FAILED alias='%s' (check wsadmin trace: profiles\\<profile>\\logs\\wsadmin.traceout)" % alias)
+
+if mode == "apply":
+    try:
+        AdminConfig.save()
+        log("AdminConfig.save() complete.")
+    except:
+        err("AdminConfig.save() failed. Check logs.")
+        failed += 1
+
+log("DONE. total_rows=%d ok=%d skipped=%d failed=%d" % (rows_total, ok, skipped, failed))
+
+
+⸻
+
+2) Run it exactly like this (from CMD, not inside wsadmin)
+
+cd "C:\Program Files\IBM\WebSphere\AppServer\bin"
+
+wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" dryrun
+
+If it looks good:
+
+wsadmin.bat -lang jython -f "C:\Workspace\Jython\create_j2c_from_csv.py" "C:\Workspace\Jython\J2CAliases-DEV.csv" apply
+
+
+⸻
+
+3) If anything still fails, grab the real error here
+
+Open this file right after running:
+
+C:\Program Files\IBM\WebSphere\AppServer\profiles\AppSrv01\logs\wsadmin.traceout
+
+(Or whatever your profile name is.)
+
+That trace will show the exact exception (permissions, config object missing, invalid attribute, etc.).
+
+⸻
+
+Why this fixes your current failure
+	•	Your failure starts with: AdminTask.listAuthData can’t list
+	•	Then every create fails.
+	•	AdminConfig directly creates/modifies JAASAuthData objects and is much more consistent in standalone AppSrv profiles.
+
+⸻
+
+If you want, paste just the last ~30 lines from wsadmin.traceout if any alias still fails after this change, and I’ll tell you the exact root cause in one shot.
