@@ -1,0 +1,148 @@
+That EclipseLink-7197 error is very specific: **EclipseLink is trying to flush/commit a `RefCustomerCategory` instance whose `@Id` is `0`**, and EclipseLink’s default **IdValidation** treats **null/zero** as an invalid primary key for a managed/clone object during `UnitOfWork` change calculation.
+
+In your case, you *intentionally* defined:
+
+```java
+public static final Long CUSTOMER_CATEGORY_ID_UNKNOWN = 0L;
+```
+
+…but EclipseLink is saying: “I’m committing a clone with PK [0] and I don’t allow that.”
+
+## Why it’s happening (most common real cause)
+
+Even though `RefCustomerCategory` is a “reference table” conceptually, somewhere in the flow EclipseLink thinks it needs to **write/flush** something involving that object.
+
+The usual triggers are:
+
+1. **A transient (new) `RefCustomerCategory(0)` is being created in code** (instead of being loaded/referenced from DB) and then attached to another entity.
+
+   * Example pattern:
+
+     ```java
+     RefCustomerCategory cat = new RefCustomerCategory();
+     cat.setCustomerCategoryId(0L);
+     someEntity.setCustomerCategory(cat);   // and mapping has CascadeType.PERSIST or ALL
+     em.persist(someEntity);
+     ```
+   * On flush, EclipseLink tries to treat the category as an entity to validate/persist/track, sees ID=0, and blows up.
+
+2. **Cascade settings on relationships** to `RefCustomerCategory` are causing EclipseLink to try to persist/merge it.
+
+   * If any entity has:
+
+     ```java
+     @ManyToOne(cascade = CascadeType.ALL)   // or PERSIST
+     private RefCustomerCategory customerCategory;
+     ```
+
+     that’s a red flag for reference/lookup tables. You usually do NOT want cascade persist into a lookup.
+
+3. **Something is marking the `RefCustomerCategory` instance as dirty** (changing fields) inside the transaction (even accidentally), so it participates in flush.
+
+---
+
+## The best “real fix” (recommended)
+
+### Fix A: Stop constructing `RefCustomerCategory(0)` in code; always use a managed reference
+
+If you need “Unknown”, do this instead of `new RefCustomerCategory()`:
+
+```java
+RefCustomerCategory unknown =
+    entityManager.getReference(RefCustomerCategory.class, 0L); // assumes row exists
+someEntity.setCustomerCategory(unknown);
+```
+
+Or fetch it once via query and reuse.
+
+This ensures EclipseLink sees it as an existing managed reference, not a new/transient thing to validate/persist.
+
+### Fix B: Remove cascade persist/all from relationships to lookup tables
+
+For any entity that references `RefCustomerCategory`, change from:
+
+* `cascade = CascadeType.ALL` or includes `PERSIST`
+  to
+* **no cascade**, or at most `MERGE` if you truly need it (usually you don’t for lookup tables)
+
+Typical lookup mapping should look like:
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name="CUSTOMER_CATEGORY_ID", referencedColumnName="CUSTOMER_CATEGORY_ID")
+private RefCustomerCategory customerCategory;
+```
+
+No cascade.
+
+### Fix C (optional but clean): Make the lookup entity read-only
+
+If this table is truly reference data and never updated by the app:
+
+```java
+import org.eclipse.persistence.annotations.ReadOnly;
+
+@ReadOnly
+@Entity
+@Table(name="ref_customer_category")
+public class RefCustomerCategory { ... }
+```
+
+This prevents EclipseLink from trying to flush changes for it.
+
+---
+
+## Quick mitigation (works, but I’d treat as last resort)
+
+### Fix D: Allow zero IDs via EclipseLink id-validation setting
+
+You can configure EclipseLink to stop rejecting zero IDs:
+
+**persistence.xml**
+
+```xml
+<property name="eclipselink.id-validation" value="NONE"/>
+```
+
+or if you want only null to be rejected (depends on your EclipseLink version support), you can try value like `NULL`. But `NONE` is the “stop validating id values” hammer.
+
+You can also do it per-entity using EclipseLink annotations (if available in your version), but the global property is the simplest.
+
+**Downside:** this can hide real bugs where IDs are accidentally left as 0.
+
+---
+
+## Fast debugging checklist (so you can pinpoint the exact line)
+
+1. **Search for `new RefCustomerCategory`** in the codebase.
+2. Search for `CUSTOMER_CATEGORY_ID_UNKNOWN` usages.
+3. Find the entity that has a relationship to `RefCustomerCategory` and inspect cascade.
+
+   * Look specifically for `CascadeType.ALL` or `CascadeType.PERSIST`.
+4. If you can reproduce locally: enable EclipseLink SQL + flush debug (at least temporarily) to see what entity is being written right before the exception.
+
+---
+
+## If you want the “most correct” data-model fix
+
+Using **0** as a real primary key value is what’s fighting EclipseLink defaults. A very clean approach is:
+
+* Make “Unknown” row use **1/2/3/4…** (non-zero)
+* Or use **-1** (some teams prefer -1 for unknown) if your DB/constraints allow it
+
+Then update your constants accordingly.
+
+---
+
+## Practical recommendation for your case
+
+Given your code already hard-codes `0L` as Unknown, I’d do this in order:
+
+1. **Remove cascade persist/all** from any association to `RefCustomerCategory`.
+2. Replace any `new RefCustomerCategory(0L)` style code with `em.getReference(..., 0L)`.
+3. If the table is reference-only, add `@ReadOnly`.
+4. Only if you’re blocked and need a quick server-side workaround: set `eclipselink.id-validation=NONE`.
+
+---
+
+If you paste the mapping from the entity that *references* `RefCustomerCategory` (the `@ManyToOne` / `@OneToOne` field where category is used), I can tell you immediately if cascade is the culprit and exactly what to change.
