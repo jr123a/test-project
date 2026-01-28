@@ -1,0 +1,209 @@
+[1/28/26 11:49:09:727 PST] 000002ba SystemOut     O [EL Warning]: 2026-01-28 11:49:09.727--UnitOfWork(891428149)--Exception [EclipseLink-7197] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Null or zero primary key encountered in UnitOfWork clone [RefCustomerCategory{customerCategoryId=0, categoryName='Unknown', createDate=2025-04-30 13:20:15.0, updateDate=2025-04-30 13:20:15.0}], primary key [0]. Set descriptor's IdValidation or the "eclipselink.id-validation" property.
+[1/28/26 11:49:09:727 PST] 000002ba RegisteredSyn E   WTRN0074E: Exception caught from before_completion synchronization operation: javax.persistence.PersistenceException: Exception [EclipseLink-7197] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Null or zero primary key encountered in UnitOfWork clone [RefCustomerCategory{customerCategoryId=0, categoryName='Unknown', createDate=2025-04-30 13:20:15.0, updateDate=2025-04-30 13:20:15.0}], primary key [0]. Set descriptor's IdValidation or the "eclipselink.id-validation" property.
+	at org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl$1.handleException(EntityManagerSetupImpl.java:769)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.handleException(AbstractSynchronizationListener.java:275)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:170)
+	at org.eclipse.persistence.transaction.JTASynchronizationListener.beforeCompletion(JTASynchronizationListener.java:68)
+	at com.ibm.tx.jta.impl.RegisteredSyncs.coreDistributeBefore(RegisteredSyncs.java:291)
+	at com.ibm.ws.tx.jta.RegisteredSyncs.distributeBefore(RegisteredSyncs.java:153)
+	at com.ibm.ws.tx.jta.TransactionImpl.prePrepare(TransactionImpl.java:2450)
+	at com.ibm.ws.tx.jta.TransactionImpl.stage1CommitProcessing(TransactionImpl.java:633)
+	at com.ibm.tx.jta.impl.TransactionImpl.processCommit(TransactionImpl.java:1040)
+	at com.ibm.tx.jta.impl.TransactionImpl.commit(TransactionImpl.java:974)
+	at com.ibm.ws.tx.jta.TransactionImpl.commit(TransactionImpl.java:3798)
+	at com.ibm.ws.tx.jta.TranManagerImpl.commit(TranManagerImpl.java:439)
+	at com.ibm.tx.jta.impl.TranManagerSet.commit(TranManagerSet.java:191)
+	at com.ibm.ws.tx.jta.UserTransactionImpl.commit(UserTransactionImpl.java:307)
+	at org.springframework.transaction.jta.JtaTransactionManager.doCommit(JtaTransactionManager.java:1035)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:743)
+	at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:711)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:654)
+	at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:407)
+	at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241)
+	at com.sun.proxy.$Proxy1949.list(Unknown Source)
+	at com.ips.bean.SponsorAppConfigAdminBean.buildApplicationList(SponsorAppConfigAdminBean.java:1875)
+	at com.ips.bean.SponsorAppConfigAdminBean.init(SponsorAppConfigAdminBean.java:225)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:90)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:55)
+	at java.lang.reflect.Method.invoke(Method.java:508)
+	at javax.el.BeanELResolver.invoke(BeanELResolver.java:167)
+	at javax.el.CompositeELResolver.invoke(CompositeELResolver.java:84)
+	at org.apache.el.parser.AstValue.getValue(AstValue.java:157)
+	at org.apache.el.ValueExpressionImpl.getValue(ValueExpressionImpl.java:184)
+	at org.jboss.weld.el.WeldValueExpression.getValue(WeldValueExpression.java:50)
+	at org.apache.myfaces.view.facelets.el.ELText$ELTextVariable.writeText(ELText.java:219)
+	at org.apache.myfaces.view.facelets.el.ELText$ELTextComposite.writeText(ELText.java:131)
+	at org.apache.myfaces.view.facelets.compiler.TextInstruction.write(TextInstruction.java:45)
+	at org.apache.myfaces.view.facelets.compiler.UIInstructions.encodeBegin(UIInstructions.java:46)
+	at org.apache.myfaces.view.facelets.compiler.UILeaf.encodeAll(UILeaf.java:507)
+	at javax.faces.component.UIComponentBase.encodeAll(UIComponentBase.java:550)
+	at javax.faces.component.UIComponentBase.encodeAll(UIComponentBase.java:550)
+	at org.apache.myfaces.view.facelets.FaceletViewDeclarationLanguage.renderView(FaceletViewDeclarationLanguage.java:1891)
+	at org.apache.myfaces.application.ViewHandlerImpl.renderView(ViewHandlerImpl.java:313)
+	at javax.faces.application.ViewHandlerWrapper.renderView(ViewHandlerWrapper.java:58)
+	at javax.faces.application.ViewHandlerWrapper.renderView(ViewHandlerWrapper.java:58)
+	at org.apache.myfaces.lifecycle.RenderResponseExecutor.execute(RenderResponseExecutor.java:116)
+	at org.apache.myfaces.lifecycle.LifecycleImpl.render(LifecycleImpl.java:267)
+	at javax.faces.webapp.FacesServlet.service(FacesServlet.java:200)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.service(ServletWrapper.java:1235)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:779)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapper.handleRequest(ServletWrapper.java:478)
+	at com.ibm.ws.webcontainer.servlet.ServletWrapperImpl.handleRequest(ServletWrapperImpl.java:179)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.invokeTarget(WebAppFilterChain.java:143)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:96)
+	at com.ips.servlet.filter.AdminSessionFilter.doFilter(AdminSessionFilter.java:64)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ips.servlet.filter.BrowserCacheHandlerFilter.doFilter(BrowserCacheHandlerFilter.java:59)
+	at com.ibm.ws.webcontainer.filter.FilterInstanceWrapper.doFilter(FilterInstanceWrapper.java:197)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterChain.doFilter(WebAppFilterChain.java:90)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.doFilter(WebAppFilterManager.java:979)
+	at com.ibm.ws.webcontainer.filter.WebAppFilterManager.invokeFilters(WebAppFilterManager.java:1119)
+	at com.ibm.ws.webcontainer.webapp.WebApp.handleRequest(WebApp.java:4238)
+	at com.ibm.ws.webcontainer.webapp.WebAppImpl.handleRequest(WebAppImpl.java:2210)
+	at com.ibm.ws.webcontainer.webapp.WebGroup.handleRequest(WebGroup.java:304)
+	at com.ibm.ws.webcontainer.WebContainer.handleRequest(WebContainer.java:1033)
+	at com.ibm.ws.webcontainer.WSWebContainer.handleRequest(WSWebContainer.java:1817)
+	at com.ibm.ws.webcontainer.channel.WCChannelLink.ready(WCChannelLink.java:382)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleDiscrimination(HttpInboundLink.java:465)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.handleNewRequest(HttpInboundLink.java:532)
+	at com.ibm.ws.http.channel.inbound.impl.HttpInboundLink.processRequest(HttpInboundLink.java:318)
+	at com.ibm.ws.http.channel.inbound.impl.HttpICLReadCallback.complete(HttpICLReadCallback.java:88)
+	at com.ibm.ws.ssl.channel.impl.SSLReadServiceContext$SSLReadCompletedCallback.complete(SSLReadServiceContext.java:1833)
+	at com.ibm.ws.tcp.channel.impl.AioReadCompletionListener.futureCompleted(AioReadCompletionListener.java:175)
+	at com.ibm.io.async.AbstractAsyncFuture.invokeCallback(AbstractAsyncFuture.java:217)
+	at com.ibm.io.async.AsyncChannelFuture.fireCompletionActions(AsyncChannelFuture.java:161)
+	at com.ibm.io.async.AsyncFuture.completed(AsyncFuture.java:138)
+	at com.ibm.io.async.ResultHandler.complete(ResultHandler.java:204)
+	at com.ibm.io.async.ResultHandler.runEventProcessingLoop(ResultHandler.java:775)
+	at com.ibm.io.async.ResultHandler$2.run(ResultHandler.java:905)
+	at com.ibm.ws.util.ThreadPool$Worker.run(ThreadPool.java:1909)
+Caused by: Exception [EclipseLink-7197] (Eclipse Persistence Services - 2.6.10.WAS-v20230307-f193aace40): org.eclipse.persistence.exceptions.ValidationException
+Exception Description: Null or zero primary key encountered in UnitOfWork clone [RefCustomerCategory{customerCategoryId=0, categoryName='Unknown', createDate=2025-04-30 13:20:15.0, updateDate=2025-04-30 13:20:15.0}], primary key [0]. Set descriptor's IdValidation or the "eclipselink.id-validation" property.
+	at org.eclipse.persistence.exceptions.ValidationException.nullPrimaryKeyInUnitOfWorkClone(ValidationException.java:1472)
+	at org.eclipse.persistence.descriptors.changetracking.DeferredChangeDetectionPolicy.calculateChanges(DeferredChangeDetectionPolicy.java:109)
+	at org.eclipse.persistence.descriptors.changetracking.DeferredChangeDetectionPolicy.calculateChangesForExistingObject(DeferredChangeDetectionPolicy.java:56)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.calculateChanges(UnitOfWorkImpl.java:668)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.commitToDatabaseWithChangeSet(UnitOfWorkImpl.java:1520)
+	at org.eclipse.persistence.internal.sessions.UnitOfWorkImpl.issueSQLbeforeCompletion(UnitOfWorkImpl.java:3172)
+	at org.eclipse.persistence.internal.sessions.RepeatableWriteUnitOfWork.issueSQLbeforeCompletion(RepeatableWriteUnitOfWork.java:355)
+	at org.eclipse.persistence.transaction.AbstractSynchronizationListener.beforeCompletion(AbstractSynchronizationListener.java:158)
+	... 78 more
+
+
+
+package com.ips.entity;
+
+import java.io.Serializable;
+import java.sql.Timestamp;
+import java.util.Objects;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
+import javax.persistence.Table;
+
+
+/**
+ * The persistent class for the ref_kba_supplier database table.
+ * 
+ */
+@Entity
+@Table(name="ref_customer_category")
+@NamedQueries({
+@NamedQuery(name="RefCustomerCategory.findByCategoryId", query="SELECT r FROM RefCustomerCategory r WHERE r.customerCategoryId = :customerCategoryId"),
+@NamedQuery(name="RefCustomerCategory.findByCategoryName", query="SELECT r FROM RefCustomerCategory r WHERE r.categoryName = :categoryName"),
+@NamedQuery(name = "RefCustomerCategory.findAll", query = "SELECT r FROM RefCustomerCategory r"),
+})
+
+/** Renamed entity and properties, and retain database table name unchanged as part of KBA removal. **/
+public class RefCustomerCategory implements Serializable {
+    private static final Long serialVersionUID = 1L;
+      
+    public static final String CUSTOMER_CATEGORY_NAME_UNKNOWN = "Unknown";
+    public static final String CUSTOMER_CATEGORY_NAME_INDIVIDUAL = "Individual"; 
+    public static final String CUSTOMER_CATEGORY_NAME_BUSINESS = "Business";
+    public static final String CUSTOMER_CATEGORY_NAME_GOVERNMENT = "Government"; 
+    public static final Long CUSTOMER_CATEGORY_ID_UNKNOWN = 0L;
+    public static final Long CUSTOMER_CATEGORY_ID_INDIVIDUAL = 1L;
+    public static final Long CUSTOMER_CATEGORY_ID_BUSINESS = 2L;
+    public static final Long CUSTOMER_CATEGORY_ID_GOVERNMENT = 3L;
+    
+    @Id
+    @Column(name="CUSTOMER_CATEGORY_ID")
+    private Long customerCategoryId;
+
+    @Column(name="CATEGORY_NAME")
+    private String categoryName;
+
+    @Column(name="UPDATE_DATE")
+    private Timestamp updateDate;
+
+    @Column(name="CREATE_DATE")
+    private Timestamp createDate;
+    
+	public Long getCustomerCategoryId() {
+        System.out.println("TEST::::getCustomerCategoryId called, returning: " + customerCategoryId);
+		return customerCategoryId;
+	}
+
+	public void setCustomerCategoryId(Long customerCategoryId) {
+		this.customerCategoryId = customerCategoryId;
+	}
+
+	public String getCategoryName() {
+		return categoryName;
+	}
+
+	public void setCategoryName(String categoryName) {
+		this.categoryName = categoryName;
+	}
+
+    public Timestamp getCreateDate() {
+        return this.createDate;
+    }
+
+    public void setCreateDate(Timestamp createDate) {
+        this.createDate = createDate;
+    }
+
+    public Timestamp getUpdateDate() {
+        return this.updateDate;
+    }
+
+    public void setUpdateDate(Timestamp updateDate) {
+        this.updateDate = updateDate;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        RefCustomerCategory that = (RefCustomerCategory) o;
+        return Objects.equals(customerCategoryId, that.customerCategoryId)
+                && Objects.equals(categoryName, that.categoryName)
+                && Objects.equals(createDate, that.createDate)
+                && Objects.equals(updateDate, that.updateDate);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(customerCategoryId, categoryName, createDate, updateDate);
+    }
+
+    @Override
+    public String toString() {
+        return "RefCustomerCategory{" +
+                "customerCategoryId=" + customerCategoryId +
+                ", categoryName='" + categoryName + '\'' +
+                ", createDate=" + createDate +
+                ", updateDate=" + updateDate +
+                '}';
+    }
+}
