@@ -1,0 +1,158 @@
+😂 Fair enough — let’s assume zero context, zero curiosity, and zero imagination on the QA side.
+
+Below is a condensed, plain-English, step-by-step version you can paste straight into the story. It answers what the bug was, what changed, and exactly how to test it, including how to simulate failures.
+
+⸻
+
+Story Summary (Plain English)
+
+Sometimes the Equifax phone-verification service is slow or fails (timeout, error, or no response).
+When that happens, IPS Web used to:
+
+• crash with errors
+• keep retrying the same request forever
+• fill up server logs and disk space
+
+This fix makes sure that when Equifax fails even once, the system:
+
+• stops immediately
+• returns a clean FAIL result
+• does NOT retry in a loop
+• does NOT crash
+
+⸻
+
+What Was Wrong Before
+
+• Equifax timeout or error caused the system to break
+• A null response caused a NullPointerException
+• The workflow restarted the same phone verification again and again
+• Logs grew endlessly (GBs per user)
+
+⸻
+
+What Is Fixed Now
+
+• Equifax errors are handled safely
+• Null responses are treated as failures
+• Only one attempt is made per workflow
+• The system returns FAIL and moves on
+• No infinite loops
+• No log flooding
+
+⸻
+
+Acceptance Criteria (Simple)
+
+The fix is correct only if ALL of the following are true:
+	1.	If Equifax times out, the system returns FAIL (no crash)
+	2.	If Equifax returns null/empty response, the system returns FAIL
+	3.	If Equifax returns an error (500), the system returns FAIL
+	4.	The system does not retry repeatedly for the same user
+	5.	Logs contain one error, not thousands
+	6.	Normal successful Equifax calls still PASS
+
+⸻
+
+How QA Should Test (VERY IMPORTANT)
+
+OPTION A — EASIEST (Preferred)
+
+Ask Dev to Enable Test Mode
+
+Ask the developer to temporarily enable one of the following test triggers in lower environment:
+
+Test Case	Trigger Value
+Timeout	Phone number = 9999999999
+Null Response	Phone number = 8888888888
+HTTP 500	Phone number = 7777777777
+
+These values are ONLY for testing and will force Equifax failure.
+
+⸻
+
+Test Case 1 — Simulate Timeout
+
+Steps
+	1.	Go to IPS Web UI
+	2.	Start phone verification
+	3.	Enter phone number 9999999999
+	4.	Submit
+
+Expected Result
+
+• Phone verification FAILS
+• Page does NOT hang
+• Only ONE error log entry
+• No retries
+• Workflow completes
+
+⸻
+
+Test Case 2 — Simulate Null Response
+
+Steps
+	1.	Start phone verification
+	2.	Enter phone number 8888888888
+	3.	Submit
+
+Expected Result
+
+• Phone verification FAILS
+• No NullPointerException
+• Workflow completes
+• No looping
+
+⸻
+
+Test Case 3 — Simulate HTTP 500 Error
+
+Steps
+	1.	Start phone verification
+	2.	Enter phone number 7777777777
+	3.	Submit
+
+Expected Result
+
+• Phone verification FAILS
+• No crash
+• No retries
+• Only one error log
+
+⸻
+
+Test Case 4 — Normal Success (Regression)
+
+Steps
+	1.	Start phone verification
+	2.	Enter a valid phone number
+	3.	Submit
+
+Expected Result
+
+• Phone verification PASSES or REVIEWS (as before)
+• No behavior change from previous releases
+
+⸻
+
+What QA Should NOT See (FAIL THE STORY IF SEEN)
+
+❌ Page stuck loading
+❌ Same user retried repeatedly
+❌ Multiple ERROR logs for same user
+❌ Disk usage increasing
+❌ NullPointerException
+❌ Workflow restarting itself
+
+⸻
+
+One-Line Definition of Done
+
+Phone verification handles Equifax failures safely and finishes exactly once per user without crashing or retrying endlessly.
+
+⸻
+
+If you want, next I can:
+• Rewrite this as Jira-formatted acceptance criteria
+• Create a QA checklist table
+• Provide a copy-paste message to QA explaining test mode
