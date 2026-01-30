@@ -1,0 +1,177 @@
+Got it — this is a classic “lost-in-time” story, so let’s reset it cleanly and give QA exactly what they need. I’ll structure this so you can copy-paste directly into the story.
+
+⸻
+
+1. Problem Summary (What was the issue?)
+
+Background / Production Issue
+
+In IPS Web (WAS9_RP branch), the Equifax DIT phone verification call intermittently fails due to:
+	•	SocketTimeoutException (read timed out)
+	•	ClientRuntimeException
+	•	Occasional NullPointerException
+	•	Transaction rollback (UnexpectedRollbackException)
+
+These failures originate during the Equifax DIT REST call:
+	•	CommonRestServiceImpl.sendInitiateDITRequest(...)
+	•	Specifically at the HTTP POST to the Equifax endpoint
+
+Observed Production Impact
+	•	When Equifax times out or returns an unexpected response, the application:
+	•	Does not properly handle the failure
+	•	Allows exceptions or null responses to bubble up
+	•	The outer workflow (verifyPhone → getPhoneVerificationResponse) re-invokes the same transaction repeatedly for the same user
+	•	This results in:
+	•	Infinite retry behavior at the workflow level
+	•	Continuous ERROR log entries for the same user/event
+	•	Rapid log file growth (1.5 GB – 6.7 GB observed)
+	•	Risk of application server disk exhaustion
+
+Root Cause (Code-Level)
+	1.	sendInitiateDITRequest:
+	•	Logs runtime/network exceptions
+	•	Returns null without marking an error state
+	2.	verifyPhoneWithEquifaxDIT:
+	•	Assumes a non-null response
+	•	Calls business logic (evaluateDITOverallDecision) on a null response
+	•	Throws NullPointerException
+	3.	The outer workflow retries the entire transaction indefinitely because:
+	•	No bounded retry guard exists at the workflow level
+	•	Failures are not converted into a controlled terminal failure response
+
+⸻
+
+2. What We Were Trying to Fix
+
+Objective of the Fix
+
+Ensure that any Equifax DIT failure (timeout, runtime error, null response, HTTP error) results in:
+	•	A single controlled failure
+	•	No uncaught runtime exceptions
+	•	No infinite workflow re-entry
+	•	No log flooding
+	•	A deterministic FAIL / REVIEW outcome returned to the workflow
+
+Key Design Changes
+	•	Convert Equifax runtime/network failures into a handled error state
+	•	Short-circuit the flow when an error occurs
+	•	Never evaluate DIT business logic on a null response
+	•	Ensure the method returns a failure response instead of throwing
+
+⸻
+
+3. Acceptance Criteria (for the Story)
+
+You can paste this section directly into Jira.
+
+Acceptance Criteria
+	1.	Graceful Handling of Equifax Timeouts
+	•	When the Equifax DIT service times out or throws a runtime exception:
+	•	The application must not throw an unhandled exception
+	•	The phone verification flow must return a controlled FAIL response
+	•	The workflow must not retry the same transaction indefinitely
+	2.	No Infinite Retry / Looping
+	•	For a given user and phone verification event:
+	•	The Equifax DIT call must be executed at most once per workflow invocation
+	•	The system must not continuously re-enter verifyPhone → getPhoneVerificationResponse for the same event
+	•	Logs must not grow indefinitely for the same user/event
+	3.	Null Response Safety
+	•	If the Equifax DIT response is null or malformed:
+	•	The system must treat it as an error
+	•	No NullPointerException must occur
+	•	Business decision logic must not be executed on a null response
+	4.	Consistent Failure Result
+	•	On Equifax failure (timeout, HTTP error, runtime exception):
+	•	Phone verification decision must be set to FAIL (or REVIEW if business rules dictate)
+	•	Failure reason must be recorded and persisted where applicable
+	•	Downstream workflow must proceed without retrying the same Equifax call
+	5.	Logging Behavior
+	•	Only a single ERROR log entry should be produced per failed Equifax attempt
+	•	Repeated ERROR logs for the same user/event must not occur
+
+⸻
+
+4. How QA Should Test This (Test Scenarios)
+
+This is the most important part for the tester team.
+
+Test Scenario 1: Simulated Equifax Timeout
+
+Setup
+	•	Configure the Equifax DIT endpoint (in lower env or via test hook) to:
+	•	Delay response beyond client timeout, OR
+	•	Throw a simulated runtime exception
+
+Steps
+	1.	Initiate phone verification for a test user
+	2.	Trigger the Equifax DIT call
+	3.	Observe the application behavior
+
+Expected Result
+	•	Phone verification completes with a FAIL (or REVIEW) decision
+	•	No unhandled exception in logs
+	•	No repeated ERROR logs for the same user
+	•	Workflow does not retry indefinitely
+
+⸻
+
+Test Scenario 2: Null / Empty Equifax Response
+
+Setup
+	•	Simulate Equifax returning:
+	•	Empty response body
+	•	Unparseable JSON
+	•	Explicit null response
+
+Steps
+	1.	Initiate phone verification
+	2.	Allow Equifax call to return null/empty
+
+Expected Result
+	•	System treats response as error
+	•	No NullPointerException
+	•	Phone verification returns FAIL
+	•	Workflow continues normally
+
+⸻
+
+Test Scenario 3: HTTP 500 from Equifax
+
+Setup
+	•	Simulate Equifax returning HTTP 500
+
+Steps
+	1.	Initiate phone verification
+	2.	Observe retry and result
+
+Expected Result
+	•	System handles error gracefully
+	•	No infinite retries
+	•	Controlled FAIL response returned
+	•	Single ERROR log entry per attempt
+
+⸻
+
+Test Scenario 4: Regression – Successful Equifax Response
+
+Setup
+	•	Normal Equifax DIT success response
+
+Steps
+	1.	Initiate phone verification
+	2.	Complete workflow normally
+
+Expected Result
+	•	Phone verification decision PASS/REVIEW based on Equifax response
+	•	Trust values populated correctly
+	•	No change to existing successful behavior
+
+⸻
+
+5. One-Line Summary for the Story
+
+This story ensures that intermittent Equifax DIT failures (timeouts, runtime errors, null responses) are handled gracefully, preventing infinite workflow retries and log flooding, and returning a controlled phone verification failure result.
+
+If you want, next I can:
+	•	Convert this into Jira-formatted Acceptance Criteria bullets, or
+	•	Add a “QA Notes / Test Data” section with sample users and flags.
