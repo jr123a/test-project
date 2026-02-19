@@ -1,0 +1,28 @@
+Perfect — here’s the minimal version you can drop straight into Jira:
+
+⸻
+
+Title:
+
+Allow Customer Category Update for Referenced Applications
+
+⸻
+
+Description:
+
+Currently, applications referenced in SPONSOR_APPLICATION_MAP cannot be edited, which prevents updating CUSTOMER_CATEGORY_ID.
+
+Add a new button to allow updating only the CUSTOMER_CATEGORY_ID for a selected application, without enforcing the Sponsor_Application_Map reference validation.
+
+⸻
+
+Acceptance Criteria:
+	•	New button available on Sponsor/Application Configuration screen.
+	•	Allows updating CUSTOMER_CATEGORY_ID even if record exists in SPONSOR_APPLICATION_MAP.
+	•	No other application fields are editable via this action.
+	•	No reference validation error is shown.
+	•	Update persists correctly in DB.
+
+⸻
+
+Short. Clear. No fluff.
