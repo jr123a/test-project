@@ -1,0 +1,357 @@
+Jagan, this is a **classic cascading failure** — the first real error is small, but everything after that is just collateral damage.
+
+Let’s break this down cleanly and then I’ll give you a **production-safe root cause investigation plan**.
+
+---
+
+# 🔎 What Is Actually Failing?
+
+From your logs, this is the **first real functional failure**:
+
+```
+Exception on reproofing check for sponsorUserId:null [NullPointerException]
+at ProofingServiceImpl.checkIfReproofing(ProofingServiceImpl.java:1343)
+```
+
+Then later:
+
+```
+NoResultException: getSingleResult() did not retrieve any entities.
+at PersonProofingStatusDaoImpl.getPersonProofingStatusCodeByPersonId
+```
+
+Then:
+
+```
+Error occurred during getUser_for_routing for sponsorUserId:491071220 [NullPointerException]
+```
+
+Then redirect fails because response is already committed.
+
+---
+
+# 🎯 What This Tells Me Immediately
+
+There are **TWO distinct issues happening**:
+
+## 1️⃣ sponsorUserId is NULL during reproofing check
+
+```
+Exception on reproofing check for sponsorUserId:null
+```
+
+That means:
+
+* Either session is not populated
+* Or routing logic is running before user context is initialized
+* Or request came in without proper session (expired session?)
+* Or filter chain didn't set required attribute
+
+---
+
+## 2️⃣ NoResultException in proofing status lookup
+
+```
+getSingleResult() did not retrieve any entities
+```
+
+That means:
+
+* DB has no record for that personId
+* Code is using getSingleResult() instead of getResultList()
+* No defensive handling for missing row
+
+That is BAD design for prod code.
+
+---
+
+# 🧠 Most Likely Scenario
+
+Here is what I strongly suspect:
+
+1. Request comes in
+2. RoutingController.init() executes
+3. checkIfReproofing() is called
+4. sponsorUserId is NULL
+5. Inside checkIfReproofing(), code assumes non-null → NPE
+6. Then later flow tries to retrieve proofing status
+7. DB returns no row → NoResultException
+8. That triggers route to systemError.xhtml
+9. Response already partially committed → IllegalStateException
+
+This is NOT a random prod glitch.
+
+This is either:
+
+* A bad user record in DB
+* A partially registered user
+* A race condition during registration
+* Or a session expiration case
+
+---
+
+# 🚦 Where You Should Start (Step-by-Step Prod Root Cause Plan)
+
+Do this in order.
+
+---
+
+## ✅ STEP 1: Identify the failing user
+
+From logs:
+
+```
+sponsorUserId:491071220
+```
+
+Pull full transaction logs around that ID.
+
+Check:
+
+* Was this a real user?
+* Was this a reproofing flow?
+* Was this mid-registration?
+
+---
+
+## ✅ STEP 2: Check DB for that user
+
+Run:
+
+```sql
+SELECT * FROM PERSON WHERE PERSON_ID = 491071220;
+```
+
+Then:
+
+```sql
+SELECT * FROM PERSON_PROOFING_STATUS WHERE PERSON_ID = 491071220;
+```
+
+You're looking for:
+
+* Missing proofing row?
+* Inconsistent state?
+* Status = null?
+* Multiple rows?
+
+If no row exists → your NoResultException is explained.
+
+---
+
+## ✅ STEP 3: Open ProofingServiceImpl.checkIfReproofing (line 1343)
+
+You MUST inspect that line.
+
+Look for something like:
+
+```java
+person.getSomething().getSomethingElse()
+```
+
+Without null check.
+
+Add logging mentally:
+
+* Is sponsorUserId passed as null?
+* Or is user object null?
+* Or proofing status null?
+
+You need to know which object is null.
+
+---
+
+## ✅ STEP 4: Trace where sponsorUserId is set
+
+Look in:
+
+```
+RoutingController.getCustRegInfo
+RoutingController.getCustRegUser
+RoutingController.checkIfReproofing
+```
+
+Specifically:
+
+How is sponsorUserId retrieved?
+
+* From session?
+* From request param?
+* From security context?
+
+Then check:
+
+Is session expired?
+
+Because this log line is suspicious:
+
+```
+init->handleRequestParams-> LOA request param value: 1.5
+```
+
+But no sponsorUserId param.
+
+That means routing started without authenticated context.
+
+That’s dangerous.
+
+---
+
+## ✅ STEP 5: Check Session Filter Behavior
+
+You have:
+
+```
+EntRegSessionFilterImpl
+IPSCustRegSessionFilter
+```
+
+Verify:
+
+* Are they setting sponsorUserId?
+* Do they bypass for certain paths?
+* Did something change recently in prod?
+
+---
+
+## ✅ STEP 6: Check Deployment Version
+
+You're running:
+
+```
+IVSPersistence-25.4.1-SNAPSHOT.jar
+```
+
+Snapshot in PROD???
+
+That alone is concerning.
+
+Confirm:
+
+* Was a new build deployed recently?
+* Did checkIfReproofing change?
+* Did DAO change to getSingleResult() recently?
+
+---
+
+# 🔬 Likely Root Cause Categories
+
+Ranked by probability:
+
+### 🥇 1. Missing PERSON_PROOFING_STATUS row in DB
+
+Your DAO assumes row always exists.
+
+Production user without proofing row triggers NoResultException.
+
+---
+
+### 🥈 2. sponsorUserId not initialized before checkIfReproofing
+
+Possibly:
+
+* Session timeout
+* Expired cookie
+* Direct URL hit
+* Bookmark
+* SSO misfire
+
+---
+
+### 🥉 3. Bad defensive coding
+
+Using:
+
+```java
+getSingleResult()
+```
+
+without try/catch or Optional handling.
+
+That will explode in prod.
+
+---
+
+# 🛠 What I Would Fix (Architecturally)
+
+After root cause confirmed:
+
+### Fix 1:
+
+Replace:
+
+```java
+query.getSingleResult()
+```
+
+with:
+
+```java
+List<?> result = query.getResultList();
+if (result.isEmpty()) return null;
+```
+
+---
+
+### Fix 2:
+
+Add null check in checkIfReproofing:
+
+```java
+if (sponsorUserId == null) {
+   log.error("sponsorUserId is null in reproofing check");
+   return false; // or safe route
+}
+```
+
+---
+
+### Fix 3:
+
+If proofing row missing → create default row instead of erroring
+
+---
+
+# 🚨 What NOT To Do
+
+Do NOT:
+
+* Just restart server
+* Ignore NoResultException
+* Add try/catch that swallows issue
+* Blame WebSphere
+
+This is application logic.
+
+---
+
+# 🧭 Your Immediate Action Plan
+
+Tomorrow morning:
+
+1. Query DB for PERSON + PERSON_PROOFING_STATUS for 491071220
+2. Inspect ProofingServiceImpl line 1343
+3. Confirm if sponsorUserId null OR proofing row missing
+4. Check if similar errors happening for other users
+5. Check last deployment date
+
+---
+
+# 🧠 My Strong Gut Call
+
+This is almost certainly:
+
+> A user without a PERSON_PROOFING_STATUS row hitting reproofing logic that assumes the row exists.
+
+Combined with weak null checks.
+
+---
+
+If you paste the code around:
+
+* ProofingServiceImpl line 1343
+* PersonProofingStatusDaoImpl line 56
+
+I can pinpoint exactly what is null and give you the permanent fix.
+
+This is solvable. Don't worry.
