@@ -1,0 +1,200 @@
+Perfect — let’s consolidate every SQL query that appeared in this thread (from your screenshots and earlier images) so you can run them directly.
+
+I’ll also slightly format them cleanly so they’re ready to execute.
+
+---
+
+1. Device Reputation Response (Image #1 earlier)
+
+---
+
+Used to verify LexisNexis device reputation result:
+
+```sql
+SELECT *
+FROM ips_own.rp_device_reputation_response
+WHERE person_id IN (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+);
+```
+
+This confirms:
+
+* ReviewStatus = review
+* RiskRating
+* Raw LN response
+
+---
+
+2. Remote Proofing Event (KBA / Supplier Info)
+
+---
+
+Used to check proofing event and supplier:
+
+```sql
+SELECT *
+FROM ips_own.rp_event
+WHERE person_id IN (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+);
+```
+
+This shows:
+
+* KBA_SUPPLIER_ID (e.g., 4 = LexisNexis)
+* FINAL_DECISION
+* CREATE_DATE
+* UPDATE_DATE
+
+This is where you verify:
+Supplier ID is 4 (not 0).
+
+---
+
+3. Audit Log (LOA Achieved)
+
+---
+
+Used to confirm LOA achieved:
+
+```sql
+SELECT *
+FROM ips_own.audit_person
+WHERE person_id IN (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+)
+ORDER BY create_date DESC;
+```
+
+This confirms:
+
+* LOA level achieved
+* Proofing flow steps
+* Timestamps
+
+---
+
+4. If You Want to Check Supplier ID Directly (Helpful for your fix)
+
+---
+
+To explicitly check supplier IDs tied to that person:
+
+```sql
+SELECT person_id,
+       kba_supplier_id,
+       final_decision,
+       create_date
+FROM ips_own.rp_event
+WHERE person_id = (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+)
+ORDER BY create_date DESC;
+```
+
+---
+
+5. To Check If Any Event Exists With Supplier ID = 0
+
+---
+
+This is important for validating the bug:
+
+```sql
+SELECT *
+FROM ips_own.rp_event
+WHERE kba_supplier_id = 0
+ORDER BY create_date DESC;
+```
+
+If rows exist here → your zero-supplier logic is being persisted.
+
+---
+
+6. To Simulate the Failing Query (What Your Code Is Doing)
+
+---
+
+This is likely the problematic lookup:
+
+```sql
+SELECT *
+FROM ips_own.rp_event
+WHERE person_id = (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+)
+AND kba_supplier_id = 0;
+```
+
+If this returns no rows,
+that exactly explains:
+
+"Remote proofing event for customer ID ... with supplier ID 0 not found"
+
+---
+
+7. To Compare Correct Supplier vs Zero Supplier
+
+---
+
+Run both:
+
+```sql
+-- Correct supplier (LexisNexis = 4)
+SELECT *
+FROM ips_own.rp_event
+WHERE person_id = (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+)
+AND kba_supplier_id = 4;
+
+-- Zero supplier
+SELECT *
+FROM ips_own.rp_event
+WHERE person_id = (
+    SELECT person_id
+    FROM ips_own.person
+    WHERE sponsor_user_id = '521284000'
+)
+AND kba_supplier_id = 0;
+```
+
+You will likely see:
+
+* First query returns row
+* Second returns nothing
+
+That confirms root cause.
+
+---
+
+## Optional: Get Person ID Once and Reuse It
+
+To avoid nested queries:
+
+```sql
+SELECT person_id
+FROM ips_own.person
+WHERE sponsor_user_id = '521284000';
+```
+
+Then use that person_id directly in other queries.
+
+---
+
+These are all the SQL queries shown or implied in this thread.
+
+If you want, I can also give you a clean “before fix vs after fix” validation checklist so you can prove in CAT that your supplier-ID adjustment actually resolves the 400 without breaking multi-supplier scenarios.
