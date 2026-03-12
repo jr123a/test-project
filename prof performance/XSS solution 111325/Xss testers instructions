@@ -1,0 +1,191 @@
+Below is a clean set of instructions you can send directly to QA/Testers.
+I kept it simple, step-by-step, without deep technical explanations so they can execute it easily.
+
+You can paste this into email, Jira, or Teams.
+
+⸻
+
+IPS Web – XSS Filter Validation Test Instructions
+
+Purpose
+
+The application now includes a security filter that validates query parameters to protect against Cross-Site Scripting (XSS) attacks and malformed requests.
+
+These tests confirm that:
+	1.	Normal requests continue to work
+	2.	Malicious inputs are blocked
+	3.	An appropriate error page is shown instead of a server error
+	4.	Long query values are rejected
+
+Testing should be performed in DEV or CAT environment only.
+
+⸻
+
+Test Environment
+
+Use the IPS Web application URL in CAT/DEV:
+
+Example:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml
+
+
+⸻
+
+Test Case 1 – Normal Application Flow (Baseline)
+
+Steps
+	1.	Open the IPS Web application.
+	2.	Navigate through the normal user flow (enter phone/email etc).
+	3.	Submit the form.
+
+Expected Result
+	•	Page loads normally
+	•	No errors occur
+	•	Normal workflow continues
+
+This confirms that the new filter does not affect valid requests.
+
+⸻
+
+Test Case 2 – Script Injection Attempt
+
+Test URL
+
+Append the following query parameter to the page URL:
+
+?test=<script>
+
+Encoded version (preferred):
+
+?test=%3Cscript%3E
+
+Example
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?test=%3Cscript%3E
+
+Expected Result
+
+The request should be blocked.
+
+User should see a friendly error page similar to:
+
+We couldn’t complete your request.
+For security reasons, the page you requested contained characters that are not allowed.
+
+The application should NOT display a server stack trace or HTTP 500 page.
+
+⸻
+
+Test Case 3 – JavaScript Keyword Injection
+
+Test URL
+
+?cmd=alert(1)
+
+Example:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?cmd=alert(1)
+
+Expected Result
+
+The request should be blocked and show the security error page.
+
+⸻
+
+Test Case 4 – Event Handler Injection
+
+Test URL
+
+?param=onerror=alert(1)
+
+Expected Result
+
+Request should be blocked and display the security error page.
+
+⸻
+
+Test Case 5 – Valid Parameter (Should Pass)
+
+Test URL
+
+?do=start
+
+Example:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?do=start
+
+Expected Result
+	•	Page loads normally
+	•	No error page appears
+
+This confirms valid parameters are allowed.
+
+⸻
+
+Test Case 6 – Valid URL Parameter
+
+Test URL
+
+?appURL=https://devpx-custreg.usps.com/entreg/secure/IdentityConfirmAction_input
+
+Expected Result
+	•	Request should NOT be blocked
+	•	Page loads normally
+
+This confirms legitimate URLs are allowed.
+
+⸻
+
+Test Case 7 – Oversized Parameter Test
+
+The application blocks query parameters larger than 2048 characters.
+
+Steps
+	1.	Open browser DevTools console
+	2.	Run the following script:
+
+var base = window.location.origin + "/IPSWeb/verification_user_information.xhtml";
+var large = "a".repeat(2050);
+window.open(base + "?test=" + large);
+
+Expected Result
+
+The request should be blocked and display the security error page.
+
+⸻
+
+Expected Behavior Summary
+
+Scenario	Expected Result
+Normal application usage	Works normally
+Script injection (<script>)	Blocked
+JavaScript execution (alert(1))	Blocked
+Event handler (onerror)	Blocked
+Valid parameter (do=start)	Allowed
+Valid URL parameter	Allowed
+Query parameter > 2048 chars	Blocked
+
+
+⸻
+
+What Testers Should Capture
+
+If a request is blocked:
+
+Please capture:
+	1.	Screenshot of the error page
+	2.	Full URL used
+	3.	Time of the test
+	4.	Browser used
+
+⸻
+
+Notes
+	•	These tests verify security validation only
+	•	The error page is expected behavior for malicious inputs
+	•	No stack traces or server errors should be visible
+
+⸻
+
+If you’d like, I can also give you a shorter 6-line version (for Jira ticket or Slack) and a more advanced security test checklist QA teams usually run for XSS validation.
