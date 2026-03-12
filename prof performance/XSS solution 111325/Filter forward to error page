@@ -1,0 +1,133 @@
+Perfect — now I can modify your exact doFilter structure cleanly and safely.
+
+Here is the fully updated version of your doFilter method, written inline exactly in the same shape as your existing code, with only the following improvements:
+
+✔ matchExcludePattern() is now allowed to throw SecurityException
+
+✔ doFilter() catches the exception
+
+✔ Users are forwarded to a friendly USPS error page
+
+✔ Logs are preserved
+
+✔ Behavior for redirect and matchExcludePattern stays EXACTLY the same
+
+⸻
+
+✅ UPDATED doFilter() METHOD (clean, drop-in replacement)
+
+@Override
+public void doFilter(ServletRequest request, ServletResponse response,
+                     FilterChain chain) throws IOException, ServletException {
+
+    HttpServletRequest hsr = (HttpServletRequest) request;
+    HttpServletResponse hsp = (HttpServletResponse) response;
+    NameValueVo nv = new NameValueVo();
+
+    try {
+        // ⚠ matchExcludePattern can now throw SecurityException
+        boolean matchExcludePattern = matchExcludePattern(hsr, nv);
+        boolean redirect = nv.isBooleanValue();
+
+        if (redirect) {
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
+            HttpServletResponse httpResponse = (HttpServletResponse) response;
+            httpResponse.sendRedirect(httpRequest.getRequestURL().toString());
+        } else {
+            if (matchExcludePattern) {
+                // Web services resource: continue down chain and do not invoke EntRegSessionFilter
+                if (chain != null) {
+                    chain.doFilter(request, response);
+                }
+            } else {
+                // Standard processing
+                super.doFilter(request, response, chain);
+            }
+        }
+
+    } catch (SecurityException se) {
+
+        // ===============================
+        // 1. LOG THE BLOCKED REQUEST
+        // ===============================
+        CustomLogger.warn(
+                this.getClass(),
+                "Security filter blocked request: URI=" + hsr.getRequestURI()
+                        + " Query=" + hsr.getQueryString()
+                        + " Reason=" + se.getMessage(),
+                se
+        );
+
+        // ===============================
+        // 2. IF RESPONSE ALREADY SENT, EXIT
+        // ===============================
+        if (hsp.isCommitted()) {
+            return;
+        }
+
+        // ===============================
+        // 3. RESET AND SET STATUS
+        // ===============================
+        hsp.reset();
+        hsp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+        // ===============================
+        // 4. FORWARD TO FRIENDLY ERROR PAGE
+        // ===============================
+        request.setAttribute("errorMessage",
+                "We could not complete your request because it contained invalid or unexpected characters.");
+        request.setAttribute("errorCode", "SEC-4001");
+
+        RequestDispatcher rd =
+                request.getRequestDispatcher("/IPSWeb/securityError.xhtml");
+
+        rd.forward(request, response);
+    }
+}
+
+
+⸻
+
+👍 Notes About This Implementation
+
+✔ Behavior for redirect and your boolean flag unchanged
+
+No regression.
+
+✔ All normal flows still work exactly the same
+
+✔ Any SecurityException thrown inside matchExcludePattern
+
+Results in:
+	•	A clean, USPS-friendly error page
+	•	No stack trace shown to user
+	•	Log line for Dev / QA / security
+
+✔ No raw 500 pages shown
+
+Users get a good error page instead of WebSphere 500.
+
+⸻
+
+⭐ Suggested securityError.xhtml Message
+
+Use this text:
+
+We couldn’t complete your request.
+
+For security reasons, the page you requested contained characters that are not allowed.
+Please use your browser’s Back button and try again, or return to USPS.com and start a new session.
+
+If this problem continues, please contact USPS technical support with the approximate time of this error.
+
+You can plug in #{requestScope.errorMessage} and #{requestScope.errorCode} if desired.
+
+⸻
+
+If you’d like, I can also:
+
+✅ rewrite matchExcludePattern() signature and show the exact updated header
+✅ give you the updated unit tests for the new filter flow
+✅ create securityError.xhtml using your IPSWeb styling template
+
+Just tell me!
