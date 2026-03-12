@@ -1,0 +1,101 @@
+Here is a short tester version you can send in Teams / Jira / email. It keeps only what they actually need to do.
+
+⸻
+
+IPS Web – Security Filter Test (Quick Instructions)
+
+We added a URL security filter to block malicious query parameters (XSS attempts). Please run the tests below in DEV/CAT.
+
+Use this base page:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml
+
+
+⸻
+
+1. Normal Flow (Baseline)
+
+Steps
+
+Open the page normally and go through the regular flow.
+
+Expected
+
+Application works normally. No errors.
+
+⸻
+
+2. Script Injection Test
+
+Open:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?test=%3Cscript%3E
+
+Expected
+
+Request should be blocked and show a security error page (not a server 500).
+
+⸻
+
+3. JavaScript Injection
+
+Open:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?cmd=alert(1)
+
+Expected
+
+Blocked with security error page.
+
+⸻
+
+4. Event Handler Injection
+
+Open:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?param=onerror=alert(1)
+
+Expected
+
+Blocked with security error page.
+
+⸻
+
+5. Valid Parameter (Should Pass)
+
+Open:
+
+https://<env-host>/IPSWeb/verification_user_information.xhtml?do=start
+
+Expected
+
+Page loads normally.
+
+⸻
+
+6. Oversized Parameter Test
+
+In browser console run:
+
+var base = window.location.origin + "/IPSWeb/verification_user_information.xhtml";
+var large = "a".repeat(2050);
+window.open(base + "?test=" + large);
+
+Expected
+
+Blocked with security error page.
+
+⸻
+
+If a test fails
+
+Please capture:
+
+• Screenshot
+• URL used
+• Browser
+• Time of test
+
+⸻
+
+If you’d like, I can also give you a 2-line Slack version that testers can run in literally 30 seconds.
