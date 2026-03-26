@@ -1,0 +1,187 @@
+Code-Level Root Cause Analysis
+The Smoking Gun — confirmPasscode() method, line ~320
+
+// If phone is not verified on file, return fail response.
+String reason = remoteSupportService.checkPhoneVerified(
+    person, personVo, rpEvent, refOtpSupplier, 
+    RemoteSupportServiceImpl.CONFIRM_PASSCODE, origin
+);
+
+
+This call to checkPhoneVerified() is the root cause. Here’s exactly why:
+
+The Failure Chain
+
+VerifyPhone  → hits BC4 → writes phone verification data to DB
+                          → creates RpPhoneVerification record
+                          → updates PersonProofingStatus → OTP_sent
+                          → updates RpEvent with OTP supplier
+
+ConfirmPasscode → hits BC5 (round-robin)
+                → calls checkPhoneVerified()
+                → queries DB for phone verification state
+                → FINDS NOTHING or STALE DATA ← BUG IS HERE
+                → returns "Phone was not verified for customer"
+
+
+Why the DB Query Fails on BC5
+Look at how confirmPasscode() sets up its context before calling checkPhoneVerified():
+
+// In confirmPasscode():
+long otpSupplierId = RefOtpSupplier.LEXISNEXIS_RDP_OTP_SUPPLIER_ID;  // ← HARDCODED
+RefOtpSupplier refOtpSupplier = refOtpSupplierDataService.findBySupplierId(otpSupplierId);
+
+RpEvent rpEvent = rpEventDataService.findLatestEventByPersonId(personId);
+
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+}
+
+personVo.setTransactionKeyHasExpired(rpEvent.transactionKeyHasExpired());
+
+
+Notice what’s NOT set on personVo before checkPhoneVerified() is called:
+	∙	No phoneVerified flag
+	∙	No OTP status
+	∙	No passcode sent confirmation
+The checkPhoneVerified() method (in RemoteSupportService) almost certainly reads phone verification state from either PersonProofingStatus or RpPhoneVerification, and the timing/transaction issue means BC5 sees a different DB state than BC4 just wrote.
+
+The Transaction Timing Problem
+
+// verifyPhone() on BC4:
+phoneVerificationService.sendPasscodeSuccessful(personVo, refOtpSupplier);
+// ↑ This writes to DB inside its own @Transactional boundary
+
+person = personDataService.findByPK(personVo.getId());
+PersonProofingStatus latestProofingStatus = 
+    personProofingStatusService.getByPersonId(personId);
+boolean otpSent = latestProofingStatus != null && 
+    latestProofingStatus.getRefRpStatus().getStatusCode() 
+    == RefRpStatus.RpStatus.OTP_sent.getValue();
+
+
+The class is annotated @Transactional at the class level:
+
+@Service("remoteProofingService")
+@Transactional          // ← entire class is transactional
+public class RemoteProofingServiceImpl implements Serializable, RemoteProofingService {
+
+
+This means verifyPhone() and confirmPasscode() each run in their own transaction. The commit from verifyPhone() on BC4 may not be fully visible to BC5 depending on DB isolation level and connection pool timing — especially when the calls come in rapid succession (which the calling app does).
+
+The Commented-Out Code Makes It Worse
+Notice this block is commented out in confirmPasscode():
+
+/*
+if (rpEvent.getRefOtpSupplier() != null) {
+    if (rpEvent.getRefOtpSupplier().getOtpSupplierId() == RefOtpSupplier.UNKNOWN_SUPPLIER_ID) {
+        return failedVerifyPhoneResponse(...);
+    }
+    else if (rpEvent.getRefOtpSupplier().getOtpSupplierId() != otpSupplierId) {
+        return remoteSupportService.invalidSupplierResponse(...); 
+    }
+}
+*/
+
+
+This was guard code that validated the OTP supplier on the event matched expectations. Someone commented it out, possibly to fix another issue, but it removed a safety check that would have made failures more explicit and debuggable.
+
+The Two-Response-Size Mystery Explained
+From the transcript and Image 5 — the team noticed the bad response is 252 bytes and the good response is 459 bytes. Now we can explain it:
+
+Bad response (252 bytes) — BC5:
+{
+  "phoneVerified": "false",
+  "phoneVerificationDecision": "FAIL",
+  "passcodeSent": "false",          ← fewer fields populated
+  "responseMessage": "Phone not verified for customer..."
+}
+↑ checkPhoneVerified() returned a non-null reason → early return
+  personVo was NOT fully populated → smaller JSON
+
+Good response (459 bytes) — BC4:
+{
+  "phoneVerified": "true",
+  "phoneVerificationDecision": "PASS",
+  "passcodeSent": "true",
+  "passcodeAttemptsAfterLastRequest": 0,
+  "passcodeAttemptsIn180Hours": 2,
+  "transactionID": "...",           ← more fields populated
+  "responseMessage": "Passcode submitted did not match..."
+}
+↑ checkPhoneVerified() returned null → continued execution
+  personVo was fully populated → larger JSON
+
+
+The response size difference directly maps to how far through confirmPasscode() the code got before returning.
+
+The Exact Fix
+Fix 1 — Inside checkPhoneVerified() in RemoteSupportServiceImpl (Primary Fix)
+You don’t have this file, but based on the behavior, checkPhoneVerified() is checking PersonProofingStatus.statusCode for OTP_sent. The fix is to ensure it checks the RpPhoneVerification table as the source of truth, not just PersonProofingStatus, since RpPhoneVerification is written first and is the more reliable DB record.
+The fix in confirmPasscode() should be to pass the already-fetched rpPhoneVerification so checkPhoneVerified() doesn’t have to re-query:
+
+// CURRENT CODE (problematic):
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+}
+// ← personVo is NOT fully populated before checkPhoneVerified()
+
+String reason = remoteSupportService.checkPhoneVerified(
+    person, personVo, rpEvent, refOtpSupplier, 
+    RemoteSupportServiceImpl.CONFIRM_PASSCODE, origin
+);
+
+
+// FIXED CODE:
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+    // ADD THESE — explicitly populate verification state from DB record:
+    personVo.setPhoneVerified(
+        RpPhoneVerification.DECISION_PASS.equalsIgnoreCase(
+            rpPhoneVerification.getPhoneVerificationDecision()
+        )
+    );
+    personVo.setPasscodeSent(rpPhoneVerification.isOtpSent()); // whatever the field is
+}
+
+String reason = remoteSupportService.checkPhoneVerified(
+    person, personVo, rpEvent, refOtpSupplier, 
+    RemoteSupportServiceImpl.CONFIRM_PASSCODE, origin
+);
+
+
+Fix 2 — Get RemoteSupportServiceImpl.checkPhoneVerified() Source
+That method is the true gatekeeper. You need to verify it is not reading from HttpSession or any request-scoped bean. Search that file for:
+
+// Any of these would be the bug:
+HttpSession session = ...
+request.getSession()
+session.getAttribute(...)
+@SessionScoped
+@RequestScoped  // if injected and shared wrong
+
+
+Fix 3 — Re-enable the Commented Supplier Validation
+Uncomment the guard block in confirmPasscode(). It provides an important sanity check and will give cleaner error messages if state is missing.
+
+Summary
+
+
+
+|What                              |Where                        |Why                                                                 |
+|----------------------------------|-----------------------------|--------------------------------------------------------------------|
+|**`checkPhoneVerified()`**        |`RemoteSupportServiceImpl`   |Reads state that BC5 doesn’t have yet                               |
+|**`@Transactional` class-level**  |`RemoteProofingServiceImpl`  |Each call is isolated; BC5 may not see BC4’s committed write in time|
+|**`personVo` not fully populated**|`confirmPasscode()` ~line 320|`checkPhoneVerified()` receives incomplete state object             |
+|**Commented-out guard code**      |`confirmPasscode()` ~line 305|Removed safety checks that would have caught this                   |
+|**Round-robin routing**           |WebSphere plugin             |No JSESSIONID → no stickiness → requests spray across servers       |
+
+Get the RemoteSupportServiceImpl.java file next — specifically checkPhoneVerified() and passcodeConfirmation(). That’s where the final confirmation of this bug will be.​​​​​​​​​​​​​​​​
