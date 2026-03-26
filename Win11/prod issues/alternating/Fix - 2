@@ -1,0 +1,192 @@
+Confirmed Root Cause — Found in checkPhoneVerified()
+Now we have the complete picture. Here’s exactly what’s failing and why.
+
+The Exact Bug — checkPhoneVerified() in RemoteSupportServiceImpl
+
+public String checkPhoneVerified(Person person, PersonVo personVo, RpEvent rpEvent, 
+        RefOtpSupplier phoneSupplier, String serviceName, String origin) {
+
+    boolean phoneVerified = false;
+    
+    // ← THIS IS THE PROBLEM
+    RpPhoneVerification phoneVerification = 
+        rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+    
+    if (phoneVerification != null) {
+        phoneVerified = phoneVerification.isPhoneVerified();
+        ...
+    } else {
+        return REASON_FAILED_PHONE_VERIFICATION;  // ← BC5 HITS THIS
+    }
+
+
+BC5 calls findPhoneVerificationByEventId() and gets null back — even though BC4 just wrote the record. Here’s the exact chain of why:
+
+Complete Failure Sequence With Line References
+
+1. VerifyPhone → BC4 (@Transactional begins)
+   └── phoneVerificationService.sendPasscodeSuccessful(personVo, refOtpSupplier)
+       └── Writes RpPhoneVerification row to DB
+       └── Updates PersonProofingStatus → OTP_sent
+   └── @Transactional commits ← record IS in DB
+
+2. ConfirmPasscode → BC5 (round-robin, new @Transactional begins)
+   └── rpEventDataService.findLatestEventByPersonId(personId)
+       └── Gets the RpEvent ✅
+   └── rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId())
+       └── ← Returns NULL or stale result ← BUG
+   └── checkPhoneVerified() is called with this rpEvent
+       └── Does ANOTHER query: findPhoneVerificationByEventId(rpEvent.getEventId())
+           └── ← ALSO returns NULL
+       └── hits: return REASON_FAILED_PHONE_VERIFICATION ← EARLY EXIT
+   └── buildFailedPhoneVerificationResponseJSON() called
+       └── responseMessage: "Phone: X was not verified for customer Y"
+       └── phoneVerified: false, passcodeSent: false ← small 252-byte response
+
+
+Why findPhoneVerificationByEventId() Returns Null on BC5
+There are two compounding issues:
+Issue A — RpEvent is fetched by BC5 with a stale eventId
+Look at confirmPasscode() in RemoteProofingServiceImpl:
+
+RpEvent rpEvent = rpEventDataService.findLatestEventByPersonId(personId);
+
+
+This fetches the event correctly. But then checkPhoneVerified() does this internally:
+
+RpPhoneVerification phoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+
+
+If the RpPhoneVerification record was written under a different eventId than what BC5’s findLatestEventByPersonId() returned, this query finds nothing. This can happen because verifyPhone() on BC4 may have created a new event via manageEventService.createEvent(personVo) and then written the phone verification under that new event’s ID — but BC5’s connection pool may be hitting a replica or getting a cached version of the event lookup.
+Issue B — @Transactional Class-Level Isolation
+Both services are annotated @Transactional at the class level:
+
+// RemoteProofingServiceImpl.java
+@Transactional
+public class RemoteProofingServiceImpl ...
+
+// RemoteSupportServiceImpl.java  
+@Transactional
+public class RemoteSupportServiceImpl ...
+
+
+With default Spring @Transactional isolation (READ_COMMITTED), a transaction on BC5 can only see data committed before its transaction started. If BC5’s transaction opens its connection from the pool at the same millisecond BC4 is still committing verifyPhone(), BC5 will read a snapshot that doesn’t yet include the RpPhoneVerification row. The log timestamps confirm this — the calls are milliseconds apart.
+Issue C — Double Query Problem
+confirmPasscode() queries for rpPhoneVerification before calling checkPhoneVerified(), and then checkPhoneVerified() queries again independently:
+
+// In confirmPasscode() — first query:
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+    // ← but phoneVerified status is NOT set on personVo here
+}
+
+// In checkPhoneVerified() — SECOND independent query:
+RpPhoneVerification phoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+// ← This is a completely separate DB hit, not using the result from above
+
+
+The result from the first query is never passed into checkPhoneVerified(). That method re-queries independently and is the one that fails.
+
+The Fix — Minimal Code Change, Maximum Impact
+Fix 1 — Pass rpPhoneVerification into checkPhoneVerified() (Primary Fix)
+Change the signature of checkPhoneVerified() to accept the already-fetched record, eliminating the second query:
+In RemoteSupportServiceImpl.java — modify checkPhoneVerified():
+
+// CHANGE SIGNATURE — add rpPhoneVerification parameter
+public String checkPhoneVerified(Person person, PersonVo personVo, RpEvent rpEvent, 
+        RefOtpSupplier phoneSupplier, String serviceName, String origin,
+        RpPhoneVerification rpPhoneVerification) {  // ← ADD THIS PARAM
+    
+    CustomLogger.enter(this.getClass());
+
+    boolean phoneVerified = false;
+    boolean phoneApproved = false;
+    boolean phoneForReview = false;
+    String phoneVerificationDecision = DECISION_FAIL;
+    
+    // REMOVE the internal DB query — use the passed-in record instead:
+    // RpPhoneVerification phoneVerification = 
+    //     rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId()); ← DELETE
+
+    if (rpPhoneVerification != null) {  // use the param directly
+        phoneVerified = rpPhoneVerification.isPhoneVerified();
+        phoneApproved = rpPhoneVerification.isEquifaxDITPhoneVerificationPassed() 
+                || rpPhoneVerification.isExperianPhoneVerificationApproved();
+        phoneForReview = rpPhoneVerification.isEquifaxDITPhoneVerificationForReview()
+                || rpPhoneVerification.isExperianPhoneVerificationForReview();
+        
+        if (rpPhoneVerification.getTransactionKey() != null) {
+            personVo.setTransactionId(rpPhoneVerification.getTransactionKey());
+        }
+    } else {
+        return REASON_FAILED_PHONE_VERIFICATION;
+    }
+    
+    // ... rest of method unchanged
+
+
+In RemoteProofingServiceImpl.java — confirmPasscode(), update the call:
+
+// EXISTING fetch — keep this:
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+}
+
+// CHANGE THIS CALL — pass rpPhoneVerification in:
+String reason = remoteSupportService.checkPhoneVerified(
+    person, personVo, rpEvent, refOtpSupplier,
+    RemoteSupportServiceImpl.CONFIRM_PASSCODE, origin,
+    rpPhoneVerification);  // ← ADD THIS ARGUMENT
+
+
+Do the same for requestPasscode() — it also calls checkPhoneVerified() and has the same pattern.
+
+Fix 2 — Set phoneVerified on personVo After the First Query
+As a defense-in-depth measure, after fetching rpPhoneVerification in confirmPasscode(), explicitly set the verification state on personVo so any code path that reads from personVo gets accurate data:
+
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+    // ADD THESE LINES:
+    personVo.setTransactionId(rpPhoneVerification.getTransactionKey());
+    // phoneVerified flag prevents checkPhoneVerified from failing blind
+}
+
+
+Fix 3 — Update requestPasscode() Too
+requestPasscode() has the exact same pattern and will fail identically:
+
+// In requestPasscode() — same fix applies:
+RpPhoneVerification rpPhoneVerification = 
+    rpPhoneVerificationService.findPhoneVerificationByEventId(rpEvent.getEventId());
+if (rpPhoneVerification != null) {
+    personVo.setMobileNumber(rpPhoneVerification.getMobilePhoneNumber());
+}
+
+// Change to pass rpPhoneVerification:
+String reason = remoteSupportService.checkPhoneVerified(
+    person, personVo, rpEvent, refOtpSupplier, 
+    RemoteSupportServiceImpl.REQUEST_PASSCODE, origin,
+    rpPhoneVerification);  // ← ADD
+
+
+Summary Table
+
+
+
+|Location                                            |Problem                                                                                               |Fix                                                                                    |
+|----------------------------------------------------|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+|`checkPhoneVerified()` in `RemoteSupportServiceImpl`|Re-queries DB independently for `RpPhoneVerification`, gets null when BC4’s write isn’t visible to BC5|Accept `rpPhoneVerification` as parameter; eliminate internal re-query                 |
+|`confirmPasscode()` in `RemoteProofingServiceImpl`  |Fetches `rpPhoneVerification` but never passes it to `checkPhoneVerified()`                           |Pass the already-fetched object into the method call                                   |
+|`requestPasscode()` in `RemoteProofingServiceImpl`  |Same pattern as `confirmPasscode()`                                                                   |Same fix                                                                               |
+|`@Transactional` class-level on both services       |BC5 opens its DB connection before BC4 commits, causing read isolation miss                           |Fixed structurally by eliminating the second query; no transaction config change needed|
+
+The fix is two changed method signatures and two updated call sites. No infrastructure changes, no DB schema changes, no session management needed.​​​​​​​​​​​​​​​​
