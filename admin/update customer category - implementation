@@ -1,0 +1,452 @@
+Yes. This story should be implemented as a separate, restricted edit path, not by weakening the existing edit validation.
+
+What is happening
+
+Right now your normal Edit flow is likely doing something like this:
+
+* load selected application
+* before allowing edit, check whether it is referenced in `SPONSOR_APPLICATION_MAP`
+* if referenced, block the edit and show the error shown in the screen
+
+That is correct behavior for full edit, because changing core application data for a referenced record can be risky.
+
+But this story is narrower:
+only `CUSTOMER_CATEGORY_ID` should be updatable, even when the application is referenced.
+
+So the clean solution is:
+
+* keep existing Edit behavior unchanged
+* add a new action just for category update
+* in that new action, skip the reference validation
+* update only `CUSTOMER_CATEGORY_ID`
+
+Recommended UI mock
+
+Based on your current screen, the best place is in the existing `Edit / Delete` column, as a third action on each row.
+
+Current row actions:
+
+* edit icon
+* delete icon
+
+Add:
+
+* category icon/button
+
+Best location:
+
+* place it to the right of Delete, in the same row action group
+* tooltip: `Update Customer Category`
+* icon color should be different from Edit/Delete so users understand it is a special action
+
+Example row layout:
+
+`[Edit] [Delete] [Category]`
+
+If space is tight, use:
+
+* small icon with tooltip, or
+* icon + short text: `Cat`
+
+Better UX than inline edit:
+open a small modal/popup, not the full application edit screen.
+
+Modal contents
+
+Title:
+`Update Customer Category`
+
+Fields:
+
+* Application ID: read-only
+* Application Name: read-only
+* Current Customer Category: read-only or preselected
+* New Customer Category: dropdown
+* Save
+* Cancel
+
+Important:
+Do not expose other application fields in this popup.
+
+Suggested screen behavior
+
+When user clicks the new button:
+
+1. Load selected application
+2. Open modal
+3. Show only category-related fields
+4. On Save:
+
+   * validate category selection
+   * call dedicated backend method
+   * update DB
+   * refresh table
+   * show success message
+
+Do not route this through the normal application edit page.
+
+Exact implementation strategy
+
+1. UI layer: add a new action button
+
+If this is JSF/RichFaces, add a third command link/button in the table row.
+
+Example XHTML idea:
+
+```xhtml
+<rich:dataTable value="#{sponsorApplicationAdminBean.applicationList}" var="app">
+
+    <rich:column>
+        <f:facet name="header">Edit / Delete</f:facet>
+
+        <!-- Existing Edit -->
+        <a4j:commandLink
+                action="#{sponsorApplicationAdminBean.editApplication(app.applicationId)}"
+                reRender="applicationPanel"
+                title="Edit Application">
+            <h:graphicImage value="/images/edit.png" />
+        </a4j:commandLink>
+
+        <!-- Existing Delete -->
+        <a4j:commandLink
+                action="#{sponsorApplicationAdminBean.deleteApplication(app.applicationId)}"
+                reRender="applicationPanel"
+                title="Delete Application"
+                onclick="return confirm('Are you sure you want to delete this application?');">
+            <h:graphicImage value="/images/delete.png" />
+        </a4j:commandLink>
+
+        <!-- New Update Category -->
+        <a4j:commandLink
+                action="#{sponsorApplicationAdminBean.prepareCustomerCategoryUpdate(app.applicationId)}"
+                reRender="customerCategoryPopup"
+                oncomplete="#{rich:component('customerCategoryModal')}.show();"
+                title="Update Customer Category">
+            <h:graphicImage value="/images/category_edit.png" />
+        </a4j:commandLink>
+    </rich:column>
+
+    <rich:column>
+        <f:facet name="header">Application ID</f:facet>
+        <h:outputText value="#{app.applicationId}" />
+    </rich:column>
+
+    <rich:column>
+        <f:facet name="header">Application Name</f:facet>
+        <h:outputText value="#{app.applicationName}" />
+    </rich:column>
+
+</rich:dataTable>
+```
+
+Popup example:
+
+```xhtml
+<rich:modalPanel id="customerCategoryModal" width="500" height="250">
+    <f:facet name="header">
+        <h:outputText value="Update Customer Category" />
+    </f:facet>
+
+    <a4j:outputPanel id="customerCategoryPopup">
+        <h:panelGrid columns="2">
+
+            <h:outputText value="Application ID:" />
+            <h:outputText value="#{sponsorApplicationAdminBean.selectedApplication.applicationId}" />
+
+            <h:outputText value="Application Name:" />
+            <h:outputText value="#{sponsorApplicationAdminBean.selectedApplication.applicationName}" />
+
+            <h:outputText value="Customer Category:" />
+            <h:selectOneMenu value="#{sponsorApplicationAdminBean.selectedCustomerCategoryId}">
+                <f:selectItems value="#{sponsorApplicationAdminBean.customerCategoryOptions}" />
+            </h:selectOneMenu>
+
+        </h:panelGrid>
+
+        <br/>
+
+        <a4j:commandButton
+                value="Save"
+                action="#{sponsorApplicationAdminBean.updateCustomerCategoryOnly}"
+                reRender="applicationPanel,messages"
+                oncomplete="if (!#{facesContext.validationFailed}) #{rich:component('customerCategoryModal')}.hide();" />
+
+        <a4j:commandButton
+                value="Cancel"
+                onclick="#{rich:component('customerCategoryModal')}.hide(); return false;" />
+    </a4j:outputPanel>
+</rich:modalPanel>
+```
+
+If your project uses `rich:popupPanel` instead of `modalPanel`, same idea applies.
+
+2. Backing bean: add dedicated methods
+
+Do not reuse the full edit method.
+
+```java
+public class SponsorApplicationAdminBean {
+
+    private Application selectedApplication;
+    private Long selectedCustomerCategoryId;
+    private List<SelectItem> customerCategoryOptions;
+
+    public void prepareCustomerCategoryUpdate(Long applicationId) {
+        selectedApplication = sponsorApplicationService.getApplicationById(applicationId);
+
+        if (selectedApplication != null) {
+            selectedCustomerCategoryId = selectedApplication.getCustomerCategoryId();
+        }
+    }
+
+    public void updateCustomerCategoryOnly() {
+        if (selectedApplication == null || selectedApplication.getApplicationId() == null) {
+            addErrorMessage("No application selected.");
+            return;
+        }
+
+        if (selectedCustomerCategoryId == null) {
+            addErrorMessage("Customer Category is required.");
+            return;
+        }
+
+        sponsorApplicationService.updateCustomerCategoryOnly(
+                selectedApplication.getApplicationId(),
+                selectedCustomerCategoryId,
+                getLoggedInUser()
+        );
+
+        refreshApplicationList();
+        addInfoMessage("Customer Category updated successfully.");
+    }
+
+    private void refreshApplicationList() {
+        applicationList = sponsorApplicationService.getApplications(searchCriteria);
+    }
+
+    private void addInfoMessage(String message) {
+        FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage(FacesMessage.SEVERITY_INFO, message, null));
+    }
+
+    private void addErrorMessage(String message) {
+        FacesContext.getCurrentInstance().addMessage(null,
+                new FacesMessage(FacesMessage.SEVERITY_ERROR, message, null));
+    }
+
+    // getters/setters
+}
+```
+
+3. Service layer: separate business method
+
+This is the important part.
+
+Your existing `edit/update application` path probably contains reference validation like:
+
+```java
+if (isReferencedInSponsorApplicationMap(applicationId)) {
+    throw new BusinessException("Application record cannot be edited...");
+}
+```
+
+Do not remove that.
+
+Instead, add a new service method that updates category only and intentionally does not call that validation.
+
+```java
+public void updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    Application application = sponsorApplicationDao.findById(applicationId);
+
+    if (application == null) {
+        throw new BusinessException("Application not found.");
+    }
+
+    application.setCustomerCategoryId(customerCategoryId);
+    application.setUpdatedBy(updatedBy);
+    application.setUpdatedDate(new Date());
+
+    sponsorApplicationDao.updateCustomerCategoryOnly(application);
+}
+```
+
+4. DAO layer: update only one column
+
+This should be a narrow update, not a full entity merge if you want maximum safety.
+
+JPA version:
+
+```java
+@Transactional
+public int updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    String jpql =
+            "update Application a " +
+            "set a.customerCategoryId = :customerCategoryId, " +
+            "    a.updatedBy = :updatedBy, " +
+            "    a.updatedDate = :updatedDate " +
+            "where a.applicationId = :applicationId";
+
+    return entityManager.createQuery(jpql)
+            .setParameter("customerCategoryId", customerCategoryId)
+            .setParameter("updatedBy", updatedBy)
+            .setParameter("updatedDate", new Date())
+            .setParameter("applicationId", applicationId)
+            .executeUpdate();
+}
+```
+
+JDBC version:
+
+```java
+public int updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    String sql =
+            "UPDATE APPLICATION " +
+            "SET CUSTOMER_CATEGORY_ID = ?, UPDATED_BY = ?, UPDATED_DT = SYSDATE " +
+            "WHERE APPLICATION_ID = ?";
+
+    return jdbcTemplate.update(sql, customerCategoryId, updatedBy, applicationId);
+}
+```
+
+Replace `APPLICATION` with your actual table/entity name.
+
+5. Keep the existing validation exactly where it belongs
+
+Current full edit flow should remain:
+
+* blocked if referenced in `SPONSOR_APPLICATION_MAP`
+
+New category-only flow should be:
+
+* not blocked by `SPONSOR_APPLICATION_MAP`
+* only updates `CUSTOMER_CATEGORY_ID`
+
+That cleanly satisfies both business rules.
+
+What not to do
+
+Do not do this:
+
+* remove the existing reference validation from the normal edit flow
+* reuse the full edit screen and disable fields conditionally
+* call a generic `saveApplication()` method that updates all fields
+* let the popup bind directly to the full application object and then `merge()` everything blindly
+
+That would make the story risky and can accidentally change other fields.
+
+Safer naming
+
+Use explicit method names so future developers do not misuse them:
+
+* `prepareCustomerCategoryUpdate(...)`
+* `updateCustomerCategoryOnly(...)`
+
+Avoid generic names like:
+
+* `editApplicationSpecial`
+* `saveApplicationLite`
+
+Recommended icon/button label
+
+If icons are image-based like your current screen, use one of these:
+
+* tooltip: `Update Customer Category`
+* alt text: `Category`
+* optional visible label if needed: `Cat`
+
+If your team prefers text buttons, use:
+
+* `Update Category`
+
+My recommendation:
+icon + tooltip, because your current grid already uses compact row actions.
+
+Nice enhancement
+
+Since the table currently does not show category, add a `Customer Category` column next to `Application Name`.
+
+That way after save, the user can immediately confirm the change.
+
+Example:
+
+* Application ID
+* Application Name
+* Customer Category
+
+This is not strictly required, but it improves usability a lot.
+
+Acceptance criteria mapping
+
+Your story is satisfied like this:
+
+New button available on Sponsor/Application Configuration screen.
+
+* Add third row action button in `Edit / Delete` column.
+
+Allows updating `CUSTOMER_CATEGORY_ID` even if record exists in `SPONSOR_APPLICATION_MAP`.
+
+* New backend method bypasses reference validation and only updates category.
+
+No other application fields are editable via this action.
+
+* Popup contains only category field, with app id/name read-only.
+
+No reference validation error is shown.
+
+* New path does not execute the full edit validation.
+
+Update persists correctly in DB.
+
+* Dedicated DAO update updates only `CUSTOMER_CATEGORY_ID`.
+
+Suggested test cases
+
+Use these when you test:
+
+1. Referenced application
+
+* pick an app that is referenced in `SPONSOR_APPLICATION_MAP`
+* normal Edit should still fail
+* new Category button should succeed
+
+2. Non-referenced application
+
+* new Category button should succeed
+* normal Edit should still behave as before
+
+3. Field isolation
+
+* update category
+* verify application name, code, and other fields did not change
+
+4. Validation
+
+* click Save without selecting category
+* show validation error
+* no DB update
+
+5. DB verification
+
+* confirm new `CUSTOMER_CATEGORY_ID` in DB
+* confirm screen refresh shows updated value
+
+6. Audit
+
+* if you maintain `UPDATED_BY` and `UPDATED_DT`, confirm they are updated
+
+Suggested DB verification query
+
+```sql
+SELECT APPLICATION_ID, APPLICATION_NAME, CUSTOMER_CATEGORY_ID, UPDATED_BY, UPDATED_DT
+FROM APPLICATION
+WHERE APPLICATION_ID = :applicationId;
+```
+
+If you want, next I can give you a near-final version of:
+
+* the XHTML fragment
+* the bean code
+* the service code
+* the DAO code
+
+tailored to your likely USPS JSF/RichFaces style so you can paste and adapt quickly.
