@@ -1,0 +1,106 @@
+package com.ips.servlet.filter;
+
+import java.io.IOException;
+
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.ips.persistence.common.IPSConstants;
+import com.ips.persistence.common.NameValueVo;
+import com.ips.common.common.Utils;
+import com.usps.entreg.filter.EntRegSessionFilter;
+import com.usps.entreg.filter.data.EntRegPasswordCredential;
+import com.usps.net2x.entregapi.client.EntRegAPIClientEnv;
+
+public class IPSCustRegSessionFilter extends EntRegSessionFilter {
+    private String excludePatterns;
+
+    @Override
+    protected EntRegAPIClientEnv getEntRegAPIClientEnv(boolean debugOn) {
+        return Utils.buildEntRegAPIClientEnv(debugOn);
+    }
+    
+    @Override
+    protected EntRegPasswordCredential getEntRegAppPasswordCredential() {
+        return Utils.getEntRegAppCredentials(IPSConstants.ENT_REG_APP);
+    }
+
+    protected void postInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // Auto-generated method stub
+        
+    }
+    protected void preInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // Auto-generated method stub
+        
+    }
+    
+    @Override
+    public void init(FilterConfig cfg) throws ServletException {
+
+        // Exclude patterns come from comma-delimited web.xml <init-param>
+        this.excludePatterns = cfg.getInitParameter("excludePatterns");
+         
+        super.init(cfg);
+        
+    }
+    
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
+      	HttpServletRequest hsr = (HttpServletRequest) request;
+      	NameValueVo nv = new NameValueVo();
+      	boolean matchExcludePattern = matchExcludePattern(hsr, nv);
+      	boolean redirect = nv.isBooleanValue();
+
+      	if (redirect) {
+      		HttpServletRequest httpRequest = (HttpServletRequest) request;
+      		HttpServletResponse httpRsponse = (HttpServletResponse) response;
+      		httpRsponse.sendRedirect(httpRequest.getRequestURL().toString());
+      	}
+      	else {
+ 	        if (matchExcludePattern) {
+	            // A web services resource, so continue down chain and do not invoke
+	            // EntRegSessionFilter
+ 	        	if (chain != null) {
+ 	        		chain.doFilter(request, response);
+ 	        	}
+	        } 
+	        else {
+	             super.doFilter(request, response, chain);
+	        }
+      	}
+    }
+
+    private boolean matchExcludePattern(HttpServletRequest hsr, NameValueVo nv) {
+         // Exclude patterns come from comma-delimited web.xml <init-param>
+        String[] excludePatternsArr = excludePatterns.split(",");
+        int index = hsr.getRequestURL().indexOf("IPSWeb");
+        int slashIndex = index + 6;
+        int urlLength = hsr.getRequestURL().length();
+        
+        String urlAfterRoot = hsr.getRequestURL().substring(slashIndex, urlLength);
+        String queryString = hsr.getQueryString();
+  	    nv.setBooleanValue(false);
+	   
+     	if (!StringUtils.isEmpty(queryString) && (queryString.contains("do=") || queryString.contains("cmd="))) {
+     		nv.setBooleanValue(true);
+     	}
+     	
+        for (String pattern : excludePatternsArr) {
+            if (hsr.getServletPath().startsWith(pattern) || urlAfterRoot.startsWith(pattern)) {
+                // A web services resource found, so continue down chain
+                // and do not invoke EntRegSessionFilter
+                return true;
+            }
+        }
+        // No web service resource patterns found
+        return false;
+    }
+}
