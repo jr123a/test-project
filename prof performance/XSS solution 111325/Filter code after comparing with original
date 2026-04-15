@@ -1,0 +1,364 @@
+Yes — this helps a lot. Now we can anchor the fix to the original intent instead of guessing.
+
+What the original filter actually did
+
+The original behavior was very narrow:
+	•	matchExcludePattern(...)
+	•	checked excludePatterns
+	•	set nv=true only when query string contained do= or cmd=
+	•	doFilter()
+	•	if redirect=true, did:
+
+sendRedirect(requestURL.toString())
+
+
+	•	otherwise continued as normal
+
+So the redirect branch was never intended for general query-string validation. It was only tied to legacy do/cmd handling.
+
+That means the safest XSS fix is:
+	1.	Keep doFilter() exactly as original
+	2.	Keep nv.setBooleanValue(true) only for the original do/cmd case
+	3.	Add XSS validation in matchExcludePattern() only
+	4.	Bypass known framework/static resource requests before validation
+	5.	Do not introduce any new redirect behavior
+
+That is the right fix.
+
+⸻
+
+Recommended conservative fix
+
+Below is the version I recommend based on your original code and your current issues.
+
+It preserves the original doFilter() behavior and only enhances matchExcludePattern().
+
+package com.ips.servlet.filter;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.StringUtils;
+
+import com.ips.common.common.CustomLogger;
+import com.ips.common.common.Utils;
+import com.ips.persistence.common.IPSConstants;
+import com.ips.persistence.common.NameValueVo;
+import com.usps.entreg.filter.EntRegSessionFilter;
+import com.usps.entreg.filter.data.EntRegPasswordCredential;
+import com.usps.net2x.entregapi.client.EntRegAPIClientEnv;
+
+public class IPSCustRegSessionFilter extends EntRegSessionFilter {
+
+    private String excludePatterns;
+
+    // Characters we never allow in parameter values
+    private static final Pattern DANGEROUS_CHARS =
+            Pattern.compile("[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]");
+
+    // Obvious JS/XSS keywords
+    private static final Pattern SUSPICIOUS_KEYWORDS =
+            Pattern.compile("(?i)(script|onerror|onload|javascript:|alert\\s*\\()");
+
+    // do/cmd should remain simple operation names
+    private static final Pattern DO_CMD_VALUE_PATTERN =
+            Pattern.compile("^[a-zA-Z0-9_]+$");
+
+    @Override
+    protected EntRegAPIClientEnv getEntRegAPIClientEnv(boolean debugOn) {
+        return Utils.buildEntRegAPIClientEnv(debugOn);
+    }
+
+    @Override
+    protected EntRegPasswordCredential getEntRegAppPasswordCredential() {
+        return Utils.getEntRegAppCredentials(IPSConstants.ENT_REG_APP);
+    }
+
+    @Override
+    protected void postInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // no-op
+    }
+
+    @Override
+    protected void preInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // no-op
+    }
+
+    @Override
+    public void init(FilterConfig cfg) throws ServletException {
+        this.excludePatterns = cfg.getInitParameter("excludePatterns");
+        super.init(cfg);
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException {
+
+        HttpServletRequest hsr = (HttpServletRequest) request;
+        HttpServletResponse hsp = (HttpServletResponse) response;
+        NameValueVo nv = new NameValueVo();
+
+        try {
+            boolean matchExcludePattern = matchExcludePattern(hsr, nv);
+            boolean redirect = nv.isBooleanValue();
+
+            if (redirect) {
+                HttpServletRequest httpRequest = (HttpServletRequest) request;
+                HttpServletResponse httpRsponse = (HttpServletResponse) response;
+                httpRsponse.sendRedirect(httpRequest.getRequestURL().toString());
+            } else {
+                if (matchExcludePattern) {
+                    // A web services / framework / static resource, continue down chain
+                    if (chain != null) {
+                        chain.doFilter(request, response);
+                    }
+                } else {
+                    super.doFilter(request, response, chain);
+                }
+            }
+
+        } catch (SecurityException se) {
+            CustomLogger.warn(this.getClass(),
+                    "Security filter blocked request: URI=" + hsr.getRequestURI()
+                            + " Query=" + hsr.getQueryString()
+                            + " Reason=" + se.getMessage(),
+                    se);
+
+            if (hsp.isCommitted()) {
+                return;
+            }
+
+            hsp.reset();
+            hsp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            RequestDispatcher rd = request.getRequestDispatcher("/systemError.xhtml");
+            rd.forward(request, response);
+        }
+    }
+
+    private boolean matchExcludePattern(HttpServletRequest hsr, NameValueVo nv) throws SecurityException {
+
+        String[] excludePatternsArr = excludePatterns != null ? excludePatterns.split(",") : new String[0];
+        int index = hsr.getRequestURL().indexOf("IPSWeb");
+        int slashIndex = (index >= 0) ? index + 6 : 0;
+        int urlLength = hsr.getRequestURL().length();
+
+        String urlAfterRoot = hsr.getRequestURL().substring(slashIndex, urlLength);
+        String queryString = hsr.getQueryString();
+
+        // Preserve original behavior: default redirect flag is false
+        nv.setBooleanValue(false);
+
+        // ---------------------------------------------------
+        // 1. BYPASS STATIC / FRAMEWORK / RESOURCE REQUESTS
+        // ---------------------------------------------------
+        if (isFrameworkOrStaticResourceRequest(hsr)) {
+            return true;
+        }
+
+        // ---------------------------------------------------
+        // 2. PRESERVE ORIGINAL do/cmd REDIRECT LOGIC
+        //    only these params should drive nv=true
+        // ---------------------------------------------------
+        if (!StringUtils.isEmpty(queryString) &&
+                (queryString.contains("do=") || queryString.contains("cmd="))) {
+            nv.setBooleanValue(true);
+        }
+
+        // ---------------------------------------------------
+        // 3. XSS VALIDATION FOR BUSINESS REQUESTS ONLY
+        // ---------------------------------------------------
+        if (StringUtils.isNotBlank(queryString)) {
+            String[] pairs = queryString.split("&");
+
+            for (String pair : pairs) {
+                if (pair == null || pair.isEmpty()) {
+                    continue;
+                }
+
+                int eqIdx = pair.indexOf('=');
+                String name = (eqIdx >= 0) ? pair.substring(0, eqIdx) : pair;
+                String valuePart = (eqIdx >= 0 && eqIdx + 1 < pair.length())
+                        ? pair.substring(eqIdx + 1)
+                        : "";
+
+                String decodedValue;
+                try {
+                    decodedValue = URLDecoder.decode(valuePart, StandardCharsets.UTF_8.name());
+                } catch (IllegalArgumentException | UnsupportedEncodingException ex) {
+                    CustomLogger.warn(this.getClass(),
+                            "Malformed encoding in query parameter '" + name + "': " + valuePart);
+                    throw new SecurityException("Invalid query string encoding detected.");
+                }
+
+                if (decodedValue != null && decodedValue.length() > 2048) {
+                    CustomLogger.warn(this.getClass(),
+                            "Param '" + name + "' exceeded max length: " + decodedValue.length());
+                    throw new SecurityException("Invalid query parameter value detected.");
+                }
+
+                if (decodedValue != null &&
+                        (DANGEROUS_CHARS.matcher(decodedValue).find()
+                                || SUSPICIOUS_KEYWORDS.matcher(decodedValue).find())) {
+                    CustomLogger.warn(this.getClass(),
+                            "Potential XSS attack in param '" + name + "': " + decodedValue);
+                    throw new SecurityException("Potential XSS attack detected.");
+                }
+
+                // Keep stricter validation only for do/cmd values
+                if ("do".equals(name) || "cmd".equals(name)) {
+                    if (!DO_CMD_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                        CustomLogger.warn(this.getClass(),
+                                "do/cmd param failed validation: " + decodedValue);
+                        throw new SecurityException("Invalid do/cmd value detected.");
+                    }
+                }
+            }
+        }
+
+        // ---------------------------------------------------
+        // 4. EXISTING CONFIGURED EXCLUDE PATTERNS
+        // ---------------------------------------------------
+        for (String pattern : excludePatternsArr) {
+            if (pattern == null) {
+                continue;
+            }
+
+            pattern = pattern.trim();
+            if (pattern.isEmpty()) {
+                continue;
+            }
+
+            if (hsr.getServletPath().startsWith(pattern) || urlAfterRoot.startsWith(pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isFrameworkOrStaticResourceRequest(HttpServletRequest hsr) {
+        String uri = hsr.getRequestURI();
+        String servletPath = hsr.getServletPath();
+
+        if (uri == null) {
+            uri = "";
+        }
+        if (servletPath == null) {
+            servletPath = "";
+        }
+
+        String path = (uri + " " + servletPath).toLowerCase();
+
+        // Framework / resource containers
+        if (path.contains("/javax.faces.resource/")
+                || path.contains("javax.faces.resource/")
+                || path.contains("/rfres/")
+                || path.contains("/cfres/")
+                || path.contains("/a4j/")
+                || path.contains("/resources/")
+                || path.contains("/resources/rest/")
+                || path.contains("/resources/remote/")
+                || path.contains("/resources/batch/")
+                || path.contains("/css/")
+                || path.contains("/js/")
+                || path.contains("/images/")
+                || path.contains("/scripts/")
+                || path.contains("/styles/")) {
+            return true;
+        }
+
+        // Wildcard-style resource endpoints like *.js.xhtml, *.css.xhtml, *.png.xhtml
+        if (path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)\\.xhtml($|\\?.*)")) {
+            return true;
+        }
+
+        // Standard static resources
+        return path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)($|\\?.*)");
+    }
+}
+
+
+⸻
+
+Why this is the right fix
+
+It preserves original intent
+
+The original code only did this:
+
+if (queryString contains do= or cmd=) {
+    nv.setBooleanValue(true);
+}
+
+This version keeps exactly that behavior.
+
+It keeps doFilter() structure intact
+
+No redesign of routing logic. Only the catch block was added for friendly error handling.
+
+It adds XSS protection without changing navigation semantics
+
+Your XSS enhancement now stays inside matchExcludePattern().
+
+It bypasses the broken resource paths
+
+This should cover the kinds of remaining 404s you were seeing:
+	•	/js/ips_gtm.js
+	•	/js/ipsCommon.js
+	•	/css/ipsStyles_otp.css
+	•	/resources/rest/getProperties
+
+⸻
+
+Very important caveat
+
+The original redirect logic itself is still odd:
+
+sendRedirect(httpRequest.getRequestURL().toString());
+
+because it drops the query string.
+
+But since that is pre-existing behavior, and you explicitly do not want to alter redirect semantics unless necessary, I am leaving it unchanged here.
+
+So this fix is the most conservative one.
+
+⸻
+
+What to test next
+
+Test in this order:
+	1.	login flow
+	2.	verification TMX page that was stuck
+	3.	network tab for:
+	•	ips_gtm.js
+	•	ipsCommon.js
+	•	ipsStyles_otp.css
+	•	getProperties
+	4.	XSS demo URL:
+	•	?test=%3Cscript%3E
+	5.	old do= / cmd= flow, if applicable
+
+⸻
+
+My honest read
+
+This is the best “least invasive” fix:
+	•	preserve original redirect semantics
+	•	add resource bypass
+	•	add XSS validation
+	•	avoid rearchitecting doFilter()
+
+If you want, I can next give you a diff-only patch from the original code, so you can show the team exactly what changed and why.
