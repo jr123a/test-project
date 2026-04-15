@@ -1,0 +1,270 @@
+Yes — based on this screenshot, the fix should be two-part, not just “keep adding more exclude URLs.”
+
+What is actually happening
+
+Those 404s are mostly for framework/static resource requests, such as:
+	•	/ips/css/ipsStyles_otp.css
+	•	/ips/js/ipsCommon.js
+	•	/ips/js/ips_gtm.js
+	•	/IPSWeb/javax.faces.resource/jsf.js.xhtml
+	•	/.../popupPanel.css.xhtml
+	•	/.../status.js.xhtml
+	•	/.../popupPanel.js.xhtml
+	•	/.../popupPanelBorders.js.xhtml
+	•	/.../popupPanelSizer.js.xhtml
+	•	/.../buttonBackgroundImage.png.xhtml
+	•	/.../buttonHoverBackgroundImage.png.xhtml
+
+Your filter change likely introduced this because of one important regression:
+
+Regression
+
+In the newer code, nv.setBooleanValue(true) is being set for any query string that passes validation.
+
+Then doFilter() does:
+
+if (redirect) {
+    httpResponse.sendRedirect(httpRequest.getRequestURL().toString());
+}
+
+That redirect drops the query string.
+
+For framework resource requests, those query params are often required.
+So the browser requests something like:
+
+.../popupPanel.css.xhtml?db=eAHj...
+
+but your redirect turns it into:
+
+.../popupPanel.css.xhtml
+
+and that becomes 404.
+
+So the real fix is:
+	1.	Do not redirect every valid query-string request
+	2.	Skip XSS validation for framework/static resource requests
+
+⸻
+
+Correct fix
+
+1) Only set redirect=true for legacy do / cmd case
+
+Do not set redirect just because a query string exists.
+
+2) Bypass framework/static resource requests entirely
+
+Use a helper that covers the full set from your screenshot so you stop doing this iteratively.
+
+⸻
+
+Updated code
+
+Helper method
+
+Add this to IPSCustRegSessionFilter:
+
+private boolean isFrameworkOrStaticResourceRequest(HttpServletRequest hsr) {
+    String uri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+
+    if (uri == null) {
+        uri = "";
+    }
+    if (servletPath == null) {
+        servletPath = "";
+    }
+
+    String path = uri.toLowerCase();
+
+    // JSF / RichFaces / A4J / framework resource paths
+    if (path.contains("javax.faces.resource")
+            || path.contains("/rfres/")
+            || path.contains("/cfres/")
+            || path.contains("/a4j/")
+            || path.contains("/ips/js/")
+            || path.contains("/ips/css/")) {
+        return true;
+    }
+
+    // Resource names seen in your screenshots / console
+    if (path.contains("jsf.js.xhtml")
+            || path.contains("status.js.xhtml")
+            || path.contains("popuppanel.css.xhtml")
+            || path.contains("popuppanel.js.xhtml")
+            || path.contains("popuppanelborders.js.xhtml")
+            || path.contains("popuppanelsizer.js.xhtml")
+            || path.contains("buttonbackgroundimage.png.xhtml")
+            || path.contains("buttonhoverbackgroundimage.png.xhtml")
+            || path.contains("ipsstyles_otp.css")
+            || path.contains("ipscommon.js")
+            || path.contains("ips_gtm.js")
+            || path.contains("getproperties")) {
+        return true;
+    }
+
+    // Generic static resource extensions
+    return path.endsWith(".js")
+            || path.endsWith(".css")
+            || path.endsWith(".png")
+            || path.endsWith(".gif")
+            || path.endsWith(".jpg")
+            || path.endsWith(".jpeg")
+            || path.endsWith(".svg")
+            || path.endsWith(".ico")
+            || path.endsWith(".woff")
+            || path.endsWith(".woff2")
+            || path.endsWith(".ttf")
+            || path.endsWith(".map");
+}
+
+
+⸻
+
+Updated matchExcludePattern(...)
+
+Use this version:
+
+private boolean matchExcludePattern(HttpServletRequest hsr, NameValueVo nv) throws SecurityException {
+
+    String[] excludePatternsArr = excludePatterns.split(",");
+    String requestUri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+    String queryString = hsr.getQueryString();
+
+    nv.setBooleanValue(false);
+
+    // ---------------------------------------------------
+    // 1. BYPASS FRAMEWORK / STATIC RESOURCE REQUESTS
+    // ---------------------------------------------------
+    if (isFrameworkOrStaticResourceRequest(hsr)) {
+        return true;
+    }
+
+    // ---------------------------------------------------
+    // 2. EXISTING CONFIGURED EXCLUDE PATTERNS
+    // ---------------------------------------------------
+    if (excludePatternsArr != null) {
+        for (String pattern : excludePatternsArr) {
+            if (pattern != null) {
+                pattern = pattern.trim();
+                if (!pattern.isEmpty()) {
+                    if ((servletPath != null && servletPath.startsWith(pattern))
+                            || (requestUri != null && requestUri.contains(pattern))) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------
+    // 3. QUERY PARAM VALIDATION FOR BUSINESS REQUESTS ONLY
+    // ---------------------------------------------------
+    if (StringUtils.isNotBlank(queryString)) {
+
+        String[] pairs = queryString.split("&");
+        for (String pair : pairs) {
+            if (pair == null || pair.isEmpty()) {
+                continue;
+            }
+
+            int eqIdx = pair.indexOf('=');
+            String name = (eqIdx >= 0) ? pair.substring(0, eqIdx) : pair;
+            String valuePart = (eqIdx >= 0 && eqIdx + 1 < pair.length())
+                    ? pair.substring(eqIdx + 1)
+                    : "";
+
+            String decodedValue;
+            try {
+                decodedValue = URLDecoder.decode(valuePart, StandardCharsets.UTF_8.name());
+            } catch (IllegalArgumentException ex) {
+                CustomLogger.warn(this.getClass(),
+                        "Malformed encoding in query parameter '" + name + "': " + valuePart);
+                throw new SecurityException("Invalid query string encoding detected.");
+            } catch (UnsupportedEncodingException ex) {
+                CustomLogger.warn(this.getClass(),
+                        "Unsupported encoding in query parameter '" + name + "': " + valuePart);
+                throw new SecurityException("Invalid query string encoding detected.");
+            }
+
+            if (decodedValue != null && decodedValue.length() > 2048) {
+                CustomLogger.warn(this.getClass(),
+                        "Param '" + name + "' exceeded max length: " + decodedValue.length());
+                throw new SecurityException("Invalid query parameter value detected.");
+            }
+
+            if (decodedValue != null
+                    && (DANGEROUS_CHARS.matcher(decodedValue).find()
+                    || SUSPICIOUS_KEYWORDS.matcher(decodedValue).find())) {
+                CustomLogger.warn(this.getClass(),
+                        "Potential XSS attack in param '" + name + "': " + decodedValue);
+                throw new SecurityException("Potential XSS attack detected.");
+            }
+
+            // Keep stricter validation only for legacy do/cmd params
+            if ("do".equals(name) || "cmd".equals(name)) {
+                if (decodedValue == null || !DO_CMD_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                    CustomLogger.warn(this.getClass(),
+                            "do/cmd param failed validation: " + decodedValue);
+                    throw new SecurityException("Invalid do/cmd value detected.");
+                }
+
+                // IMPORTANT:
+                // only do/cmd keeps the old redirect behavior
+                nv.setBooleanValue(true);
+            }
+        }
+    }
+
+    return false;
+}
+
+
+⸻
+
+Why this fixes the 99% hang
+
+Before
+
+Any valid query string → nv=true → sendRedirect(requestURL) → query string lost → framework resource 404
+
+After
+	•	Framework/static resource requests are bypassed completely
+	•	Only legacy do / cmd requests can set redirect=true
+	•	Resource URLs keep their query string and load correctly
+	•	Business-page XSS filtering still works
+
+⸻
+
+Optional web.xml cleanup
+
+Also add these to your configured exclude patterns so the intent is visible:
+
+<init-param>
+    <param-name>excludePatterns</param-name>
+    <param-value>
+        /IPSWeb/services,
+        /javax.faces.resource,
+        /rfRes,
+        /cfRes,
+        /a4j,
+        /ips/js,
+        /ips/css
+    </param-value>
+</init-param>
+
+
+⸻
+
+What to test after deploy
+
+Retest the page that was stuck at 99% and confirm:
+	•	CSS/JS resources no longer return 404
+	•	Console errors for ipsCommon.js, ips_gtm.js, jsf.js.xhtml, popupPanel*.xhtml go away
+	•	Page moves past 99%
+	•	XSS tests still block:
+	•	?test=%3Cscript%3E
+	•	?cmd=alert(1)
+
+The main fix here is not just more exclusions — it is also restoring the old redirect behavior so only do/cmd causes redirect, not every query string.
