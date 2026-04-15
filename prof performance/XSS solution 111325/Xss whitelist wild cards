@@ -1,0 +1,145 @@
+Yes — that is the better approach.
+
+You should not hardcode every resource file name.
+Use path-based and extension-based wildcard-style checks so all framework/static resources are skipped automatically.
+
+Better fix
+
+Replace the earlier resource helper with this version:
+
+private boolean isFrameworkOrStaticResourceRequest(HttpServletRequest hsr) {
+    String uri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+
+    if (uri == null) {
+        uri = "";
+    }
+    if (servletPath == null) {
+        servletPath = "";
+    }
+
+    String path = (uri + " " + servletPath).toLowerCase();
+
+    // 1. Framework resource containers / wildcard path matching
+    if (path.contains("/javax.faces.resource/")
+            || path.contains("javax.faces.resource/")
+            || path.contains("/rfres/")
+            || path.contains("/cfres/")
+            || path.contains("/a4j/")
+            || path.contains("/ips/js/")
+            || path.contains("/ips/css/")
+            || path.contains("/images/")
+            || path.contains("/scripts/")
+            || path.contains("/styles/")) {
+        return true;
+    }
+
+    // 2. Any resource-style xhtml endpoints
+    //    e.g. popupPanel.css.xhtml, status.js.xhtml, buttonBackgroundImage.png.xhtml
+    if (path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)\\.xhtml($|\\?.*)")) {
+        return true;
+    }
+
+    // 3. Normal static file extensions
+    if (path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)($|\\?.*)")) {
+        return true;
+    }
+
+    return false;
+}
+
+Why this is better
+
+This covers all of these automatically:
+	•	/IPSWeb/javax.faces.resource/...
+	•	/cfRes/...
+	•	/rfRes/...
+	•	/a4j/...
+	•	/ips/js/...
+	•	/ips/css/...
+	•	popupPanel.css.xhtml
+	•	status.js.xhtml
+	•	buttonBackgroundImage.png.xhtml
+	•	future JS/CSS/image/font resources too
+
+So you do not need to list every file.
+
+Keep matchExcludePattern() like this
+
+At the top of matchExcludePattern(...), keep:
+
+nv.setBooleanValue(false);
+
+if (isFrameworkOrStaticResourceRequest(hsr)) {
+    return true;
+}
+
+And keep the rest of your XSS validation only for business requests.
+
+Important reminder
+
+The bigger fix still stands:
+	•	Only set nv.setBooleanValue(true) for do / cmd
+	•	Do not set redirect for every query string
+
+Otherwise resource requests with query params will still get redirected and break.
+
+Even simpler version
+
+If you want to avoid matches(...), you can use a helper:
+
+private boolean hasStaticExtension(String value) {
+    return value.endsWith(".js")
+            || value.endsWith(".css")
+            || value.endsWith(".png")
+            || value.endsWith(".gif")
+            || value.endsWith(".jpg")
+            || value.endsWith(".jpeg")
+            || value.endsWith(".svg")
+            || value.endsWith(".ico")
+            || value.endsWith(".woff")
+            || value.endsWith(".woff2")
+            || value.endsWith(".ttf")
+            || value.endsWith(".map")
+            || value.endsWith(".js.xhtml")
+            || value.endsWith(".css.xhtml")
+            || value.endsWith(".png.xhtml")
+            || value.endsWith(".gif.xhtml")
+            || value.endsWith(".jpg.xhtml")
+            || value.endsWith(".jpeg.xhtml")
+            || value.endsWith(".svg.xhtml")
+            || value.endsWith(".ico.xhtml");
+}
+
+Then:
+
+private boolean isFrameworkOrStaticResourceRequest(HttpServletRequest hsr) {
+    String uri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+
+    if (uri == null) {
+        uri = "";
+    }
+    if (servletPath == null) {
+        servletPath = "";
+    }
+
+    String path = (uri + servletPath).toLowerCase();
+
+    return path.contains("/javax.faces.resource/")
+            || path.contains("javax.faces.resource/")
+            || path.contains("/rfres/")
+            || path.contains("/cfres/")
+            || path.contains("/a4j/")
+            || path.contains("/ips/js/")
+            || path.contains("/ips/css/")
+            || hasStaticExtension(path);
+}
+
+Use this version if your team prefers simpler readable code over regex.
+
+Recommendation
+
+I would use the second version if your team is conservative, because it is easier to explain in code review.
+
+If you want, I can now give you the full final matchExcludePattern() method with this wildcard-based helper merged in.
