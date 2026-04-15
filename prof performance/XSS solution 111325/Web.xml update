@@ -1,0 +1,66 @@
+Yes — I would update it, but it is not strictly required if you already keep the code-based bypass in isFrameworkOrStaticResourceRequest(...).
+
+Best practice is:
+	•	Code-level exclusion = real protection/fix
+	•	web.xml exclusion = configuration clarity + backup
+
+So the answer is:
+
+What is required?
+
+Required: the Java code fix
+Recommended: update web.xml too
+
+Your current web.xml already has a lot of the right exclusions:
+	•	/javax.faces.resource
+	•	/css
+	•	/images
+	•	/js
+	•	/rfRes
+	•	/systemError.xhtml
+
+That is good.
+
+What I would add
+
+From our discussion, add these if they are used in your app:
+
+/a4j,
+/cfRes
+
+So your param-value can become:
+
+/resources/rss,/resources/rest,/resources/remote,/resources/batch,/css,/images,/js,/rfRes,
+/javax.faces.resource,/cfRes,/a4j,/c.xhtml,/c.faces,/verification_smfa_success.xhtml,
+/verification_smfa_success.faces,/systemError.xhtml,/systemError.faces
+
+Why update it if code already handles it?
+
+Because:
+	•	it documents the exclusion behavior clearly for the team
+	•	it helps future maintainers
+	•	if someone changes the helper method later, config still gives a second layer of safety
+
+Important clarification
+
+web.xml alone is not enough to solve your issue if the main problem was this:
+
+nv.setBooleanValue(true);
+
+for every valid query string.
+
+That redirect/query-string-loss issue had to be fixed in code.
+So:
+	•	Do not rely only on web.xml
+	•	Keep the Java fix
+	•	Optionally update web.xml for completeness
+
+My recommendation
+
+Do both:
+	1.	Keep the updated Java logic
+	2.	Add /a4j and /cfRes to web.xml
+
+That is the cleanest approach.
+
+If you want, I can rewrite the full <param-value> line exactly in one copy-paste-ready line.
