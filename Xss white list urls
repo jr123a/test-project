@@ -1,0 +1,204 @@
+Yes — the fix is to skip the XSS query validation for framework/static resource requests before your query-string checks run.
+
+Right now your filter is probably inspecting requests like:
+	•	javax.faces.resource/...
+	•	rfRes/...
+	•	a4j/...
+	•	popup panel CSS/JS resource URLs
+	•	framework-generated requests with params like db=...
+
+When those get blocked, the browser receives an HTML error page instead of CSS/JS, and the page hangs at 99%.
+
+Fix approach
+
+Do this in matchExcludePattern(...):
+	1.	Detect JSF / RichFaces / A4J static resource requests first
+	2.	Return true immediately for those
+	3.	Only run your XSS query validation for real business page requests
+
+⸻
+
+Recommended code change
+
+Add this helper method to IPSCustRegSessionFilter:
+
+private boolean isFrameworkResourceRequest(HttpServletRequest hsr) {
+    String requestUri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+
+    if (requestUri == null) {
+        requestUri = "";
+    }
+    if (servletPath == null) {
+        servletPath = "";
+    }
+
+    return requestUri.contains("javax.faces.resource")
+            || requestUri.contains("/rfRes/")
+            || requestUri.contains("/a4j/")
+            || servletPath.contains("javax.faces.resource")
+            || servletPath.contains("/rfRes/")
+            || servletPath.contains("/a4j/");
+}
+
+Then update your matchExcludePattern(...) like this:
+
+private boolean matchExcludePattern(HttpServletRequest hsr, NameValueVo nv) throws SecurityException {
+
+    String[] excludePatternsArr = excludePatterns.split(",");
+    String requestUri = hsr.getRequestURI();
+    String servletPath = hsr.getServletPath();
+    String queryString = hsr.getQueryString();
+
+    nv.setBooleanValue(false);
+
+    // ---------------------------------------------------
+    // 1. BYPASS FRAMEWORK / STATIC RESOURCE REQUESTS
+    // ---------------------------------------------------
+    if (isFrameworkResourceRequest(hsr)) {
+        return true;
+    }
+
+    // ---------------------------------------------------
+    // 2. EXISTING EXCLUDE PATTERN LOGIC
+    // ---------------------------------------------------
+    if (excludePatternsArr != null) {
+        for (String pattern : excludePatternsArr) {
+            if (pattern != null) {
+                pattern = pattern.trim();
+                if (!pattern.isEmpty()) {
+                    if ((servletPath != null && servletPath.startsWith(pattern))
+                            || (requestUri != null && requestUri.contains(pattern))) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // ---------------------------------------------------
+    // 3. QUERY PARAMETER VALIDATION
+    //    ONLY FOR NON-RESOURCE / BUSINESS REQUESTS
+    // ---------------------------------------------------
+    if (StringUtils.isNotBlank(queryString)) {
+
+        String[] pairs = queryString.split("&");
+        for (String pair : pairs) {
+            if (pair == null || pair.isEmpty()) {
+                continue;
+            }
+
+            int eqIdx = pair.indexOf('=');
+            String name = (eqIdx >= 0) ? pair.substring(0, eqIdx) : pair;
+            String valuePart = (eqIdx >= 0 && eqIdx + 1 < pair.length())
+                    ? pair.substring(eqIdx + 1)
+                    : "";
+
+            String decodedValue;
+            try {
+                decodedValue = URLDecoder.decode(valuePart, StandardCharsets.UTF_8.name());
+            } catch (IllegalArgumentException ex) {
+                CustomLogger.warn(this.getClass(),
+                        "Malformed encoding in query parameter '" + name + "': " + valuePart);
+                throw new SecurityException("Invalid query string encoding detected.");
+            } catch (UnsupportedEncodingException ex) {
+                CustomLogger.warn(this.getClass(),
+                        "Unsupported encoding in query parameter '" + name + "': " + valuePart);
+                throw new SecurityException("Invalid query string encoding detected.");
+            }
+
+            // basic max length guard
+            if (decodedValue != null && decodedValue.length() > 2048) {
+                CustomLogger.warn(this.getClass(),
+                        "Param '" + name + "' exceeded max length: " + decodedValue.length());
+                throw new SecurityException("Invalid query parameter value detected.");
+            }
+
+            // global XSS checks
+            if (decodedValue != null
+                    && (DANGEROUS_CHARS.matcher(decodedValue).find()
+                    || SUSPICIOUS_KEYWORDS.matcher(decodedValue).find())) {
+                CustomLogger.warn(this.getClass(),
+                        "Potential XSS attack in param '" + name + "': " + decodedValue);
+                throw new SecurityException("Potential XSS attack detected.");
+            }
+
+            // optional strict validation only for do/cmd
+            if ("do".equals(name) || "cmd".equals(name)) {
+                if (decodedValue == null || !DO_CMD_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                    CustomLogger.warn(this.getClass(),
+                            "do/cmd param failed validation: " + decodedValue);
+                    throw new SecurityException("Invalid do/cmd value detected.");
+                }
+            }
+        }
+
+        nv.setBooleanValue(true);
+    }
+
+    return false;
+}
+
+
+⸻
+
+Why this fix works
+
+This prevents your filter from interfering with framework resource loading such as:
+	•	JS files
+	•	CSS files
+	•	RichFaces popup resources
+	•	Ajax framework resources
+
+So the browser will get actual CSS/JS again instead of your HTML error page.
+
+⸻
+
+If you want the quickest minimal fix
+
+If you do not want to add a helper method, add this near the top of matchExcludePattern(...):
+
+String requestUri = hsr.getRequestURI();
+if (requestUri != null &&
+        (requestUri.contains("javax.faces.resource")
+        || requestUri.contains("/rfRes/")
+        || requestUri.contains("/a4j/"))) {
+    return true;
+}
+
+That alone may immediately fix the 99% issue.
+
+⸻
+
+What to test after deploying
+
+Open the stuck page again and verify:
+	1.	Page no longer hangs at 99%
+	2.	Console no longer shows CSS/JS MIME-type errors
+	3.	RichFaces.ui.PopupPanel is not a constructor goes away
+	4.	Network tab shows framework JS/CSS requests returning real JS/CSS, not HTML
+	5.	Your XSS tests still work on business page URLs like:
+	•	?test=%3Cscript%3E
+	•	?cmd=alert(1)
+
+⸻
+
+One more important suggestion
+
+Add these resource patterns into your configured excludePatterns too, if that is read from web.xml, so the exclusion is visible and maintainable:
+
+<init-param>
+    <param-name>excludePatterns</param-name>
+    <param-value>
+        /IPSWeb/services,
+        /javax.faces.resource,
+        /rfRes,
+        /a4j
+    </param-value>
+</init-param>
+
+That gives you both:
+	•	config-level exclusion
+	•	code-level safety net
+
+If you paste your current matchExcludePattern() method text, I’ll merge this directly into your exact code so you can copy-paste it without manual edits.
