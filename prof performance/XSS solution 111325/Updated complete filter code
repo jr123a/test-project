@@ -1,0 +1,397 @@
+Yes — thanks for pasting the current version.
+I can see exactly where the issue is now.
+
+What must be fixed in your current code
+
+There are two real problems in the current version:
+
+1. nv.setBooleanValue(true) is being set for any valid query string
+
+That means any request with query params gets treated as redirect=true in doFilter().
+
+Then this happens:
+
+httpResponse.sendRedirect(httpRequest.getRequestURL().toString());
+
+That redirect drops the query string, which breaks framework/resource requests like:
+	•	popupPanel.css.xhtml?db=...
+	•	jsf.js.xhtml?...
+	•	ipsCommon.js?...
+
+That is the main reason your page gets stuck at 99%.
+
+2. Framework/static resource requests are being validated like business URLs
+
+Those should be skipped entirely.
+
+⸻
+
+Corrected version
+
+Below is your class with the fixes applied in the right places and with minimal disruption to your existing structure.
+
+Updated class
+
+package com.ips.servlet.filter;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.ips.common.common.CustomLogger;
+import org.apache.commons.lang3.StringUtils;
+
+import com.ips.persistence.common.IPSConstants;
+import com.ips.persistence.common.NameValueVo;
+import com.ips.common.common.Utils;
+import com.usps.entreg.filter.EntRegSessionFilter;
+import com.usps.entreg.filter.data.EntRegPasswordCredential;
+import com.usps.net2x.entregapi.client.EntRegAPIClientEnv;
+
+public class IPSCustRegSessionFilter extends EntRegSessionFilter {
+
+    private String excludePatterns;
+
+    // Characters we never allow in parameter values
+    private static final Pattern DANGEROUS_CHARS =
+            Pattern.compile("[<>\"'`;(){}]|%3[cC]|%3[eE]|%22|%27|%3[bB]");
+
+    // Obvious JS/XSS keywords
+    private static final Pattern SUSPICIOUS_KEYWORDS =
+            Pattern.compile("(?i)(script|onerror|onload|javascript:|alert\\s*\\()");
+
+    // do/cmd should be simple operation names
+    private static final Pattern DO_CMD_VALUE_PATTERN =
+            Pattern.compile("^[a-zA-Z0-9_]+$");
+
+    @Override
+    protected EntRegAPIClientEnv getEntRegAPIClientEnv(boolean debugOn) {
+        return Utils.buildEntRegAPIClientEnv(debugOn);
+    }
+
+    @Override
+    protected EntRegPasswordCredential getEntRegAppPasswordCredential() {
+        return Utils.getEntRegAppCredentials(IPSConstants.ENT_REG_APP);
+    }
+
+    @Override
+    protected void postInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // no-op
+    }
+
+    @Override
+    protected void preInvalidateSession(HttpServletRequest arg0, HttpServletResponse arg1) {
+        // no-op
+    }
+
+    @Override
+    public void init(FilterConfig cfg) throws ServletException {
+        this.excludePatterns = cfg.getInitParameter("excludePatterns");
+        super.init(cfg);
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response,
+                         FilterChain chain) throws IOException, ServletException {
+
+        HttpServletRequest hsr = (HttpServletRequest) request;
+        HttpServletResponse hsp = (HttpServletResponse) response;
+        NameValueVo nv = new NameValueVo();
+
+        try {
+            boolean matchExcludePattern = matchExcludePattern(hsr, nv);
+            boolean redirect = nv.isBooleanValue();
+
+            if (redirect) {
+                HttpServletRequest httpRequest = (HttpServletRequest) request;
+                HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+                String targetUrl = httpRequest.getRequestURL().toString();
+                if (StringUtils.isNotBlank(httpRequest.getQueryString())) {
+                    targetUrl = targetUrl + "?" + httpRequest.getQueryString();
+                }
+
+                httpResponse.sendRedirect(targetUrl);
+            } else {
+                if (matchExcludePattern) {
+                    // Framework/static/web service resource: continue down chain and do not invoke EntRegSessionFilter
+                    if (chain != null) {
+                        chain.doFilter(request, response);
+                    }
+                } else {
+                    // Standard processing
+                    super.doFilter(request, response, chain);
+                }
+            }
+
+        } catch (SecurityException se) {
+            CustomLogger.warn(this.getClass(),
+                    "Security filter blocked request: URI=" + hsr.getRequestURI()
+                            + " Query=" + hsr.getQueryString()
+                            + " Reason=" + se.getMessage(),
+                    se);
+
+            if (hsp.isCommitted()) {
+                return;
+            }
+
+            hsp.reset();
+            hsp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+
+            RequestDispatcher rd = request.getRequestDispatcher("systemError.xhtml");
+            rd.forward(request, response);
+        }
+    }
+
+    private boolean matchExcludePattern(HttpServletRequest hsr, NameValueVo nv) throws SecurityException {
+
+        String[] excludePatternsArr = excludePatterns != null ? excludePatterns.split(",") : new String[0];
+        int index = hsr.getRequestURL().indexOf("IPSWeb");
+        int slashIndex = (index >= 0) ? index + "IPSWeb".length() : 0;
+
+        String urlAfterRoot = hsr.getRequestURL().substring(slashIndex);
+        String queryString = hsr.getQueryString();
+
+        nv.setBooleanValue(false);
+
+        // ---------------------------------------------------
+        // 1. BYPASS FRAMEWORK / STATIC RESOURCE REQUESTS
+        // ---------------------------------------------------
+        if (isFrameworkOrStaticResourceRequest(hsr)) {
+            return true;
+        }
+
+        // ---------------------------------------------------
+        // 2. CONFIGURED EXCLUDE PATTERNS
+        // ---------------------------------------------------
+        for (String pattern : excludePatternsArr) {
+            pattern = pattern.trim();
+            if (pattern.isEmpty()) {
+                continue;
+            }
+            if (hsr.getServletPath().startsWith(pattern) || urlAfterRoot.startsWith(pattern)) {
+                return true;
+            }
+        }
+
+        // ---------------------------------------------------
+        // 3. GLOBAL XSS VALIDATION FOR BUSINESS REQUESTS ONLY
+        // ---------------------------------------------------
+        if (StringUtils.isNotBlank(queryString)) {
+
+            String[] pairs = queryString.split("&");
+            for (String pair : pairs) {
+                if (pair.isEmpty()) {
+                    continue;
+                }
+
+                int eqIdx = pair.indexOf('=');
+                String name = (eqIdx >= 0) ? pair.substring(0, eqIdx) : pair;
+                String valuePart = (eqIdx >= 0 && eqIdx + 1 < pair.length())
+                        ? pair.substring(eqIdx + 1)
+                        : "";
+
+                String decodedValue;
+                try {
+                    decodedValue = URLDecoder.decode(valuePart, StandardCharsets.UTF_8.name());
+                } catch (IllegalArgumentException | UnsupportedEncodingException ex) {
+                    CustomLogger.warn(this.getClass(),
+                            "Malformed encoding in query parameter '" + name + "': " + valuePart);
+                    throw new SecurityException("Invalid query string encoding detected.");
+                }
+
+                if (decodedValue != null && decodedValue.length() > 2048) {
+                    CustomLogger.warn(this.getClass(),
+                            "Param '" + name + "' exceeded max length: " + decodedValue.length());
+                    throw new SecurityException("Invalid query parameter value detected.");
+                }
+
+                if (decodedValue != null &&
+                        (DANGEROUS_CHARS.matcher(decodedValue).find()
+                                || SUSPICIOUS_KEYWORDS.matcher(decodedValue).find())) {
+                    CustomLogger.warn(this.getClass(),
+                            "Potential XSS attack in param '" + name + "': " + decodedValue);
+                    throw new SecurityException("Potential XSS attack detected.");
+                }
+
+                // Only apply strict validation to do/cmd
+                if ("do".equals(name) || "cmd".equals(name)) {
+                    if (!DO_CMD_VALUE_PATTERN.matcher(decodedValue).matches()) {
+                        CustomLogger.warn(this.getClass(),
+                                "do/cmd param failed validation: " + decodedValue);
+                        throw new SecurityException("Invalid do/cmd value detected.");
+                    }
+
+                    // Keep legacy redirect behavior ONLY for do/cmd
+                    nv.setBooleanValue(true);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isFrameworkOrStaticResourceRequest(HttpServletRequest hsr) {
+        String uri = hsr.getRequestURI();
+        String servletPath = hsr.getServletPath();
+
+        if (uri == null) {
+            uri = "";
+        }
+        if (servletPath == null) {
+            servletPath = "";
+        }
+
+        String path = (uri + " " + servletPath).toLowerCase();
+
+        // JSF / RichFaces / A4J / common app static resource paths
+        if (path.contains("/javax.faces.resource/")
+                || path.contains("javax.faces.resource/")
+                || path.contains("/rfres/")
+                || path.contains("/cfres/")
+                || path.contains("/a4j/")
+                || path.contains("/ips/js/")
+                || path.contains("/ips/css/")
+                || path.contains("/images/")
+                || path.contains("/scripts/")
+                || path.contains("/styles/")) {
+            return true;
+        }
+
+        // Wildcard-style support for resource-like *.js.xhtml, *.css.xhtml, *.png.xhtml, etc.
+        if (path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)\\.xhtml($|\\?.*)")) {
+            return true;
+        }
+
+        // Normal static file extensions
+        return path.matches(".*\\.(js|css|png|gif|jpg|jpeg|svg|ico|woff|woff2|ttf|map)($|\\?.*)");
+    }
+}
+
+
+⸻
+
+What changed from your current version
+
+Fix 1: resource requests are skipped first
+
+This line is now near the top of matchExcludePattern():
+
+if (isFrameworkOrStaticResourceRequest(hsr)) {
+    return true;
+}
+
+So JSF/RichFaces/static resources do not get XSS-validated.
+
+⸻
+
+Fix 2: redirect is no longer triggered for every query string
+
+In your current code, this was happening because of:
+
+nv.setBooleanValue(true);
+
+for any valid query string.
+
+Now it happens only for legacy do / cmd params:
+
+if ("do".equals(name) || "cmd".equals(name)) {
+    ...
+    nv.setBooleanValue(true);
+}
+
+
+⸻
+
+Fix 3: if redirect happens, query string is preserved
+
+Your old code dropped the query string:
+
+httpResponse.sendRedirect(httpRequest.getRequestURL().toString());
+
+Now it keeps it:
+
+String targetUrl = httpRequest.getRequestURL().toString();
+if (StringUtils.isNotBlank(httpRequest.getQueryString())) {
+    targetUrl = targetUrl + "?" + httpRequest.getQueryString();
+}
+httpResponse.sendRedirect(targetUrl);
+
+That prevents accidental breaking even if redirect occurs.
+
+⸻
+
+Why this should fix the 99% hang
+
+Your broken resource URLs were likely being redirected without query params or filtered incorrectly.
+
+This updated version:
+	•	bypasses resource requests entirely
+	•	keeps business XSS checks in place
+	•	only redirects legacy do/cmd style requests
+	•	preserves query string on redirect
+
+So the page should stop hanging at 99%.
+
+⸻
+
+What to test after deployment
+
+Test these 4 things:
+
+1. The stuck page
+
+Open the verify identity page that was stuck at 99%.
+
+Expected:
+	•	page loads fully
+	•	CSS/JS files stop returning 404
+	•	console errors reduce significantly or disappear
+
+2. A normal business flow
+
+Use the application normally.
+
+Expected:
+	•	no regression
+
+3. XSS negative test
+
+Try:
+
+?test=%3Cscript%3E
+
+Expected:
+	•	blocked
+	•	system error page shown
+
+4. Legacy do/cmd flow
+
+Try a known valid do= or cmd= flow in your app.
+
+Expected:
+	•	still works
+
+⸻
+
+One small recommendation
+
+In web.xml, also add these exclude patterns if not already present:
+
+/IPSWeb/services,
+/javax.faces.resource,
+/rfRes,
+/cfRes,
+/a4j,
+/ips/js,
+/ips/css
+
+That helps config and code align.
+
+If you want, next I can give you a very small diff-style patch showing only the exact lines changed from your pasted version.
