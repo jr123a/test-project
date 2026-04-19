@@ -1,0 +1,390 @@
+Yes, this is the better path for your situation.
+
+Given this screen, the lowest-risk implementation is:
+
+* add a third row action button next to Edit/Delete
+* reuse the existing inline edit panel behavior
+* do not introduce popup code
+* do not disturb the current full edit flow
+
+That matches the current page pattern much better.
+
+Updated UI approach
+
+In the Edit / Delete column, make it:
+
+* green Edit
+* red Delete
+* new Category Edit button
+
+So each row becomes:
+
+[Edit] [Delete] [Category]
+
+Use a small third icon. Best choice is a tag/label icon or a simple blue pencil/tag icon so it does not look like Delete or normal Edit.
+
+How the new flow should work
+
+When user clicks the new Category button for a row:
+
+1. Same page stays open
+2. Create / Modify Application panel stays expanded
+3. Selected application is loaded into the existing form area
+4. Application Name should be read-only or disabled
+5. Customer Category dropdown remains enabled
+6. At the bottom, existing Update and Cancel buttons are used
+7. On Update, only CUSTOMER_CATEGORY_ID is saved
+8. No sponsor-application-map reference validation is executed
+
+This is the cleanest way to reuse existing code.
+
+What to change from your current full edit logic
+
+Right now your normal edit likely does this:
+
+* loads application into form
+* allows application name edits
+* on update, calls full save
+* validation blocks referenced applications
+
+For this story, add a separate mode flag.
+
+Recommended bean flags
+
+Add something like:
+
+private boolean customerCategoryOnlyEditMode;
+private Long selectedApplicationId;
+
+Behavior:
+
+* normal Edit button:
+    * customerCategoryOnlyEditMode = false
+* new Category button:
+    * customerCategoryOnlyEditMode = true
+
+Then in the page:
+
+* disable Application Name when customerCategoryOnlyEditMode == true
+* allow Customer Category
+* Update button calls a method that checks the mode and routes accordingly
+
+Best implementation pattern
+
+Do not create a totally separate form.
+Do not create popup logic.
+Do not duplicate the whole panel.
+
+Just reuse the same panel and control field editability by mode.
+
+Suggested button placement
+
+In your existing row action column:
+
+<a4j:commandLink
+    action="#{sponsorApplicationAdminBean.prepareCustomerCategoryEdit(app.applicationId)}"
+    reRender="applicationConfigPanel, applicationButtons, messages"
+    title="Update Customer Category">
+    <h:graphicImage value="/images/category_edit.png" />
+</a4j:commandLink>
+
+Put it right after delete.
+
+Example row actions conceptually:
+
+<h:panelGroup>
+    <!-- existing edit -->
+    <a4j:commandLink ... title="Edit Application">
+        <h:graphicImage value="/images/edit.png" />
+    </a4j:commandLink>
+    <!-- existing delete -->
+    <a4j:commandLink ... title="Delete Application">
+        <h:graphicImage value="/images/delete.png" />
+    </a4j:commandLink>
+    <!-- new category-only edit -->
+    <a4j:commandLink
+        action="#{sponsorApplicationAdminBean.prepareCustomerCategoryEdit(app.applicationId)}"
+        reRender="createModifyApplicationPanel, appButtonsPanel, messages"
+        title="Update Customer Category">
+        <h:graphicImage value="/images/category_edit.png" />
+    </a4j:commandLink>
+</h:panelGroup>
+
+Bean methods
+
+1. New prepare method
+
+public String prepareCustomerCategoryEdit(Long applicationId) {
+    Application app = sponsorApplicationService.getApplicationById(applicationId);
+    if (app == null) {
+        addErrorMessage("Application not found.");
+        return null;
+    }
+    this.selectedApplication = app;
+    this.selectedApplicationId = app.getApplicationId();
+    this.customerCategoryOnlyEditMode = true;
+    // If your page uses separate bound fields
+    this.applicationName = app.getApplicationName();
+    this.customerCategoryId = app.getCustomerCategoryId();
+    this.showUpdateButton = true;
+    this.showCancelButton = true;
+    this.showCreateButton = false;
+    return null;
+}
+
+2. Existing normal edit method stays separate
+
+public String editApplication(Long applicationId) {
+    Application app = sponsorApplicationService.getApplicationById(applicationId);
+    if (app == null) {
+        addErrorMessage("Application not found.");
+        return null;
+    }
+    this.selectedApplication = app;
+    this.selectedApplicationId = app.getApplicationId();
+    this.customerCategoryOnlyEditMode = false;
+    this.applicationName = app.getApplicationName();
+    this.customerCategoryId = app.getCustomerCategoryId();
+    this.showUpdateButton = true;
+    this.showCancelButton = true;
+    this.showCreateButton = false;
+    return null;
+}
+
+3. Update button handler
+
+If you already have updateApplication(), then branch inside it.
+
+public String updateApplication() {
+    if (customerCategoryOnlyEditMode) {
+        return updateCustomerCategoryOnly();
+    }
+    return updateFullApplication();
+}
+
+4. New category-only update method
+
+public String updateCustomerCategoryOnly() {
+    try {
+        if (selectedApplicationId == null) {
+            addErrorMessage("No application selected.");
+            return null;
+        }
+        if (customerCategoryId == null) {
+            addErrorMessage("Customer Category is required.");
+            return null;
+        }
+        sponsorApplicationService.updateCustomerCategoryOnly(
+            selectedApplicationId,
+            customerCategoryId,
+            getLoggedInUser()
+        );
+        addInfoMessage("Customer Category updated successfully.");
+        resetApplicationForm();
+        reloadApplicationList();
+    } catch (Exception e) {
+        addErrorMessage("Unable to update customer category.");
+    }
+    return null;
+}
+
+5. Cancel should reset the mode
+
+public String cancelApplicationEdit() {
+    resetApplicationForm();
+    return null;
+}
+private void resetApplicationForm() {
+    this.selectedApplication = null;
+    this.selectedApplicationId = null;
+    this.applicationName = null;
+    this.customerCategoryId = null;
+    this.customerCategoryOnlyEditMode = false;
+    this.showUpdateButton = false;
+    this.showCancelButton = false;
+    this.showCreateButton = true;
+}
+
+XHTML field behavior
+
+Application Name field should be disabled in category-only mode.
+
+<h:inputText
+    value="#{sponsorApplicationAdminBean.applicationName}"
+    disabled="#{sponsorApplicationAdminBean.customerCategoryOnlyEditMode}" />
+
+Customer Category dropdown remains enabled:
+
+<h:selectOneMenu value="#{sponsorApplicationAdminBean.customerCategoryId}">
+    <f:selectItems value="#{sponsorApplicationAdminBean.customerCategoryOptions}" />
+</h:selectOneMenu>
+
+If you want to be extra clear, show a small message above the fields when in category-only mode:
+
+<h:outputText
+    value="Category-only edit mode: only Customer Category can be updated."
+    rendered="#{sponsorApplicationAdminBean.customerCategoryOnlyEditMode}"
+    style="color:#666;font-weight:bold;" />
+
+Service layer
+
+Do not remove current validation from full edit.
+
+Instead add this new method:
+
+public void updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    Application app = sponsorApplicationDao.findById(applicationId);
+    if (app == null) {
+        throw new BusinessException("Application not found.");
+    }
+    sponsorApplicationDao.updateCustomerCategoryOnly(applicationId, customerCategoryId, updatedBy);
+}
+
+DAO layer
+
+Use a targeted update, not full merge.
+
+JPA:
+
+public int updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    String jpql =
+        "update Application a " +
+        "set a.customerCategoryId = :customerCategoryId, " +
+        "    a.updatedBy = :updatedBy, " +
+        "    a.updatedDate = :updatedDate " +
+        "where a.applicationId = :applicationId";
+    return entityManager.createQuery(jpql)
+        .setParameter("customerCategoryId", customerCategoryId)
+        .setParameter("updatedBy", updatedBy)
+        .setParameter("updatedDate", new Date())
+        .setParameter("applicationId", applicationId)
+        .executeUpdate();
+}
+
+JDBC:
+
+public int updateCustomerCategoryOnly(Long applicationId, Long customerCategoryId, String updatedBy) {
+    String sql =
+        "UPDATE SPONSOR_APPLICATION " +
+        "SET CUSTOMER_CATEGORY_ID = ?, UPDATED_BY = ?, UPDATED_DT = SYSDATE " +
+        "WHERE APPLICATION_ID = ?";
+    return jdbcTemplate.update(sql, customerCategoryId, updatedBy, applicationId);
+}
+
+Use your actual table name.
+
+Very important: do not run reference validation here
+
+Your existing full edit path may have logic like:
+
+if (isReferencedInSponsorApplicationMap(applicationId)) {
+    throw new BusinessException("Change of Address application record cannot be edited...");
+}
+
+Leave that in the full update path only.
+
+Do not call it from updateCustomerCategoryOnly().
+
+That is the real heart of this story.
+
+Minimal-risk page logic summary
+
+Normal Edit button:
+
+* full edit mode
+* existing validation remains
+* existing behavior unchanged
+
+New Category button:
+
+* inline same-page edit mode
+* application name locked
+* category editable
+* update button calls category-only save
+* no sponsor map reference validation
+
+What I would do in your screen specifically
+
+From your screenshots, the current panel already has:
+
+* Application Name input
+* Customer Category dropdown
+* bottom Confirm Delete and Cancel buttons in some modes
+
+So adapt that same pattern.
+
+For category-only mode:
+
+* load record
+* disable Application Name
+* keep Customer Category active
+* bottom buttons become:
+    * Update
+    * Cancel
+
+If your page already swaps buttons based on mode, just reuse that same mechanism.
+
+Suggested icon
+
+Since your current buttons are green edit and red delete, make the new one:
+
+* blue tag icon, or
+* blue small pencil/tag icon
+
+Tooltip:
+Update Customer Category
+
+If you cannot get a new icon quickly, even a simple blue text link will work:
+
+Cat
+
+or
+
+Upd Cat
+
+That is ugly, but completely acceptable for an internal admin tool if time is tight.
+
+Fastest possible fallback
+
+If icon work becomes a blocker, do this immediately:
+
+<a4j:commandLink
+    action="#{sponsorApplicationAdminBean.prepareCustomerCategoryEdit(app.applicationId)}"
+    reRender="createModifyApplicationPanel, appButtonsPanel, messages"
+    title="Update Customer Category">
+    <h:outputText value="Cat" />
+</a4j:commandLink>
+
+This gets the story done without UI asset dependency.
+
+Acceptance criteria mapping with this design
+
+* New button available on Sponsor/Application Configuration screen.
+    * third inline row action button
+* Allows updating CUSTOMER_CATEGORY_ID even if record exists in SPONSOR_APPLICATION_MAP.
+    * separate backend method skips reference validation
+* No other application fields are editable via this action.
+    * same page reused, but Application Name disabled/read-only
+* No reference validation error is shown.
+    * category-only update path does not call the validation
+* Update persists correctly in DB.
+    * dedicated DAO update for CUSTOMER_CATEGORY_ID
+
+Best practical recommendation
+
+Given your constraints, I would implement this in 4 steps:
+
+1. Add new row action button
+2. Add customerCategoryOnlyEditMode flag in bean
+3. Reuse existing form with Application Name disabled
+4. Add dedicated service/DAO update method
+
+That is the shortest stable path.
+
+If you want, next I can give you a paste-ready version of:
+
+* XHTML changes for the row action and field disabling
+* bean code with mode flag
+* service and DAO methods
+
+based on a typical JSF/RichFaces structure.
