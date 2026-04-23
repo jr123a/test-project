@@ -1,0 +1,96 @@
+Got it — this is a resume update request for your current USPS IVS role, and they explicitly want:
+
+1. Current roles & responsibilities
+2. Technologies
+3. AI tools you use
+
+I’ll give you clean, contract-ready bullets you can paste directly into your resume (this is what Peraton expects in proposals).
+
+⸻
+
+🔹 UPDATED RESUME CONTENT (USPS IVS ROLE)
+
+Role: Senior Java Full Stack Engineer (USPS IVS Program)
+
+Key Responsibilities
+
+* Lead development and support of USPS IVS (Identity Verification System) applications handling high-volume customer identity workflows.
+* Design and implement REST APIs for identity proofing, validation, and customer onboarding flows.
+* Troubleshoot complex production issues including session inconsistencies, DB locking, and performance bottlenecks.
+* Analyze AppDynamics logs and server metrics to identify latency issues and optimize system performance.
+* Work closely with cross-functional teams (NetOps, QA, and external vendors like Equifax) to resolve integration issues.
+* Implement security enhancements including XSS protection, request filtering, and input validation mechanisms.
+* Debug and resolve issues in clustered WebSphere environments including VIP routing and sticky session behavior.
+* Support and enhance JSF-based web applications with dynamic UI rendering based on business rules.
+* Perform root cause analysis for intermittent failures (e.g., alternating API responses, session loss scenarios).
+* Contribute to deployment, configuration, and environment setup across DEV/SIT/PROD.
+* Provide technical guidance and troubleshooting steps to QA and offshore teams.
+
+⸻
+
+Technologies & Tools
+
+* Backend: Java, Spring (Spring 4/5), REST APIs, JPA (EclipseLink)
+* Frontend: JSF (MyFaces), XHTML, JavaScript
+* Application Server: IBM WebSphere (WAS 8/9)
+* Database: Oracle (transaction handling, locking analysis)
+* Build Tools: Gradle, Maven
+* Monitoring & Debugging: AppDynamics, server logs analysis
+* Version Control: Git
+* API Testing: Postman
+* Security: XSS filters, servlet filters, request validation
+* Architecture: Distributed systems, session management, load-balanced environments
+
+⸻
+
+AI Tools & Usage
+
+(Keep this simple but impactful — this is important for proposals)
+
+* Use ChatGPT for:
+    * Debugging production issues and root cause analysis
+    * Generating optimized code solutions and refactoring strategies
+    * Creating troubleshooting playbooks and test scenarios
+* Use GitHub Copilot for:
+    * Accelerating code development
+    * Reducing boilerplate code
+    * Improving development efficiency
+* Apply AI tools to:
+    * Analyze logs and error patterns
+    * Generate edge-case test scenarios
+    * Improve productivity and turnaround time on critical fixes
+
+⸻
+
+🔹 OPTIONAL (STRONG ADD-ON FOR PROPOSAL)
+
+If you want to stand out, add this line:
+
+* Improved troubleshooting efficiency by leveraging AI-assisted analysis, reducing issue resolution time in production environments.
+
+⸻
+
+🔹 QUICK EMAIL RESPONSE (if you need)
+
+If you want to send the reply:
+
+Hi Karen,
+
+Attached is my updated resume with current roles, responsibilities, technologies, and AI tools used for the USPS IVS assignment.
+
+Please let me know if any additional updates are needed.
+
+Thanks,
+Jagan
+
+⸻
+
+🔹 If you want next step
+
+I can:
+
+* Convert this into full 1-page resume format (stealth version “Jay Reddy”)
+* Tailor it specifically for C2C remote roles
+* Add impact metrics (proposal-friendly language)
+
+Just tell me 👍
