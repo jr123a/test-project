@@ -1,0 +1,103 @@
+All five transcripts are already in context. Here is the consolidated Issue Profile:
+
+📋 USPS IVS — Consolidated Issue Profile (Source of Truth)
+
+1. Issue Definition
+Problem A — Alternating Pass/Fail on ConfirmPasscode (Primary Bug)
+Symptom: When a user goes through the remote proofing flow (Check Device → Verify Phone → Confirm Passcode), the ConfirmPasscode call alternates between 200 OK (success) and 400 Bad Request (failure) on successive attempts. The failure is not tied to user input — a correct passcode sometimes succeeds, sometimes fails, depending purely on which backend server handles the request.
+Additional observation: The 400 response also manifests when a wrong passcode is entered, which corrupts the session state such that even a subsequently correct passcode fails. This is a distinct but related symptom of the same root cause.
+Confirmed environments:
+	•	Happening in SIT (System Integration Testing) with two servers active
+	•	Not consistently reproducible in CAT (Certification/Acceptance Testing) or PROD — because those environments may route to a single server for that sponsor/supplier combination at a given time
+	•	The issue disappears entirely when testing against a single server by direct IP address — this is the critical diagnostic clue
+Root Cause (already identified from prior analysis): This is a stateful dependency hidden in a nominally stateless REST API, caused by round-robin load balancing without session affinity. verifyPhone() writes verification state on Server BC4. confirmPasscode() routes to Server BC5 via round-robin, which re-queries the database independently and receives null because the transaction from BC4 hasn’t committed/propagated yet. The absence of JSESSIONID cookie propagation prevents WebSphere session affinity from engaging.
+
+Problem B — Database Row Lock / Table Contention (Secondary Bug)
+Symptom: In production, during high-volume CoA (Change of Address) traffic, all transactions begin timing out. No users can progress through OTP or SMFA verification. The system appears frozen from the user’s perspective.
+Specific behavior observed:
+	•	504 Gateway Timeout responses
+	•	Read timeout errors logged against the verifyPhone endpoint
+	•	Database queries show multiple sessions blocked by a single session holding a row lock
+	•	Once the blocking session commits, the counters resume incrementing and traffic flows again — exactly mirroring what was reproduced in the load test
+Root Cause (confirmed by load test): The RPTV_ATTEMPTS table (or equivalent supplier routing table) has two rows for CoA’s split supplier configuration (e.g., 60% LexisNexis / 40% Equifax). Every incoming transaction must UPDATE one of these rows to increment the attempt counter before routing to a supplier. Under high concurrency, Oracle row-level locks cause queued blocking — each transaction waits for the previous one to commit before it can update the same row. With CoA’s volume, the queue grows large enough to cascade into timeouts.
+
+2. Affected Components
+
+
+
+|Component                                                |Role                                                                                                         |
+|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+|**IVS (Identity Verification System)**                   |The core application handling remote proofing flows                                                          |
+|**`verifyPhone()` endpoint**                             |Initiates phone verification, writes state to a specific app server                                          |
+|**`confirmPasscode()` endpoint**                         |Validates OTP/SMFA passcode — victim of cross-server routing                                                 |
+|**`checkPhoneVerified()` method**                        |Internal method in `RemoteSupportServiceImpl` that re-queries the DB instead of using already-fetched state  |
+|**Supplier routing / `RPTV_ATTEMPTS` table**             |Tracks attempt counts per supplier (LexisNexis = ID 6, Equifax = ID 5) for split-percentage routing decisions|
+|**SMFA (Security Multi-Factor Authentication) link flow**|One of two verification modes; sends a link to mobile device                                                 |
+|**OTP (One-Time Passcode) flow**                         |Second verification mode; sends numeric code via SMS                                                         |
+|**Admin module**                                         |Used to configure supplier split percentages (e.g., 60/40, 100%)                                             |
+
+3. Environment & Infrastructure
+
+
+
+|Layer                    |Detail                                                                                                |
+|-------------------------|------------------------------------------------------------------------------------------------------|
+|**App Server**           |IBM WebSphere Application Server (legacy, ~10+ year-old application)                                  |
+|**Load Balancer**        |Round-robin routing across app servers (BC4, BC5 in SIT); no session affinity without `JSESSIONID`    |
+|**Database**             |Oracle (row-level locking confirmed; sessions visible via DBA blocker queries)                        |
+|**DB Client Tool**       |SQL Developer (used by Palin/Katya for manual queries and row-lock testing)                           |
+|**Environments**         |SIT → CAT → PROD pipeline; postal environment also points to IVS SIT                                  |
+|**Third-Party Suppliers**|**LexisNexis** (Supplier ID 6), **Equifax** (Supplier ID 5), **Experian** (not yet integrated for CoA)|
+|**Load Test Tool**       |JMeter (likely) — run by Mohammed with configurable users/threads                                     |
+|**API Testing**          |Postman — used for individual transaction validation                                                  |
+|**Phone Number Config**  |Dummy numbers `666666` and `888888` used for load testing; `55888` config reverted for test           |
+
+4. Error Codes & Observed Signals
+
+
+
+|Signal                               |Detail                                                                              |
+|-------------------------------------|------------------------------------------------------------------------------------|
+|`400 Bad Request`                    |Returned by `confirmPasscode` when routing hits the wrong server (alternating issue)|
+|`200 OK`                             |Returned when the same server that ran `verifyPhone` also handles `confirmPasscode` |
+|`202 Accepted`                       |SMFA link sent successfully (normal response for `verifyPhone`)                     |
+|`504 Gateway Timeout`                |Returned to client when DB read timeout occurs (20-second timeout configured)       |
+|`500`                                |Seen intermittently during load test                                                |
+|**“Phone Verified Failed Exception”**|Logged application error corresponding to the `400` alternating failure             |
+|**“Read timeout to the database”**   |Application log entry corresponding to `504`s during DB lock contention             |
+|**“Socket closed”**                  |Observed on the 7th transaction attempt consistently during load test               |
+|**DB blocker/blockee pattern**       |Session 535 blocking sessions 3094, 111, and others — confirmed via Oracle DBA query|
+
+5. Key Diagnostic Tests Performed
+Load Test (DB Lock Reproduction):
+	•	Palin executed an uncommitted UPDATE statement on the supplier routing table rows
+	•	Mohammed ran a multi-user load test simultaneously
+	•	Result: 504s appeared within seconds; Oracle blocker query confirmed session 535 was blocking all others
+	•	Upon COMMIT by Palin: counters resumed, 200 OK responses returned — lock confirmed as root cause of prod outage
+Single-Server Test (Alternating Issue isolation):
+	•	Emma tested confirmPasscode using a direct server IP (bypassing load balancer)
+	•	Result: consistent 200 OK — no alternating
+	•	Two-server test via load balancer: alternating 200/400 resumed
+	•	Conclusion: issue is strictly load-balancer/session-affinity related, not a code logic bug
+100% Supplier Configuration Test:
+	•	Switching either supplier to 100% stops all UPDATE writes to the attempt table
+	•	No writes → no row locks → no contention
+	•	This is a workaround, not a fix — it sidesteps the contention by eliminating the split routing calculation entirely
+
+6. Proposed Fixes (from meetings)
+Fix A — Alternating Issue (confirmPasscode)
+Modify checkPhoneVerified() in RemoteSupportServiceImpl to accept the already-fetched RpPhoneVerification object rather than re-querying the database. Update call sites in both confirmPasscode() and requestPasscode(). Restore the commented-out OTP supplier validation guard. This eliminates the cross-server DB re-query that causes the null result.
+Fix B — DB Lock Contention (Emer/Emma’s Proposal)
+Replace the UPDATE pattern on RPTV_ATTEMPTS with an INSERT-only approach using a new table RPPV_SUPPLIER_SELECTION. Each transaction inserts a new row rather than updating a shared row. The algorithm determines the next supplier by reading the latest inserted record and computing the next selection, avoiding Oracle row-level locks entirely. Truncate/reset the table when the cycle completes.
+Alternative approaches discussed (not yet implemented):
+	•	In-memory/cache-based counter (e.g., Redis) — flagged as technology compliance risk on WebSphere
+	•	Hard-coding percentages in application code and computing in-memory — discussed but not evaluated
+	•	Separate table per sponsor — ruled out; same locking problem persists
+
+7. Open Questions / Risks
+	•	Is the alternating issue present in PROD for CoA/LexisNexis? — Suspected yes, but not definitively confirmed due to difficulty reproducing in CAT
+	•	Does Emer’s INSERT-based fix handle 3-supplier configurations? — Code proposal accounts for it, but untested
+	•	Is attempts column referenced anywhere else in the codebase? — Not confirmed; needs code review before removing UPDATE logic
+	•	Short-term mitigation for PROD: Set CoA to 100% LexisNexis or 100% Equifax temporarily to eliminate lock contention — proposed for a 10-minute trial window
+
+This profile is ready. When you upload the Java source files (RemoteProofingServiceImpl.java, RemoteSupportServiceImpl.java, and any supplier routing classes), I can immediately map the root causes to specific methods, line-level changes, and validate Emer’s proposed fix against the actual code.​​​​​​​​​​​​​​​​
