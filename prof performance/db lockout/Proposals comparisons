@@ -1,0 +1,313 @@
+Good question. The difference is actually very important.
+
+You are comparing:
+
+1. Emer’s proposal
+    vs
+2. My weighted-random proposal
+
+These are fundamentally different architectures.
+
+⸻
+
+1. Emer’s proposal = STATEFUL algorithm
+
+Meaning:
+
+👉 System remembers previous selections.
+
+It keeps track of:
+
+How many times supplier was already used
+
+using counters.
+
+Example:
+
+Equifax  -> ATTEMPTS = 37
+Lexis    -> ATTEMPTS = 24
+
+Then next request uses those counters to decide.
+
+⸻
+
+Emer’s proposal flow
+
+Step 1
+
+Read latest state:
+
+latest row:
+Equifax attempts = 37
+Lexis attempts = 24
+
+⸻
+
+Step 2
+
+Algorithm says:
+
+Lexis has lower attempts
+→ choose Lexis
+
+⸻
+
+Step 3
+
+Create new row:
+
+Equifax = 37
+Lexis = 25
+
+⸻
+
+👉 So every request depends on previous requests.
+
+That means:
+
+* state exists
+* ordering matters
+* concurrency matters
+* race conditions possible
+
+⸻
+
+2. Weighted-random proposal = STATELESS algorithm
+
+Meaning:
+
+👉 No memory of previous requests.
+
+Each request independently decides.
+
+⸻
+
+Weighted-random flow
+
+Current config only:
+
+Equifax = 60
+Lexis = 40
+
+⸻
+
+Request arrives
+
+Generate:
+
+random = 73
+
+Logic:
+
+0-59  -> Equifax
+60-99 -> Lexis
+
+73 → Lexis
+
+Done.
+
+⸻
+
+Next request
+
+Generate new random:
+
+random = 12
+
+12 → Equifax
+
+Done.
+
+⸻
+
+👉 No previous transaction matters.
+
+No counter.
+No update.
+No insert.
+No reset.
+
+⸻
+
+SIMPLE ANALOGY
+
+Emer’s proposal
+
+Like keeping score on paper:
+
+Equifax = 37
+Lexis = 24
+
+Every person must:
+
+* read score
+* update score
+* save score
+
+⸻
+
+Weighted-random
+
+Like rolling dice each time:
+
+Roll dice
+→ decide supplier
+→ forget result
+
+No shared score.
+
+⸻
+
+KEY DIFFERENCE
+
+Aspect	Emer Proposal	Weighted Random
+Maintains history	Yes	No
+DB writes per request	Yes (INSERT)	No
+Shared state	Yes	No
+Race conditions	Possible	None
+Row locks	Mostly avoided	Eliminated
+Exact 60/40 cycle	Yes-ish	No
+Approximate 60/40	Yes	Yes
+Scalability	Medium	Excellent
+Complexity	High	Low
+
+⸻
+
+MOST IMPORTANT TRADEOFF
+
+Emer proposal
+
+Attempts to guarantee:
+
+Exactly 60 out of every 100
+
+⸻
+
+Weighted-random
+
+Guarantees only:
+
+Approximately 60%
+over large traffic volume
+
+⸻
+
+Example
+
+Weighted random with 10 requests
+
+Could produce:
+
+7 Equifax
+3 Lexis
+
+or:
+
+5 Equifax
+5 Lexis
+
+That is NORMAL.
+
+⸻
+
+But with 100,000 requests
+
+It will statistically converge close to:
+
+~60%
+~40%
+
+⸻
+
+WHY BIG COMPANIES USE STATELESS
+
+Because stateless systems scale extremely well.
+
+Examples:
+
+* load balancers
+* ad serving
+* API routing
+* distributed systems
+
+They usually do not maintain exact counters per request.
+
+⸻
+
+WHEN EMER’S DESIGN MAY STILL BE NEEDED
+
+If business says:
+
+"Every exact block of 100
+must contain exactly:
+60 Equifax
+40 Lexis"
+
+then you need state.
+
+But state introduces:
+
+* locking
+* synchronization
+* race conditions
+* distributed consistency problems
+
+⸻
+
+MY RECOMMENDATION
+
+Given your issue:
+
+production timeouts
+DB contention
+high concurrency
+
+Weighted-random is much safer operationally.
+
+⸻
+
+BEST MIDDLE GROUND (VERY IMPORTANT)
+
+You can also do:
+
+Hybrid approach
+
+Use:
+
+weighted random
++
+metrics logging
+
+Meaning:
+
+* no runtime counters
+* but periodically monitor distribution
+
+Example logs:
+
+Equifax selected
+Lexis selected
+
+Then Grafana/Splunk/AppDynamics can show:
+
+Current distribution:
+61%
+39%
+
+without affecting transaction flow.
+
+⸻
+
+FINAL SIMPLE SUMMARY
+
+Emer proposal
+
+"Remember every previous selection"
+
+⸻
+
+Weighted-random proposal
+
+"Forget everything and decide independently each time"
+
+That is the core difference.
