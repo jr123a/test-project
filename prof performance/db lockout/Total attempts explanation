@@ -1,0 +1,82 @@
+Yes — the names are confusing.
+
+Think of the two columns like this:
+
+TOTAL_ATTEMPTS = configured allocation target
+ATTEMPTS       = current running counter
+
+Example: COA is split 60/40.
+
+Supplier      TOTAL_ATTEMPTS      ATTEMPTS
+Equifax       60                  0
+LexisNexis    40                  0
+
+TOTAL_ATTEMPTS does not mean “total attempts made so far.” It means “how many out of 100 should go to this supplier before the cycle resets.”
+
+ATTEMPTS means “how many have already gone to this supplier in the current cycle.”
+
+Flow:
+
+Request 1:
+Equifax attempts 0 < total 60
+Select Equifax
+Increment Equifax ATTEMPTS to 1
+Request 2:
+Lexis attempts 0 < total 40
+Depending on sort/tie logic, select Lexis
+Increment Lexis ATTEMPTS to 1
+Request 3:
+Equifax attempts 1
+Lexis attempts 1
+Tie logic decides next supplier
+Increment selected supplier
+
+The code queries rows ordered by:
+
+ATTEMPTS ascending
+Supplier ID descending
+
+So it tries to pick the supplier with the lowest current ATTEMPTS. If the attempts are tied, it uses supplier ID as a tie-breaker. The entity named query shows this clearly: it filters out suppliers where TOTAL_ATTEMPTS = 0, then orders by attempts ASC and supplier ID descending.  ￼
+
+Then selectSupplier() picks the first supplier whose:
+
+ATTEMPTS < TOTAL_ATTEMPTS
+
+and calls updatePvAttempts().  ￼
+
+Then callingOTP() loads that same row again and increments:
+
+ATTEMPTS = ATTEMPTS + 1
+
+That is the database update causing the lock contention.  ￼
+
+So with 60/40, the intent is:
+
+Equifax should be selected 60 times per 100-cycle
+LexisNexis should be selected 40 times per 100-cycle
+
+When the counters reach their limit, reset happens:
+
+if (attemptConfig.getAttempts() >= attemptConfig.getTotalAttempts()) {
+    otpAttemptConfigService.reset(...)
+}
+
+That reset sets attempts back to 0 for that sponsor/proofing level.  ￼
+
+The confusing part:
+
+TOTAL_ATTEMPTS = percentage/allocation limit
+ATTEMPTS = runtime counter
+
+So a better naming would have been:
+
+TOTAL_ATTEMPTS  -> ALLOCATION_WEIGHT or ALLOCATION_LIMIT
+ATTEMPTS        -> CURRENT_COUNT
+
+For 100% supplier:
+
+Supplier      TOTAL_ATTEMPTS      ATTEMPTS
+Equifax       100                 0
+LexisNexis    0                   0
+
+The code sees one supplier has TOTAL_ATTEMPTS = 100, decides switching is not configured, and does not update ATTEMPTS. That is why 100% avoids the lock issue.
