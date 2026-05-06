@@ -1,0 +1,299 @@
+You want to guide the meeting toward one key business decision without sounding overly technical or argumentative.
+
+The core business question is:
+
+Do we require exact per-cycle distribution,
+or is statistically correct distribution acceptable?
+
+Because that determines whether:
+
+* you need a stateful system (counters/state/locking/coordination)
+    OR
+* a stateless scalable system (weighted random)
+
+That is the entire discussion underneath all this complexity.
+
+How to position this in the meeting
+
+Do NOT start with:
+
+* “database locks”
+* “hot rows”
+* “Oracle contention”
+* “race conditions”
+
+Business people will disconnect.
+
+Start with:
+
+We identified that the current routing approach keeps runtime counters in the database, which becomes a bottleneck under high concurrent COA traffic.
+
+Then transition into:
+
+We have two architectural directions:
+1. Stateful exact distribution
+2. Stateless weighted distribution
+
+That frames the conversation correctly.
+
+Questions to ask business
+
+These are the important ones.
+
+Question 1 (MOST IMPORTANT)
+
+Ask this exactly:
+
+Does the business require exact allocation enforcement,
+for example exactly 60 out of every 100 requests,
+or is approximate/statistical allocation acceptable over volume?
+
+This is the key decision-maker question.
+
+Because:
+
+Stateful model
+
+Guarantees:
+
+Exactly 60/40 per cycle
+
+But introduces:
+
+* contention
+* coordination
+* scaling issues
+* complexity
+
+Stateless weighted model
+
+Guarantees:
+
+Approximately 60/40 over traffic volume
+
+But:
+
+* massively simpler
+* scalable
+* resilient
+* no DB contention
+
+⸻
+
+Question 2
+
+Is supplier allocation intended for strict auditing/compliance,
+or primarily for traffic distribution/load balancing?
+
+Important because:
+
+* if it is compliance/audit-driven, business may want exactness
+* if it is operational load balancing, weighted random is industry standard
+
+⸻
+
+Question 3
+
+Would occasional short-term variance be acceptable
+if long-term distribution remains aligned with configured percentages?
+
+Example:
+
+10 requests may temporarily look like 70/30,
+while 100,000 requests converge to ~60/40.
+
+This helps them understand statistical distribution.
+
+⸻
+
+Question 4
+
+Which is more important operationally:
+exact short-term distribution,
+or system stability/performance during peak traffic?
+
+This is the practical tradeoff question.
+
+⸻
+
+Question 5 (good operational question)
+
+Do we currently have any downstream contractual or billing dependency
+that requires exact per-block supplier counts?
+
+Very important.
+
+Because if nobody downstream actually requires exact counts:
+→ you have strong justification for stateless routing.
+
+Questions for the technical team
+
+These are the buy-in questions.
+
+Question 1
+
+Are we comfortable continuing to maintain runtime mutable state
+inside the request path under high concurrency?
+
+This frames the issue correctly.
+
+⸻
+
+Question 2
+
+Do we want supplier selection to depend on previous transactions,
+or should each transaction be independently routable?
+
+This contrasts:
+
+* stateful
+    vs
+* stateless
+
+⸻
+
+Question 3
+
+Are we optimizing for exact sequencing,
+or for scalability and operational resiliency?
+
+⸻
+
+Question 4
+
+Do we want to eliminate runtime DB writes from the supplier selection path entirely?
+
+This is the strongest technical advantage of weighted random.
+
+⸻
+
+Question 5
+
+Would a stateless routing model simplify horizontal scaling across JVMs and environments?
+
+This helps architecture-minded people immediately understand the value.
+
+Benefits to emphasize to the team
+
+These are the strongest talking points.
+
+1. Removes runtime DB contention entirely
+
+No:
+
+* UPDATE
+* INSERT
+* reset
+* row lock
+* hot row
+
+⸻
+
+2. Stateless = horizontally scalable
+
+Works naturally with:
+
+* multiple WebSphere JVMs
+* clustering
+* failover
+* restart
+* autoscaling
+
+No coordination needed.
+
+⸻
+
+3. Simpler code
+
+Current code:
+
+* sorting
+* attempts
+* reset
+* retry
+* synchronization by DB
+
+Weighted random:
+
+* pure calculation
+* deterministic config
+* no runtime persistence
+
+⸻
+
+4. Easier operational support
+
+No:
+
+* stuck rows
+* blocking sessions
+* deadlock investigation
+* reset jobs
+* growing selection history tables
+
+⸻
+
+5. Lower DB load
+
+Today:
+every request writes to DB.
+
+Weighted random:
+request becomes read-only.
+
+Huge improvement under COA spikes.
+
+⸻
+
+6. Easier testing
+
+You already saw this.
+
+You can statistically validate:
+
+* 60/40
+* 40/35/25
+
+without:
+
+* DB
+* transactions
+* Oracle locks
+
+Important thing NOT to oversell
+
+Do NOT say:
+
+“This guarantees perfect distribution.”
+
+Instead say:
+
+“This guarantees statistically accurate distribution over traffic volume.”
+
+That wording matters.
+
+Best concise meeting summary
+
+This is probably the strongest concise framing:
+
+The current implementation maintains runtime counters in the database to enforce exact supplier sequencing. Under high concurrency, this creates contention because all requests update shared rows. A stateless weighted-routing approach removes runtime database writes entirely and provides statistically accurate distribution over volume while significantly improving scalability and operational stability.
+
+If someone pushes back on randomness
+
+Your response:
+
+Modern distributed systems and load balancers commonly use weighted probabilistic routing because it scales much better than maintaining synchronized counters across concurrent requests.
+
+That is technically true and sounds credible without being combative.
+
+My recommendation for your meeting style
+
+Do NOT position this as:
+
+“Emer’s design is wrong.”
+
+Instead:
+
+“Emer’s proposal is a good improvement because it removes the hot-row update pattern. I’d also like us to evaluate whether we can simplify further by removing runtime state entirely.”
+
+That keeps the discussion collaborative and professional.
