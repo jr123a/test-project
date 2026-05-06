@@ -1,0 +1,76 @@
+Ah — got it now. No, there is no architectural change between the first weighted-random proposal and the later one after your edge-case question.
+
+The core logic stayed the same:
+
+int random = ThreadLocalRandom.current().nextInt(totalWeight);
+
+Then select supplier based on cumulative percentage ranges.
+
+What changed was only:
+
+* additional safeguards
+* production hardening
+* handling corner cases cleanly
+
+The algorithm itself did NOT change.
+
+First simplified version
+
+I initially gave you:
+
+int r = ThreadLocalRandom.current().nextInt(100);
+if (r < 60) {
+    return Equifax;
+} else {
+    return Lexis;
+}
+
+That was just the simplest conceptual explanation.
+
+It assumes:
+
+* exactly 2 suppliers
+* percentages sum to 100
+* no excluded suppliers
+* no disabled suppliers
+* no fallback logic
+
+It was meant to explain the concept.
+
+Later version
+
+Later I expanded it into a production-safe generalized implementation:
+
+private RpOtpAttemptConfig selectByWeightedRandom(...)
+
+That version added:
+
+* dynamic total weight calculation
+* support for 2 or 3 suppliers
+* excluded supplier handling
+* filtering zero-percent suppliers
+* handling one remaining supplier
+* handling no remaining suppliers
+* avoiding hardcoded 100
+* safer fallback return
+
+But the routing philosophy stayed exactly the same:
+
+Stateless weighted probability selection
+
+No state.
+No counters.
+No inserts.
+No updates.
+
+So the “delta” was only this
+
+Earlier Version	Later Version
+Simple demo logic	Production-safe generalized logic
+Hardcoded 60/40	Dynamic weights
+2 suppliers only	Any supplier count
+No exclusions	Supports exclusions
+No validation	Handles edge cases
+Concept explanation	Deployable implementation
+
+The actual selection mechanism never changed.
