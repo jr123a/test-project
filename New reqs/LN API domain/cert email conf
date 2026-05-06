@@ -1,0 +1,10 @@
+Hi Eric,
+
+We have started validating the transition to the lexisnexisrisk.com endpoints in our lower environments.
+
+We noticed both the current and new staging URLs are presenting the same SSL certificate (san-idms.lexisnexisrisk.com).
+
+Can you please confirm if any certificate updates or truststore changes are required on the client side, or if existing default truststores should work as-is?
+
+Thanks,
+Jagan
