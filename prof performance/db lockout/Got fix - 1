@@ -1,0 +1,219 @@
+Yes. I read the uploaded code. The main fix area is clearly in:
+
+VerificationProviderServiceImpl
+
+Specifically these methods:
+
+determineVerificationMethod(...)
+selectSupplier(...)
+updatePvAttempts(...)
+
+There is also a similar secondary flow for INF [Individual Not Found] / CNF [Customer Not On File]:
+
+selectSupplierForInf(...)
+updatePvAttemptsForInf(...)
+
+Current flow in plain English
+
+When a user enters the LOA 1.5 [Level of Assurance 1.5] remote proofing flow, the app calls:
+
+determineVerificationMethod(PersonVo personVo)
+
+This loads the proofing level and sponsor, then calls the deeper overloaded method to select the phone verification supplier. The code comment says this method must only be called once for a user going through the LOA 1.5 flow.  ￼
+
+Inside the main method, it builds a list of possible supplier IDs:
+
+Equifax IDFS OTP
+Equifax DIT SMFA
+LexisNexis RDP OTP
+Experian CrossCore
+
+Then it removes an excluded supplier if one was passed in.  ￼
+
+After that, there are two paths.
+
+Path 1: Normal phone verification path
+
+This is the main COA [Change of Address] issue path.
+
+If the person is not in the LexisNexis Individual Not Found or Experian Customer Not On File retry path, the code does this:
+
+boolean isSwitchingConfigured = isSwitchingConfigured(level, sponsor.getSponsorId());
+List<RpOtpAttemptConfig> list =
+    otpAttemptConfigService.getByProofingLevelSorted(...);
+selectedSupplier = selectSupplier(personVo, level, list);
+
+￼
+
+That getByProofingLevelSorted query comes from RpOtpAttemptConfig. It selects from rp_kba_attempts, filters by proofing level, sponsor, supplier IDs, and totalAttempts <> 0, then orders by:
+
+attempts ASC,
+supplierId DESC
+
+So the supplier with the lowest current ATTEMPTS is picked first. If there is a tie, higher supplier ID wins because of descending supplier ID.  ￼
+
+Then selectSupplier(...) loops through that sorted list:
+
+for (RpOtpAttemptConfig att : list) {
+    if (att.getAttempts() < att.getTotalAttempts()) {
+        chosen = att;
+        break;
+    }
+}
+
+If all suppliers already reached their configured total, it picks the first row in the sorted list. Then it calls:
+
+updatePvAttempts(personVo, level, chosen);
+
+￼
+
+That is the hot spot.
+
+Exact hot spot causing the lock
+
+Inside updatePvAttempts(...), the code checks again whether switching is configured:
+
+if (isSwitchingConfigured(loaLevel, sponsorId)) {
+
+If any supplier is configured as 100%, switching is false and it does not update attempts. That explains why 100% supplier avoids the issue.  ￼
+
+If switching is configured, it checks whether the chosen supplier reached the limit:
+
+if (attemptConfig.getAttempts() >= attemptConfig.getTotalAttempts()) {
+    otpAttemptConfigService.reset(...);
+}
+
+Then it calls:
+
+otpAttemptConfigService.callingOTP(attemptConfig);
+
+inside a retry loop.  ￼
+
+That service method is what increments the DB row:
+
+chosen = dao.getById(attempt.getId());
+chosen.setAttempts(chosen.getAttempts() + 1);
+chosen.setUpdateDate(...);
+dao.update(chosen);
+
+The INF version shows the same pattern in RpInfPvAttemptConfigServiceImpl.callingOTP(...).  ￼
+
+So the current design is:
+
+SELECT supplier rows ordered by ATTEMPTS
+pick lowest ATTEMPTS
+UPDATE same supplier row to ATTEMPTS + 1
+
+Under load, many requests hit the same sponsor/proofing-level rows and fight over the same update.
+
+Path 2: INF / CNF retry path
+
+If:
+
+personVo.isLexisNexisIndividualNotFound()
+
+or:
+
+personVo.isExperianCustomerNotOnFile()
+
+then the code uses:
+
+RpInfPvAttemptConfig
+rp_inf_pv_attempts
+
+instead of:
+
+RpOtpAttemptConfig
+rp_kba_attempts
+
+It removes LexisNexis or Experian from the eligible supplier list depending on the failure case, then calls:
+
+selectSupplierForInf(...)
+updatePvAttemptsForInf(...)
+
+This follows the same concept: pick the lowest attempt supplier and update attempts.  ￼
+
+So you likely need to fix both:
+
+* normal path: RpOtpAttemptConfig / RP_KBA_ATTEMPTS
+* INF path: RpInfPvAttemptConfig / RP_INF_PV_ATTEMPTS
+
+But the immediate production COA issue appears to be the normal path.
+
+Where to apply the fix
+
+Primary fix location:
+
+VerificationProviderServiceImpl.selectSupplier(...)
+
+Instead of selecting by ATTEMPTS and then calling:
+
+updatePvAttempts(...)
+
+you should replace that with a new supplier-selection strategy that does not update RP_KBA_ATTEMPTS on every request.
+
+The cleanest low-risk fix is:
+
+select supplier by configured TOTAL_ATTEMPTS percentage
+without updating ATTEMPTS
+
+Meaning:
+
+private RefOtpSupplier selectSupplier(PersonVo personVo, RefLoaLevel level, List<RpOtpAttemptConfig> list) {
+    RpOtpAttemptConfig chosen = selectByWeightedRandom(list);
+    return chosen.getRefOtpSupplier();
+}
+
+No call to:
+
+updatePvAttempts(...)
+
+for the new COA runtime path.
+
+Proposed replacement logic
+
+For split config like 60 / 40:
+
+private RpOtpAttemptConfig selectByWeightedRandom(List<RpOtpAttemptConfig> list) {
+    int total = 0;
+    for (RpOtpAttemptConfig config : list) {
+        if (config.getTotalAttempts() > 0) {
+            total += config.getTotalAttempts();
+        }
+    }
+    int random = java.util.concurrent.ThreadLocalRandom.current().nextInt(total);
+    int cumulative = 0;
+    for (RpOtpAttemptConfig config : list) {
+        cumulative += config.getTotalAttempts();
+        if (random < cumulative) {
+            return config;
+        }
+    }
+    return list.get(0);
+}
+
+This uses TOTAL_ATTEMPTS as weights:
+
+* 60 means roughly 60%
+* 40 means roughly 40%
+* 100 means 100%
+
+No runtime update. No hot row. No lock storm.
+
+Why this is better than Emer’s insert-every-transaction solution
+
+Emer’s design removes update locks, which is good, but it still keeps shared running state in the database. Every request still has to read the latest inserted state, calculate next attempts, and insert a new state row. Under concurrency, multiple requests can read the same latest row and make duplicate decisions.
+
+Weighted random avoids that completely.
+
+It uses the DB only for configuration:
+
+supplierId + totalAttempts
+
+and does not write anything during supplier selection.
+
+What to tell the team
+
+Use this feedback:
+
+“The current code selects suppliers by querying RP_KBA_ATTEMPTS sorted by ATTEMPTS, then calls updatePvAttempts(), which increments the chosen supplier row. That is the exact hot-row update causing lock contention. The safest fix is in VerificationProviderServiceImpl.selectSupplier(): replace the attempts-based selection with weighted selection using TOTAL_ATTEMPTS only, and stop calling updatePvAttempts() during runtime supplier selection. We should apply the same pattern later to selectSupplierForInf() / updatePvAttemptsForInf() for the INF/CNF path.”
