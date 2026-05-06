@@ -1,0 +1,314 @@
+Yes. For the POC [Proof of Concept], unit test the supplier-selection service first. Do not unit test the full JSF [JavaServer Faces] beans yet, because the real change belongs in VerificationProviderServiceImpl: IPSWeb calls determineVerificationMethod(...), which delegates to the provider service, and the current provider code selects a supplier and then updates attempts.  ￼
+
+The problem area is here:
+
+selectedSupplier = selectSupplier(personVo, level, list);
+...
+updatePvAttempts(personVo, level, chosen);
+
+That updatePvAttempts(...) path is what increments the DB counter and causes the hot-row issue under load.  ￼ The meeting also confirms the intended new direction: keep configured percentages in DB, but calculate routing in code/cache instead of updating the same row.  ￼
+
+Recommended POC refactor for testability
+
+Create one small selector class first:
+
+package com.ips.proofing;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import com.ips.entity.RpOtpAttemptConfig;
+public class WeightedSupplierSelector {
+    public RpOtpAttemptConfig select(List<RpOtpAttemptConfig> configs) {
+        if (configs == null || configs.isEmpty()) {
+            return null;
+        }
+        List<RpOtpAttemptConfig> candidates = new ArrayList<RpOtpAttemptConfig>();
+        for (RpOtpAttemptConfig config : configs) {
+            if (config != null && config.getTotalAttempts() > 0) {
+                candidates.add(config);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        if (candidates.size() == 1) {
+            return candidates.get(0);
+        }
+        int totalWeight = 0;
+        for (RpOtpAttemptConfig candidate : candidates) {
+            totalWeight += candidate.getTotalAttempts();
+        }
+        int random = ThreadLocalRandom.current().nextInt(totalWeight);
+        int cumulative = 0;
+        for (RpOtpAttemptConfig candidate : candidates) {
+            cumulative += candidate.getTotalAttempts();
+            if (random < cumulative) {
+                return candidate;
+            }
+        }
+        return candidates.get(candidates.size() - 1);
+    }
+}
+
+Then change VerificationProviderServiceImpl.selectSupplier(...) conceptually to:
+
+private final WeightedSupplierSelector weightedSupplierSelector = new WeightedSupplierSelector();
+private RefOtpSupplier selectSupplier(PersonVo personVo, RefLoaLevel level, List<RpOtpAttemptConfig> list) {
+    CustomLogger.enter(this.getClass());
+    RpOtpAttemptConfig chosen = weightedSupplierSelector.select(list);
+    if (chosen == null) {
+        return null;
+    }
+    // IMPORTANT: no updatePvAttempts() call
+    return chosen.getRefOtpSupplier();
+}
+
+Unit test class
+
+Use JUnit 4 if this legacy app is older. Add Mockito only if needed, but this first selector test does not need Spring, DB, WebSphere, or JSF.
+
+package com.ips.proofing;
+import static org.junit.Assert.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import org.junit.Test;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RpOtpAttemptConfig;
+public class WeightedSupplierSelectorTest {
+    private final WeightedSupplierSelector selector = new WeightedSupplierSelector();
+    @Test
+    public void select_shouldReturnNull_whenListIsNull() {
+        assertNull(selector.select(null));
+    }
+    @Test
+    public void select_shouldReturnNull_whenListIsEmpty() {
+        assertNull(selector.select(Collections.<RpOtpAttemptConfig>emptyList()));
+    }
+    @Test
+    public void select_shouldIgnoreZeroPercentSuppliers() {
+        RpOtpAttemptConfig zeroPercent = config(4L, "LexisNexis", 0);
+        RpOtpAttemptConfig hundredPercent = config(5L, "Equifax", 100);
+        for (int i = 0; i < 100; i++) {
+            RpOtpAttemptConfig selected = selector.select(Arrays.asList(zeroPercent, hundredPercent));
+            assertNotNull(selected);
+            assertEquals(5L, selected.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+    @Test
+    public void select_shouldReturnOnlyCandidate_whenOnlyOneSupplierHasWeight() {
+        RpOtpAttemptConfig disabled1 = config(4L, "LexisNexis", 0);
+        RpOtpAttemptConfig active = config(5L, "Equifax", 60);
+        RpOtpAttemptConfig disabled2 = config(6L, "Experian", 0);
+        RpOtpAttemptConfig selected = selector.select(Arrays.asList(disabled1, active, disabled2));
+        assertNotNull(selected);
+        assertEquals(5L, selected.getRefOtpSupplier().getOtpSupplierId());
+    }
+    @Test
+    public void select_shouldNeverSelectSupplierWithZeroTotalAttempts() {
+        RpOtpAttemptConfig lexis = config(4L, "LexisNexis", 0);
+        RpOtpAttemptConfig equifax = config(5L, "Equifax", 50);
+        RpOtpAttemptConfig experian = config(6L, "Experian", 50);
+        for (int i = 0; i < 5000; i++) {
+            RpOtpAttemptConfig selected = selector.select(Arrays.asList(lexis, equifax, experian));
+            assertNotNull(selected);
+            assertNotEquals(4L, selected.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+    @Test
+    public void select_shouldApproximatelyHonorSixtyFortySplit() {
+        RpOtpAttemptConfig equifax = config(5L, "Equifax", 60);
+        RpOtpAttemptConfig lexis = config(4L, "LexisNexis", 40);
+        int equifaxCount = 0;
+        int lexisCount = 0;
+        int iterations = 100_000;
+        for (int i = 0; i < iterations; i++) {
+            RpOtpAttemptConfig selected = selector.select(Arrays.asList(equifax, lexis));
+            long supplierId = selected.getRefOtpSupplier().getOtpSupplierId();
+            if (supplierId == 5L) {
+                equifaxCount++;
+            } else if (supplierId == 4L) {
+                lexisCount++;
+            } else {
+                fail("Unexpected supplier selected: " + supplierId);
+            }
+        }
+        double equifaxPercent = equifaxCount * 100.0 / iterations;
+        double lexisPercent = lexisCount * 100.0 / iterations;
+        assertTrue("Equifax percent was " + equifaxPercent, equifaxPercent >= 58.0 && equifaxPercent <= 62.0);
+        assertTrue("Lexis percent was " + lexisPercent, lexisPercent >= 38.0 && lexisPercent <= 42.0);
+    }
+    @Test
+    public void select_shouldApproximatelyHonorThreeSupplierSplit() {
+        RpOtpAttemptConfig equifax = config(5L, "Equifax", 40);
+        RpOtpAttemptConfig lexis = config(4L, "LexisNexis", 35);
+        RpOtpAttemptConfig experian = config(6L, "Experian", 25);
+        int equifaxCount = 0;
+        int lexisCount = 0;
+        int experianCount = 0;
+        int iterations = 100_000;
+        List<RpOtpAttemptConfig> configs = Arrays.asList(equifax, lexis, experian);
+        for (int i = 0; i < iterations; i++) {
+            long supplierId = selector.select(configs).getRefOtpSupplier().getOtpSupplierId();
+            if (supplierId == 5L) {
+                equifaxCount++;
+            } else if (supplierId == 4L) {
+                lexisCount++;
+            } else if (supplierId == 6L) {
+                experianCount++;
+            } else {
+                fail("Unexpected supplier selected: " + supplierId);
+            }
+        }
+        double equifaxPercent = equifaxCount * 100.0 / iterations;
+        double lexisPercent = lexisCount * 100.0 / iterations;
+        double experianPercent = experianCount * 100.0 / iterations;
+        assertTrue("Equifax percent was " + equifaxPercent, equifaxPercent >= 38.0 && equifaxPercent <= 42.0);
+        assertTrue("Lexis percent was " + lexisPercent, lexisPercent >= 33.0 && lexisPercent <= 37.0);
+        assertTrue("Experian percent was " + experianPercent, experianPercent >= 23.0 && experianPercent <= 27.0);
+    }
+    @Test
+    public void select_shouldWorkEvenWhenWeightsDoNotAddToHundred() {
+        RpOtpAttemptConfig equifax = config(5L, "Equifax", 6);
+        RpOtpAttemptConfig lexis = config(4L, "LexisNexis", 4);
+        int equifaxCount = 0;
+        int iterations = 100_000;
+        for (int i = 0; i < iterations; i++) {
+            long supplierId = selector.select(Arrays.asList(equifax, lexis)).getRefOtpSupplier().getOtpSupplierId();
+            if (supplierId == 5L) {
+                equifaxCount++;
+            }
+        }
+        double equifaxPercent = equifaxCount * 100.0 / iterations;
+        assertTrue("Equifax percent was " + equifaxPercent, equifaxPercent >= 58.0 && equifaxPercent <= 62.0);
+    }
+    private RpOtpAttemptConfig config(long supplierId, String supplierName, int totalAttempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+        RpOtpAttemptConfig config = new RpOtpAttemptConfig();
+        config.setRefOtpSupplier(supplier);
+        config.setTotalAttempts(totalAttempts);
+        config.setAttempts(999); // should not matter anymore
+        return config;
+    }
+}
+
+Unit test to prove VerificationProviderServiceImpl no longer updates attempts
+
+After you modify selectSupplier(...), add this Mockito test. This proves the calling app can still call determineVerificationMethod(...), but no longer calls callingOTP(...) or reset(...).
+
+package com.ips.proofing;
+import static org.junit.Assert.*;
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.*;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import org.junit.Before;
+import org.junit.Test;
+import com.ips.entity.RefLoaLevel;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RefSponsor;
+import com.ips.entity.RpOtpAttemptConfig;
+import com.ips.persistence.common.PersonVo;
+import com.ips.service.OtpAttemptConfigService;
+import com.ips.service.RefLoaLevelService;
+import com.ips.service.RefSponsorDataService;
+import com.ips.service.RpInfPvAttemptConfigService;
+import com.ips.service.RefSponsorConfigurationService;
+public class VerificationProviderServiceImplTest {
+    private VerificationProviderServiceImpl service;
+    private RefLoaLevelService refLoaLevelService;
+    private RefSponsorDataService refSponsorService;
+    private OtpAttemptConfigService otpAttemptConfigService;
+    private RpInfPvAttemptConfigService rpInfPvAttemptConfigService;
+    private RefSponsorConfigurationService refSponsorConfigurationService;
+    @Before
+    public void setUp() throws Exception {
+        service = new VerificationProviderServiceImpl();
+        refLoaLevelService = mock(RefLoaLevelService.class);
+        refSponsorService = mock(RefSponsorDataService.class);
+        otpAttemptConfigService = mock(OtpAttemptConfigService.class);
+        rpInfPvAttemptConfigService = mock(RpInfPvAttemptConfigService.class);
+        refSponsorConfigurationService = mock(RefSponsorConfigurationService.class);
+        inject(service, "refLoaLevelService", refLoaLevelService);
+        inject(service, "refSponsorService", refSponsorService);
+        inject(service, "otpAttemptConfigService", otpAttemptConfigService);
+        inject(service, "rpInfPvAttemptConfigService", rpInfPvAttemptConfigService);
+        inject(service, "refSponsorConfigurationService", refSponsorConfigurationService);
+    }
+    @Test
+    public void determineVerificationMethod_shouldSelectSupplierButNotUpdateAttempts() throws Exception {
+        PersonVo personVo = new PersonVo();
+        personVo.setProofingLevelSought("1.5");
+        personVo.setSponsor("Change of Address");
+        personVo.setSponsorId(32L);
+        RefLoaLevel level = new RefLoaLevel();
+        level.setLoaCode(1L);
+        RefSponsor sponsor = new RefSponsor();
+        sponsor.setSponsorId(32L);
+        sponsor.setSponsorName("Change of Address");
+        RpOtpAttemptConfig equifax = config(5L, "Equifax", 60);
+        RpOtpAttemptConfig lexis = config(4L, "LexisNexis", 40);
+        when(refLoaLevelService.findByLevel(anyString())).thenReturn(level);
+        when(refSponsorService.findBySponsorName(anyString())).thenReturn(sponsor);
+        when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), eq(1L), eq(32L)))
+            .thenReturn(Arrays.asList(equifax, lexis));
+        RefOtpSupplier selected = service.determineVerificationMethod(personVo);
+        assertNotNull(selected);
+        assertTrue(selected.getOtpSupplierId() == 5L || selected.getOtpSupplierId() == 4L);
+        verify(otpAttemptConfigService, never()).callingOTP(any(RpOtpAttemptConfig.class));
+        verify(otpAttemptConfigService, never()).reset(anyLong(), anyLong());
+    }
+    @Test
+    public void determineVerificationMethod_shouldReturnNull_whenNoSupplierConfigExists() throws Exception {
+        PersonVo personVo = new PersonVo();
+        personVo.setProofingLevelSought("1.5");
+        personVo.setSponsor("Change of Address");
+        personVo.setSponsorId(32L);
+        RefLoaLevel level = new RefLoaLevel();
+        level.setLoaCode(1L);
+        RefSponsor sponsor = new RefSponsor();
+        sponsor.setSponsorId(32L);
+        when(refLoaLevelService.findByLevel(anyString())).thenReturn(level);
+        when(refSponsorService.findBySponsorName(anyString())).thenReturn(sponsor);
+        when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), eq(1L), eq(32L)))
+            .thenReturn(Arrays.<RpOtpAttemptConfig>asList());
+        RefOtpSupplier selected = service.determineVerificationMethod(personVo);
+        assertNull(selected);
+        assertTrue(personVo.isHasError());
+        verify(otpAttemptConfigService, never()).callingOTP(any(RpOtpAttemptConfig.class));
+        verify(otpAttemptConfigService, never()).reset(anyLong(), anyLong());
+    }
+    private RpOtpAttemptConfig config(long supplierId, String supplierName, int totalAttempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+        RpOtpAttemptConfig config = new RpOtpAttemptConfig();
+        config.setRefOtpSupplier(supplier);
+        config.setTotalAttempts(totalAttempts);
+        config.setAttempts(0);
+        return config;
+    }
+    private void inject(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+}
+
+What this test suite proves
+
+It proves:
+
+1. 100% / single active supplier works.
+2. 0% suppliers are never selected.
+3. 60/40 works statistically.
+4. 40/35/25 works statistically.
+5. Percentages do not have to hardcode to exactly 100.
+6. ATTEMPTS no longer affects selection.
+7. callingOTP(...) is not called anymore.
+8. reset(...) is not called anymore.
+9. JSF beans can keep calling the provider service; the fix is isolated in the provider layer.
+
+For POC, I would show the team the selector test first, then the Mockito test proving no DB update path is called.
