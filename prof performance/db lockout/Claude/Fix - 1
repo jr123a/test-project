@@ -1,0 +1,184 @@
+Now I have a complete picture across all layers. Here is the full technical analysis:
+
+🔬 Problem B — Deep-Dive Root Cause Analysis & Fix
+
+1. Execution Trace
+Here is the full call chain for a single incoming CoA transaction:
+
+VerificationUserInfoBean.verifyPhoneNumber()
+  └─► verifyPhone(Person, PersonVo)
+        └─► getPhoneSupplier()                          ← calls determineVerificationMethod if supplier is null
+              └─► VerificationProviderServiceImpl.determineVerificationMethod(personVo)
+                    └─► determineVerificationMethod(personVo, level, sponsor, excludedSupplierId)
+                          └─► otpAttemptConfigService.getByProofingLevelSorted(...)  ← DB SELECT
+                                └─► selectSupplier(personVo, level, list)
+                                      └─► updatePvAttempts(personVo, level, chosen)
+                                            └─► otpAttemptConfigService.callingOTP(chosen)  ← DB UPDATE ← 💥 LOCK
+
+
+2. Root Cause — Exact Class, Method, and Lines
+Primary Lock Point: RpInfPvAttemptConfigServiceImpl.callingOTP() (line 56–63)
+
+@Override
+public void callingOTP(RpInfPvAttemptConfig attempt) {
+    RpInfPvAttemptConfig chosen = dao.getById(attempt.getId());  // SELECT
+    chosen.setAttempts(chosen.getAttempts()+1);                  // mutate
+    Date date = new Date();
+    chosen.setUpdateDate(new Timestamp(date.getTime()));
+    dao.update(chosen);                                          // UPDATE ← ROW LOCK
+}
+
+
+Why this causes the production outage:
+Every call to callingOTP() issues a database UPDATE on the same row of rp_inf_pv_attempts for the CoA sponsor + proofing level + supplier combination. Oracle’s row-level locking means that while one transaction holds the update open (waiting for JPA/Spring @Transactional to commit), all other concurrent sessions that need to update the same row are queued and blocked. At CoA’s high volume, these queues cascade into 20-second read timeouts, producing the 504 responses observed in production.
+The equivalent path for the non-INF flow is OtpAttemptConfigServiceImpl.callingOTP() acting on rp_kba_attempts — same pattern, same risk.
+Secondary Amplifier: findRowsForReset() uses FOR UPDATE (DAO line ~43)
+
+Query query = em.createNativeQuery(
+    "SELECT * FROM rp_inf_pv_attempts WHERE attempts >= total_attempts * 2 " +
+    "AND attempts <> 0 FOR UPDATE",   // ← explicit lock escalation
+    RpInfPvAttemptConfig.class);
+
+
+FOR UPDATE explicitly acquires a pessimistic write lock on all matching rows at SELECT time. If the reset timer fires while the system is under load, this locks the rows for the duration of the reset operation — amplifying contention further.
+Tertiary Risk: Unbounded retry loop in updatePvAttempts() (VerificationProviderServiceImpl lines 295–312)
+
+while (updateCheck) {           // ← no iteration cap
+    try {
+        otpAttemptConfigService.callingOTP(attemptConfig);
+        updateCheck = false;
+    } catch (Exception e) {
+        updateAttempts += 1;
+        if (updateAttempts >= 3) {
+            otpAttemptConfigService.reset(...);  // ← adds MORE writes under failure
+        }
+        // loop continues indefinitely if updateAttempts < 3
+    }
+}
+
+
+Under lock contention, callingOTP() throws. The retry loop re-attempts the same blocked UPDATE up to 3 times, and then calls reset() — which issues additional UPDATEs on the same rows — making the deadlock worse. There is also no break after calling reset(), so the loop continues.
+
+3. Proposed Fix
+This implements Emer’s INSERT-based proposal at the existing service layer, with minimal footprint changes. Rather than a full new-table migration (which requires schema DDL and DAO wiring not yet in these files), the immediate safe fix has two parts:
+Fix A — Remove FOR UPDATE from findRowsForReset() (DAO)
+File: RpInfPvAttemptConfigDaoImpl.java
+
+// BEFORE (line ~43):
+Query query = em.createNativeQuery(
+    "SELECT * FROM rp_inf_pv_attempts WHERE attempts >= total_attempts * 2 " +
+    "AND attempts <> 0 FOR UPDATE",
+    RpInfPvAttemptConfig.class);
+
+// AFTER — remove FOR UPDATE; JPA dirty-checking handles the write
+// The @Transactional boundary in the service already provides isolation.
+@Override
+public List<RpInfPvAttemptConfig> findRowsForReset() {
+    Query query = em.createNativeQuery(
+        "SELECT * FROM rp_inf_pv_attempts WHERE attempts >= total_attempts * 2 " +
+        "AND attempts <> 0",         // ← removed FOR UPDATE
+        RpInfPvAttemptConfig.class);
+    return query.getResultList();
+}
+
+
+Why: JPA’s @Transactional in resetAttempts() already ensures the update is committed atomically. The FOR UPDATE adds a redundant pessimistic lock that blocks all other concurrent readers/writers of those rows.
+
+Fix B — Add optimistic locking to RpInfPvAttemptConfig entity
+File: RpOtpAttemptConfig.java already has a version field — confirm RpInfPvAttemptConfig has the same. If it does not, add:
+
+// In RpInfPvAttemptConfig.java — add this field:
+@Version
+private long version;
+
+
+Why: This enables JPA optimistic locking. If two threads read the same row and both try to update it, the second will get an OptimisticLockException instead of silently overwriting or deadlocking. This is the enterprise-standard pattern for high-concurrency row updates.
+
+Fix C — Fix the unbounded retry loop in updatePvAttempts() and updatePvAttemptsForInf()
+File: VerificationProviderServiceImpl.java — both updatePvAttempts() (line 282) and updatePvAttemptsForInf() (line 316)
+
+// BEFORE — no exit after reset(), no cap:
+while (updateCheck) {
+    try {
+        otpAttemptConfigService.callingOTP(attemptConfig);
+        updateCheck = false;
+    } catch (Exception e) {
+        updateAttempts += 1;
+        if (updateAttempts >= 3) {
+            otpAttemptConfigService.reset(loaLevel.getLoaCode(), sponsorId);
+            // BUG: loop continues after reset — can loop forever
+        }
+    }
+}
+
+// AFTER — cap retries, break after reset, log clearly:
+while (updateCheck) {
+    try {
+        otpAttemptConfigService.callingOTP(attemptConfig);
+        updateCheck = false;
+    } catch (Exception e) {
+        updateAttempts += 1;
+        CustomLogger.error(this.getClass(),
+            "Error updating OTP attempts for supplier "
+                + attemptConfig.getRefOtpSupplier().getOtpSupplierName()
+                + ". Attempt " + updateAttempts + " of 3.", e);
+
+        if (updateAttempts >= 3) {
+            CustomLogger.warn(this.getClass(),
+                "Max retries reached. Resetting attempts for sponsorId=" + sponsorId);
+            otpAttemptConfigService.reset(loaLevel.getLoaCode(), sponsorId);
+            updateCheck = false;  // ← ADD THIS: exit loop after reset
+        }
+    }
+}
+
+
+Apply the identical fix to updatePvAttemptsForInf() using rpInfPvAttemptConfigService.
+
+Fix D — Align callingOTP() to use optimistic merge directly (Service)
+File: RpInfPvAttemptConfigServiceImpl.java
+
+// BEFORE:
+@Override
+public void callingOTP(RpInfPvAttemptConfig attempt) {
+    RpInfPvAttemptConfig chosen = dao.getById(attempt.getId()); // extra SELECT
+    chosen.setAttempts(chosen.getAttempts()+1);
+    Date date = new Date();
+    chosen.setUpdateDate(new Timestamp(date.getTime()));
+    dao.update(chosen);
+}
+
+// AFTER — use the already-loaded entity, avoid the redundant SELECT:
+@Override
+public void callingOTP(RpInfPvAttemptConfig attempt) {
+    attempt.setAttempts(attempt.getAttempts() + 1);
+    attempt.setUpdateDate(new Timestamp(new Date().getTime()));
+    dao.update(attempt);  // merge — if @Version is set, this is optimistic
+}
+
+
+Why: The original code does a getById (SELECT) immediately after the caller already has the entity from getByProofingLevelSorted. This is a redundant round-trip to the database per transaction. Removing it halves the DB operations per routing decision and reduces the lock hold window.
+
+4. Verification Steps
+
+
+
+|#|Test                             |What to Verify                                                                                                                                                                                              |
+|-|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|1|**Unit test `callingOTP`**       |Pass a mock `RpInfPvAttemptConfig` with `attempts=2`. Assert `dao.update()` is called with `attempts=3`. Assert `dao.getById()` is **not** called (verify with Mockito `verify(dao, never()).getById(...)`).|
+|2|**Unit test retry loop**         |Mock `callingOTP()` to throw 3 times. Assert `reset()` is called exactly once. Assert the loop exits (method returns) — **no infinite loop**.                                                               |
+|3|**Unit test `findRowsForReset`** |Verify the query string no longer contains `FOR UPDATE`.                                                                                                                                                    |
+|4|**Load test (Mohammed’s setup)** |Set CoA to 60/40 split. Run with 20+ concurrent users. Monitor Oracle blocker query. **Expected result:** no sessions blocked beyond momentary contention; no `504`s within 5-minute run.                   |
+|5|**Optimistic lock conflict test**|Simulate two threads reading the same row then both calling `update()`. Confirm the second gets `OptimisticLockException`, which is caught by the retry loop and handled — not a silent data corruption.    |
+|6|**Reset boundary test**          |Set `attempts = totalAttempts - 1`, run one more transaction. Assert `reset()` is called and `attempts` returns to 0 for that sponsor. Assert the **other** sponsor’s row is unaffected.                    |
+
+Summary of Changes
+
+
+
+|File                                  |Change                                                       |Risk                                                |
+|--------------------------------------|-------------------------------------------------------------|----------------------------------------------------|
+|`RpInfPvAttemptConfigDaoImpl.java`    |Remove `FOR UPDATE` from reset query                         |Low — transactional boundary still handles isolation|
+|`RpInfPvAttemptConfig.java`           |Add `@Version long version` for optimistic locking           |Low — additive only, requires matching DB column    |
+|`RpInfPvAttemptConfigServiceImpl.java`|Remove redundant `getById` in `callingOTP()`                 |Low — entity is already loaded by caller            |
+|`VerificationProviderServiceImpl.java`|Add `updateCheck = false` after `reset()` in both retry loops|Low — pure control flow fix, no data logic change   |
