@@ -1,0 +1,96 @@
+Yes — the weighted logic picks the supplier using a fresh random number per transaction. There is no counter to store.
+
+Example for 60/40:
+
+int r = ThreadLocalRandom.current().nextInt(100); // 0-99
+if (r < 60) {
+    return Equifax;      // 60% probability
+} else {
+    return LexisNexis;   // 40% probability
+}
+
+A server restart is not a problem, because the random number is not supposed to be remembered. Each request stands alone.
+
+What works well:
+
+* No ATTEMPTS update.
+* No row lock.
+* No reset logic.
+* No shared state across servers.
+* No issue if WebSphere restarts.
+* No issue if multiple JVMs are running.
+* No database insert/update per transaction.
+* Allocation becomes statistically correct over volume.
+
+The main tradeoff:
+
+* It does not guarantee exact 60/40 every 100 transactions.
+* It guarantees approximate 60/40 over a larger number of transactions.
+
+So with only 10 requests, you might see 7/3 or 5/5. With 10,000 requests, it should be very close to 60/40.
+
+That is usually acceptable for load distribution. If business requires exact 60/40 per 100 transactions, random logic may not be acceptable.
+
+Important edge cases to handle:
+
+totalAttempts <= 0
+
+Skip that supplier.
+
+only one supplier has 100
+
+Return it directly.
+
+sum of configured percentages is not 100
+
+Still okay if you use weighted sum dynamically. Example 60 + 40 = 100, but even if it is 6 + 4, the logic still behaves 60/40.
+
+excludedSupplierIds
+
+If a supplier is excluded, remove it from the candidate list and recalculate the total weight from remaining suppliers.
+
+Example:
+
+* Equifax 60
+* Lexis 40
+* Experian excluded
+
+Then only Equifax and Lexis participate.
+
+If only one supplier remains, return it.
+
+If no supplier remains, return null.
+
+The safest implementation is:
+
+private RpOtpAttemptConfig selectByWeightedRandom(
+        List<RpOtpAttemptConfig> list,
+        List<Long> excludedSupplierIds) {
+    List<RpOtpAttemptConfig> candidates = list.stream()
+        .filter(c -> c.getTotalAttempts() > 0)
+        .filter(c -> excludedSupplierIds == null ||
+                     !excludedSupplierIds.contains(c.getRefOtpSupplier().getOtpSupplierId()))
+        .collect(Collectors.toList());
+    if (candidates.isEmpty()) {
+        return null;
+    }
+    if (candidates.size() == 1) {
+        return candidates.get(0);
+    }
+    int totalWeight = candidates.stream()
+        .mapToInt(RpOtpAttemptConfig::getTotalAttempts)
+        .sum();
+    int random = ThreadLocalRandom.current().nextInt(totalWeight);
+    int cumulative = 0;
+    for (RpOtpAttemptConfig candidate : candidates) {
+        cumulative += candidate.getTotalAttempts();
+        if (random < cumulative) {
+            return candidate;
+        }
+    }
+    return candidates.get(candidates.size() - 1);
+}
+
+Your feedback to the team can be:
+
+“Weighted random does not maintain state, so server restart or multiple JVMs will not lose anything. Each transaction independently selects a supplier based on configured percentages. The tradeoff is that it gives statistical allocation over volume, not an exact 60/40 sequence per 100 transactions. If exact per-cycle distribution is required, we need a stateful algorithm, but that reintroduces locking or requires a distributed counter/cache.”
