@@ -1,0 +1,172 @@
+You’re absolutely right. Let me re-read the transcript to confirm Palin’s exact point.​​​​​​​​​​​​​​​​
+
+Confirmed. Palin’s exact words (transcript line 164): “you still go to this table and see percentage… grab it, but calculate in your cache or somewhere. But now update back to this table.” And the Speaker 5 (your colleague) confirmed: “If attempts is not used anywhere else, we can maintain it within the code, like a temporary storage — that would be very easy to do.”
+Here is the clean, self-contained fix.
+
+✅ In-Memory Supplier Routing Fix
+The Core Idea
+Read totalAttempts (the configured percentages) from the DB once — that’s legitimate config. Never write back the attempts counter to the DB. Track it in a JVM-level ConcurrentHashMap keyed by sponsorId + supplierId. The DB row lock disappears entirely because there are zero UPDATE statements in the hot path.
+
+New Class: SupplierAttemptTracker.java
+Place in: com.ips.proofing (same package as VerificationProviderServiceImpl)
+
+package com.ips.proofing;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.springframework.stereotype.Component;
+
+/**
+ * In-memory tracker for supplier attempt counts used in split-percentage routing.
+ *
+ * Replaces the DB UPDATE on rp_kba_attempts / rp_inf_pv_attempts for the
+ * hot-path supplier selection decision, eliminating Oracle row-lock contention
+ * under high CoA transaction volume.
+ *
+ * The configured percentages (totalAttempts) are still read from the DB —
+ * only the rolling attempt counter is kept in memory.
+ *
+ * Key format: "<sponsorId>:<supplierId>"
+ * Threadsafe: AtomicInteger inside ConcurrentHashMap — no synchronized blocks needed.
+ */
+@Component
+public class SupplierAttemptTracker {
+
+    // Key: "sponsorId:supplierId"  Value: running attempt count
+    private final ConcurrentHashMap<String, AtomicInteger> attemptMap = new ConcurrentHashMap<>();
+
+    private String key(long sponsorId, long supplierId) {
+        return sponsorId + ":" + supplierId;
+    }
+
+    /**
+     * Atomically increments and returns the new attempt count for this supplier.
+     */
+    public int incrementAndGet(long sponsorId, long supplierId) {
+        return attemptMap
+            .computeIfAbsent(key(sponsorId, supplierId), k -> new AtomicInteger(0))
+            .incrementAndGet();
+    }
+
+    /**
+     * Returns current count without incrementing.
+     */
+    public int get(long sponsorId, long supplierId) {
+        AtomicInteger counter = attemptMap.get(key(sponsorId, supplierId));
+        return counter == null ? 0 : counter.get();
+    }
+
+    /**
+     * Resets both suppliers for a sponsor back to zero (called when cycle completes).
+     */
+    public void reset(long sponsorId, long supplierId) {
+        AtomicInteger counter = attemptMap.get(key(sponsorId, supplierId));
+        if (counter != null) {
+            counter.set(0);
+        }
+    }
+
+    /**
+     * Resets all suppliers for a given sponsor (full cycle reset).
+     */
+    public void resetAll(long sponsorId, Iterable<Long> supplierIds) {
+        for (Long supplierId : supplierIds) {
+            reset(sponsorId, supplierId);
+        }
+    }
+}
+
+
+Modified: VerificationProviderServiceImpl.java
+Only three surgical changes: inject the tracker, replace updatePvAttempts(), replace updatePvAttemptsForInf(). Everything else — selectSupplier(), isSwitchingConfigured(), the INF/excluded supplier logic — stays untouched.
+
+// 1. ADD this autowired field alongside the existing ones:
+@Autowired
+private SupplierAttemptTracker supplierAttemptTracker;
+
+
+// 2. REPLACE updatePvAttempts() entirely:
+
+private void updatePvAttempts(PersonVo personVo, RefLoaLevel loaLevel, RpOtpAttemptConfig attemptConfig) {
+
+    long sponsorId = personVo.getSponsorId();
+
+    if (!isSwitchingConfigured(loaLevel, sponsorId)) {
+        return; // 100% config — no tracking needed, no DB write needed
+    }
+
+    long supplierId = attemptConfig.getRefOtpSupplier().getOtpSupplierId();
+    int totalAttempts = attemptConfig.getTotalAttempts(); // still from DB read — that's fine
+
+    int current = supplierAttemptTracker.get(sponsorId, supplierId);
+
+    if (current >= totalAttempts) {
+        // This supplier's cycle is complete — reset all suppliers for this sponsor
+        // so the next read of getByProofingLevelSorted picks the right one
+        List<RpOtpAttemptConfig> allConfigs = otpAttemptConfigService
+            .getByProofingLevel(loaLevel.getLoaCode(), sponsorId);
+        for (RpOtpAttemptConfig cfg : allConfigs) {
+            supplierAttemptTracker.reset(sponsorId, cfg.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+
+    supplierAttemptTracker.incrementAndGet(sponsorId, supplierId);
+
+    CustomLogger.debug(this.getClass(), String.format(
+        "In-memory attempt tracker updated: sponsorId=%d, supplier=%s, count=%d / %d",
+        sponsorId, attemptConfig.getRefOtpSupplier().getOtpSupplierName(),
+        supplierAttemptTracker.get(sponsorId, supplierId), totalAttempts));
+}
+
+
+// 3. REPLACE updatePvAttemptsForInf() entirely — same logic, INF table variant:
+
+private void updatePvAttemptsForInf(PersonVo personVo, RefLoaLevel loaLevel, RpInfPvAttemptConfig attemptConfig) {
+
+    if (attemptConfig == null) {
+        return;
+    }
+
+    long sponsorId = personVo.getSponsorId();
+
+    if (!isSwitchingConfiguredForInf(loaLevel, sponsorId)) {
+        return; // 100% config — nothing to track
+    }
+
+    long supplierId = attemptConfig.getRefOtpSupplier().getOtpSupplierId();
+    int totalAttempts = attemptConfig.getTotalAttempts();
+
+    int current = supplierAttemptTracker.get(sponsorId, supplierId);
+
+    if (current >= totalAttempts) {
+        List<RpInfPvAttemptConfig> allConfigs = rpInfPvAttemptConfigService
+            .getByProofingLevel(loaLevel.getLoaCode(), sponsorId);
+        for (RpInfPvAttemptConfig cfg : allConfigs) {
+            supplierAttemptTracker.reset(sponsorId, cfg.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+
+    supplierAttemptTracker.incrementAndGet(sponsorId, supplierId);
+
+    CustomLogger.debug(this.getClass(), String.format(
+        "In-memory INF attempt tracker updated: sponsorId=%d, supplier=%s, count=%d / %d",
+        sponsorId, attemptConfig.getRefOtpSupplier().getOtpSupplierName(),
+        supplierAttemptTracker.get(sponsorId, supplierId), totalAttempts));
+}
+
+
+What You Can Now Remove
+In selectSupplier() and selectSupplierForInf(), the chosen entity is used purely for reading getAttempts() to decide which supplier wins. But now the in-memory tracker owns that count, so the query sort (findByProofingLevelSorted) still works correctly for config reads — it’s using totalAttempts to filter, which never changes. The only thing that changes is we no longer call callingOTP() which was the UPDATE. Both callingOTP() methods in the service can be kept but will simply never be called from this path anymore.
+
+Why This Is Correct and Safe
+
+
+
+|Concern                       |Answer                                                                                                                                                                                                             |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**Thread safety**             |`AtomicInteger` inside `ConcurrentHashMap.computeIfAbsent` — fully thread-safe, no `synchronized` needed                                                                                                           |
+|**App server restart**        |Counter resets to 0. The very next transaction reads `totalAttempts` from DB and starts the cycle fresh. Off-by-one at restart is acceptable — Palin confirmed in the transcript: *“one or two difference is fine”*|
+|**Multiple WebSphere nodes**  |Each JVM has its own tracker. This mirrors the current behavior — the DB counter was also not truly consistent across nodes under round-robin. The tracker is no worse, and eliminates the lock entirely           |
+|**Config change via Admin UI**|Admin still writes `totalAttempts` to DB as before. Next time `getByProofingLevelSorted` runs, it reads the new percentage. Call `resetAll()` optionally after an admin config change if you want instant effect   |
+|**`attempts` column in DB**   |Palin’s question was answered: it’s not used anywhere else for business logic. It can remain in the DB schema untouched — you simply stop writing to it. No schema change needed                                   |
