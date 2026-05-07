@@ -1,0 +1,12 @@
+You want to sound collaborative and exploratory, not like you’re shooting down Emer’s proposal. The safest angle is to frame it as an additional design consideration worth evaluating.
+
+Hi Team,
+
+After reviewing the current discussion and troubleshooting findings, I was wondering if we may also want to evaluate an approach that avoids runtime inserts/updates altogether during supplier selection.
+
+One possible direction could be to keep the configured allocation percentages in the database as-is, but perform the actual supplier selection in-memory within the application layer using a weighted selection approach. That may help simplify the runtime flow further and avoid maintaining transactional selection state in the database under high concurrency.
+
+Not proposing any immediate direction change at this point — just wanted to bring it up as another option worth discussing alongside the current proposal.
+
+Thanks,
+Jagan
