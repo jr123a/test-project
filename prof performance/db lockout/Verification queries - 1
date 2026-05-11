@@ -1,1 +1,280 @@
 
+Yes, you are thinking about this the right way, but one correction first:
+
+Sponsor = COA / CustReg / Operation Santa
+Supplier = LexisNexis / Equifax / Experian
+
+So your validation question is really:
+
+For this person / sponsorUserId, which phone verification supplier handled the transaction?
+
+1. Check current supplier allocation config
+
+This tells you what IVS Admin configured.
+
+SELECT
+    a.sponsor_id,
+    s.sponsor_name,
+    a.proofing_level,
+    a.kba_supplier_id,
+    sup.otp_supplier_name,
+    a.total_attempts,
+    a.attempts,
+    a.update_date
+FROM ips_own.rp_kba_attempts a
+JOIN ips_own.ref_sponsor s
+    ON s.sponsor_id = a.sponsor_id
+JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = a.kba_supplier_id
+WHERE a.sponsor_id = 32       -- COA, adjust if needed
+  AND a.proofing_level = 1
+ORDER BY a.kba_supplier_id;
+
+Use this before and after to confirm:
+
+* TOTAL_ATTEMPTS = configured percentage
+* ATTEMPTS = old runtime counter, which should stop changing after your fix
+
+2. Find the person record
+
+Use whichever identifier you have from the test request.
+
+By sponsor user ID
+
+SELECT
+    p.person_id,
+    p.sponsor_user_id,
+    p.sponsor_id,
+    s.sponsor_name,
+    p.create_date,
+    p.update_date
+FROM ips_own.person p
+LEFT JOIN ips_own.ref_sponsor s
+    ON s.sponsor_id = p.sponsor_id
+WHERE p.sponsor_user_id = :sponsorUserId
+ORDER BY p.create_date DESC;
+
+By person ID
+
+SELECT
+    p.person_id,
+    p.sponsor_user_id,
+    p.sponsor_id,
+    s.sponsor_name,
+    p.create_date,
+    p.update_date
+FROM ips_own.person p
+LEFT JOIN ips_own.ref_sponsor s
+    ON s.sponsor_id = p.sponsor_id
+WHERE p.person_id = :personId;
+
+3. Check latest event and selected supplier
+
+This is probably your most important validation query.
+
+The IPSWeb code uses RpEventDataService.getLatestPhoneSupplier(...) and getLatestPhoneVerification(personId, supplierId), so RP_EVENT is the likely transaction-level source for the supplier used.
+
+Try:
+
+SELECT
+    e.event_id,
+    e.person_id,
+    p.sponsor_user_id,
+    p.sponsor_id,
+    s.sponsor_name,
+    e.otp_supplier_id,
+    sup.otp_supplier_name,
+    e.create_date,
+    e.update_date
+FROM ips_own.rp_event e
+JOIN ips_own.person p
+    ON p.person_id = e.person_id
+LEFT JOIN ips_own.ref_sponsor s
+    ON s.sponsor_id = p.sponsor_id
+LEFT JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = e.otp_supplier_id
+WHERE e.person_id = :personId
+ORDER BY e.create_date DESC;
+
+If OTP_SUPPLIER_ID column name is different, run:
+
+SELECT column_name
+FROM all_tab_columns
+WHERE owner = 'IPS_OWN'
+  AND table_name = 'RP_EVENT'
+ORDER BY column_id;
+
+Then look for columns like:
+
+OTP_SUPPLIER_ID
+KBA_SUPPLIER_ID
+PHONE_VERIFICATION_SUPPLIER_ID
+SUPPLIER_ID
+
+4. Check phone verification details
+
+The code references RpPhoneVerification from the latest phone verification event, so also check RP_PHONE_VERIFICATION.
+
+SELECT
+    pv.*,
+    e.event_id,
+    e.person_id,
+    p.sponsor_user_id,
+    e.otp_supplier_id,
+    sup.otp_supplier_name
+FROM ips_own.rp_phone_verification pv
+JOIN ips_own.rp_event e
+    ON e.event_id = pv.event_id
+JOIN ips_own.person p
+    ON p.person_id = e.person_id
+LEFT JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = e.otp_supplier_id
+WHERE e.person_id = :personId
+ORDER BY e.create_date DESC;
+
+If EVENT_ID is not in RP_PHONE_VERIFICATION, inspect columns:
+
+SELECT column_name
+FROM all_tab_columns
+WHERE owner = 'IPS_OWN'
+  AND table_name = 'RP_PHONE_VERIFICATION'
+ORDER BY column_id;
+
+5. Supplier-specific result tables
+
+These are useful to confirm vendor-specific execution.
+
+LexisNexis
+
+SELECT
+    ln.*,
+    e.person_id,
+    p.sponsor_user_id,
+    e.otp_supplier_id
+FROM ips_own.rp_lexisnexis_result ln
+JOIN ips_own.rp_event e
+    ON e.event_id = ln.event_id
+JOIN ips_own.person p
+    ON p.person_id = e.person_id
+WHERE e.person_id = :personId
+ORDER BY ln.create_date DESC;
+
+Equifax DIT / SMFA
+
+SELECT
+    dit.*,
+    p.person_id,
+    p.sponsor_user_id
+FROM ips_own.rp_dit_response dit
+JOIN ips_own.person p
+    ON p.person_id = dit.person_id
+WHERE p.person_id = :personId
+ORDER BY dit.create_date DESC;
+
+Experian
+
+SELECT
+    exp.*,
+    p.person_id,
+    p.sponsor_user_id
+FROM ips_own.rp_experian_decision_result exp
+JOIN ips_own.person p
+    ON p.person_id = exp.person_id
+WHERE p.person_id = :personId
+ORDER BY exp.create_date DESC;
+
+And payload:
+
+SELECT
+    payload.*,
+    exp.person_id,
+    p.sponsor_user_id
+FROM ips_own.rp_experian_response_payload payload
+JOIN ips_own.rp_experian_decision_result exp
+    ON exp.exp_result_id = payload.exp_result_id
+JOIN ips_own.person p
+    ON p.person_id = exp.person_id
+WHERE exp.person_id = :personId
+ORDER BY payload.create_date DESC;
+
+6. Before/after validation script
+
+Use this sequence.
+
+Before transaction
+
+SELECT
+    a.sponsor_id,
+    a.proofing_level,
+    a.kba_supplier_id,
+    sup.otp_supplier_name,
+    a.total_attempts,
+    a.attempts,
+    a.update_date
+FROM ips_own.rp_kba_attempts a
+JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = a.kba_supplier_id
+WHERE a.sponsor_id = 32
+  AND a.proofing_level = 1
+ORDER BY a.kba_supplier_id;
+
+Run one transaction
+
+Use your dev flow / Postman / UI.
+
+Find person
+
+SELECT
+    p.person_id,
+    p.sponsor_user_id,
+    p.sponsor_id,
+    p.create_date
+FROM ips_own.person p
+WHERE p.sponsor_user_id = :sponsorUserId
+ORDER BY p.create_date DESC;
+
+Check selected supplier
+
+SELECT
+    e.event_id,
+    e.person_id,
+    p.sponsor_user_id,
+    e.otp_supplier_id,
+    sup.otp_supplier_name,
+    e.create_date
+FROM ips_own.rp_event e
+JOIN ips_own.person p
+    ON p.person_id = e.person_id
+LEFT JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = e.otp_supplier_id
+WHERE e.person_id = :personId
+ORDER BY e.create_date DESC;
+
+After transaction: check whether ATTEMPTS changed
+
+SELECT
+    a.sponsor_id,
+    a.proofing_level,
+    a.kba_supplier_id,
+    sup.otp_supplier_name,
+    a.total_attempts,
+    a.attempts,
+    a.update_date
+FROM ips_own.rp_kba_attempts a
+JOIN ips_own.ref_otp_supplier sup
+    ON sup.otp_supplier_id = a.kba_supplier_id
+WHERE a.sponsor_id = 32
+  AND a.proofing_level = 1
+ORDER BY a.kba_supplier_id;
+
+Expected result:
+
+Before fix:
+ATTEMPTS increments for selected supplier.
+After weighted-random fix:
+ATTEMPTS should not change during transaction.
+RP_EVENT should still show selected supplier.
+
+Quick note
+
+If your actual column is not OTP_SUPPLIER_ID in RP_EVENT, inspect the table columns first. The Java code confirms the event service is the right area, but I do not want to pretend the exact DB column name is guaranteed without your schema in front of me.
