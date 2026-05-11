@@ -1,0 +1,49 @@
+Story 1 – Design and Technical Documentation for Supplier Selection Optimization
+
+Description:
+Analyze and document the current phone verification supplier selection flow used in remote proofing, including the existing attempt-based routing logic and identified database contention issue under high concurrent transaction volume.
+
+Create a proposed design for a stateless weighted supplier selection approach that removes runtime database updates from the supplier routing path while preserving configured allocation percentages.
+
+Acceptance Criteria:
+- Current-state supplier selection flow is documented.
+- Root cause of database contention is documented.
+- Proposed weighted supplier selection design is documented.
+- Design includes handling for:
+  - 100% single-supplier configuration
+  - split supplier allocation configuration
+  - excluded/failover supplier handling
+  - multi-JVM behavior considerations
+- High-level testing and rollout considerations are documented.
+- Design walkthrough completed with development team and Story 2 – Implement Stateless Weighted Supplier Selection for Remote Proofing
+
+Description:
+Implement the approved weighted supplier selection approach for remote proofing phone verification flows to eliminate runtime database counter updates and reduce transaction delays caused by database contention.
+
+Acceptance Criteria:
+- Runtime supplier selection no longer updates ATTEMPTS counters in database tables.
+- Supplier selection uses configured allocation percentages for weighted routing.
+- Existing 100% supplier configuration behavior is preserved.
+- Existing failover/excluded supplier handling behavior is preserved.
+- Unit tests are created for weighted routing scenarios.
+- Solution is validated in lower environments with concurrent transaction testing.
+- Existing functionality for COA and supported sponsors remains operational.
+- Logging added for supplier selection visibility/debugging.
+- No database lock contention observed during concurrent load validation.
+
+
+Story 2 – Implement Stateless Weighted Supplier Selection for Remote Proofing
+
+Description:
+Implement the approved weighted supplier selection approach for remote proofing phone verification flows to eliminate runtime database counter updates and reduce transaction delays caused by database contention.
+
+Acceptance Criteria:
+- Runtime supplier selection no longer updates ATTEMPTS counters in database tables.
+- Supplier selection uses configured allocation percentages for weighted routing.
+- Existing 100% supplier configuration behavior is preserved.
+- Existing failover/excluded supplier handling behavior is preserved.
+- Unit tests are created for weighted routing scenarios.
+- Solution is validated in lower environments with concurrent transaction testing.
+- Existing functionality for COA and supported sponsors remains operational.
+- Logging added for supplier selection visibility/debugging.
+- No database lock contention observed during concurrent load validation.
