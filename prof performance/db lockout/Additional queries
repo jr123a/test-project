@@ -1,0 +1,186 @@
+Noted. These are useful validation tables, especially for tracing one proofing attempt end-to-end.
+
+From your screenshots, we now have these confirmed tables/columns:
+
+PERSON
+- PERSON_ID
+- SPONSOR_ID
+- SPONSOR_USER_ID
+- CREATE_DATE
+- UPDATE_DATE
+- KBA_UID
+- PROOFING_LEVEL_SOUGHT
+- LEXID
+- PIN
+- USER_TYPE
+- ENTERED_IVS_DATETIME
+- PROOFING_LEVEL_ACHIEVED
+- LOA_ACHIEVED_DATETIME
+PERSON_DATA
+- PERSON_ID
+- LAST_NAME
+- MIDDLE_NAME
+- FIRST_NAME
+- EMAIL_ADDRESS
+- ADDRESS_LINE_1
+- ADDRESS_LINE_2
+- ADDRESS_LINE_3
+- CITY
+- STATE_PROVINCE
+- POSTAL_CODE
+- PHONE_NUMBER
+- PHONE_TYPE
+- BIRTH_DATE
+- CREATE_DATE
+PERSON_PROOFING_STATUS
+- PERSON_ID
+- PROOFING_LEVEL_SOUGHT
+- PROOFING_STATUS
+- PROOFING_STATUS_DATETIME
+- CREATE_DATE
+- UPDATE_DATE
+- USED_CRED_DATETIME
+- CRED_EXPIRED_DATETIME
+- ACTIVATION_CODE
+- CODE_EXPIRATION_DATE
+AUDIT_PERSON
+- AUDIT_PERSON_ID
+- PERSON_ID
+- SPONSOR_ID
+- SPONSOR_USER_ID
+- FULL_PERSON_NAME
+- EMAIL_ADDRESS
+- PROOFING_STATUS
+- PROOFING_STATUS_DATETIME
+- PROOFING_LEVEL
+- CREATE_DATE
+
+Important clue from your AUDIT_PERSON screenshot:
+
+PROOFING_STATUS examples:
+- Just Login
+- New to IPS, No Proofing Events
+- Attempt to verify identity with Low Confidence
+- Started remote proofing
+- Started device reputation
+- Phone verification initiated
+- SMFA initiated
+- SMFA validation initiated
+- SMFA sent
+- LOA level achieved
+
+This may actually become your best human-readable flow trace.
+
+For one person ID, use this sequence:
+
+SELECT
+    p.PERSON_ID,
+    p.SPONSOR_ID,
+    rs.SPONSOR_NAME,
+    p.SPONSOR_USER_ID,
+    p.PROOFING_LEVEL_SOUGHT,
+    p.PROOFING_LEVEL_ACHIEVED,
+    p.CREATE_DATE,
+    p.UPDATE_DATE
+FROM IPS_OWN.PERSON p
+LEFT JOIN IPS_OWN.REF_SPONSOR rs
+    ON rs.SPONSOR_ID = p.SPONSOR_ID
+WHERE p.PERSON_ID = :PERSON_ID;
+SELECT
+    pd.PERSON_ID,
+    pd.FIRST_NAME,
+    pd.MIDDLE_NAME,
+    pd.LAST_NAME,
+    pd.EMAIL_ADDRESS,
+    pd.ADDRESS_LINE_1,
+    pd.CITY,
+    pd.STATE_PROVINCE,
+    pd.POSTAL_CODE,
+    pd.PHONE_NUMBER,
+    pd.CREATE_DATE
+FROM IPS_OWN.PERSON_DATA pd
+WHERE pd.PERSON_ID = :PERSON_ID;
+SELECT
+    pps.PERSON_ID,
+    pps.PROOFING_LEVEL_SOUGHT,
+    pps.PROOFING_STATUS,
+    pps.PROOFING_STATUS_DATETIME,
+    pps.CREATE_DATE,
+    pps.UPDATE_DATE
+FROM IPS_OWN.PERSON_PROOFING_STATUS pps
+WHERE pps.PERSON_ID = :PERSON_ID
+ORDER BY pps.PROOFING_STATUS_DATETIME DESC;
+SELECT
+    ap.AUDIT_PERSON_ID,
+    ap.PERSON_ID,
+    ap.SPONSOR_ID,
+    rs.SPONSOR_NAME,
+    ap.SPONSOR_USER_ID,
+    ap.FULL_PERSON_NAME,
+    ap.EMAIL_ADDRESS,
+    ap.PROOFING_STATUS,
+    ap.PROOFING_STATUS_DATETIME,
+    ap.PROOFING_LEVEL,
+    ap.CREATE_DATE
+FROM IPS_OWN.AUDIT_PERSON ap
+LEFT JOIN IPS_OWN.REF_SPONSOR rs
+    ON rs.SPONSOR_ID = ap.SPONSOR_ID
+WHERE ap.PERSON_ID = :PERSON_ID
+ORDER BY ap.PROOFING_STATUS_DATETIME, ap.AUDIT_PERSON_ID;
+
+For finding your recent test user quickly:
+
+SELECT
+    p.PERSON_ID,
+    p.SPONSOR_ID,
+    rs.SPONSOR_NAME,
+    p.SPONSOR_USER_ID,
+    pd.FIRST_NAME,
+    pd.LAST_NAME,
+    pd.EMAIL_ADDRESS,
+    pd.PHONE_NUMBER,
+    p.CREATE_DATE
+FROM IPS_OWN.PERSON p
+JOIN IPS_OWN.PERSON_DATA pd
+    ON pd.PERSON_ID = p.PERSON_ID
+LEFT JOIN IPS_OWN.REF_SPONSOR rs
+    ON rs.SPONSOR_ID = p.SPONSOR_ID
+WHERE LOWER(pd.FIRST_NAME) = LOWER(:FIRST_NAME)
+   OR LOWER(pd.EMAIL_ADDRESS) = LOWER(:EMAIL_ADDRESS)
+ORDER BY p.CREATE_DATE DESC;
+
+For your shown SIT example:
+
+SELECT
+    p.PERSON_ID,
+    p.SPONSOR_ID,
+    rs.SPONSOR_NAME,
+    p.SPONSOR_USER_ID,
+    pd.FIRST_NAME,
+    pd.LAST_NAME,
+    pd.EMAIL_ADDRESS,
+    pd.PHONE_NUMBER,
+    p.CREATE_DATE
+FROM IPS_OWN.PERSON p
+JOIN IPS_OWN.PERSON_DATA pd
+    ON pd.PERSON_ID = p.PERSON_ID
+LEFT JOIN IPS_OWN.REF_SPONSOR rs
+    ON rs.SPONSOR_ID = p.SPONSOR_ID
+WHERE p.PERSON_ID = 362095;
+
+And this becomes your before/after proofing trace:
+
+SELECT
+    ap.PERSON_ID,
+    ap.SPONSOR_USER_ID,
+    ap.FULL_PERSON_NAME,
+    ap.EMAIL_ADDRESS,
+    ap.PROOFING_STATUS,
+    ap.PROOFING_STATUS_DATETIME,
+    ap.PROOFING_LEVEL,
+    ap.CREATE_DATE
+FROM IPS_OWN.AUDIT_PERSON ap
+WHERE ap.PERSON_ID = 362095
+ORDER BY ap.PROOFING_STATUS_DATETIME, ap.AUDIT_PERSON_ID;
+
+One caution: these tables show the person/proofing lifecycle, but they may not directly show the selected supplier ID. For supplier selection validation, we still need to identify the actual event/result table that stores supplier ID or supplier-specific output. Your AUDIT_PERSON statuses can confirm “SMFA initiated/sent” or “Phone verification initiated,” but to prove 4/5/6 supplier distribution, we still need either RP_EVENT, supplier result tables, or the exact column/table that records KBA_SUPPLIER_ID.
