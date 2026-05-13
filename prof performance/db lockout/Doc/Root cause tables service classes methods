@@ -1,0 +1,556 @@
+Here is a clean section you can paste into the design document.
+
+⸻
+
+Current Supplier Selection Flow
+
+1. Purpose
+
+The current supplier selection logic determines which phone verification supplier should handle a remote proofing transaction when multiple suppliers are configured for a sponsor.
+
+Example suppliers:
+
+4 = Lexis Nexis OTP
+5 = Equifax DIT SMFA
+6 = Experian CrossCore
+
+The configured supplier allocation is maintained in the RP_KBA_ATTEMPTS table using the TOTAL_ATTEMPTS column.
+
+Example:
+
+Sponsor: Change of Address
+Proofing Level: 1
+Supplier 5 - Equifax DIT SMFA  = 60
+Supplier 4 - Lexis Nexis OTP   = 40
+
+This means the system is intended to route approximately 60% of traffic to Equifax DIT SMFA and 40% to Lexis Nexis OTP.
+
+⸻
+
+2. Relevant Tables
+
+REF_SPONSOR
+
+Stores sponsor/application configuration.
+
+Important columns:
+
+SPONSOR_ID
+SPONSOR_NAME
+IPP_CLIENT_ACTIVE
+FACILITY_SUBLIST
+REMOTE_PROOFING_CLIENT
+
+Example:
+
+32 = Change of Address
+1  = CustomReg
+2  = Operation Santa
+
+⸻
+
+REF_KBA_SUPPLIER
+
+Stores supplier/provider reference data.
+
+Important columns:
+
+KBA_SUPPLIER_ID
+KBA_SUPPLIER_NAME
+CREATE_DATE
+UPDATE_DATE
+
+Known supplier IDs:
+
+0 = Unknown
+1 = Equifax Primary KBA
+2 = Lexis Nexis KBA
+3 = Equifax OTP
+4 = Lexis Nexis OTP
+5 = Equifax DIT SMFA
+6 = Experian CrossCore
+
+⸻
+
+RP_KBA_ATTEMPTS
+
+Main supplier routing configuration and runtime counter table.
+
+Important columns:
+
+KBA_SUPPLIER_ID
+SPONSOR_ID
+PROOFING_LEVEL
+TOTAL_ATTEMPTS
+ATTEMPTS
+MODIFY_CONFIGURATION_USERID
+MODIFY_CONFIGURATION_TIME
+CREATE_DATE
+UPDATE_DATE
+VERSION
+
+Column meaning:
+
+TOTAL_ATTEMPTS = configured supplier allocation/weight
+ATTEMPTS       = runtime counter showing how many times supplier has been selected in current cycle
+
+Example:
+
+Supplier 5, TOTAL_ATTEMPTS = 60, ATTEMPTS = 12
+Supplier 4, TOTAL_ATTEMPTS = 40, ATTEMPTS = 8
+
+Meaning:
+
+Equifax configured for 60% allocation and has been selected 12 times in current cycle.
+Lexis configured for 40% allocation and has been selected 8 times in current cycle.
+
+⸻
+
+PERSON
+
+Stores the IVS person/proofing transaction owner.
+
+Important columns:
+
+PERSON_ID
+SPONSOR_ID
+SPONSOR_USER_ID
+CREATE_DATE
+UPDATE_DATE
+KBA_UID
+PROOFING_LEVEL_SOUGHT
+LEXID
+PIN
+USER_TYPE
+ENTERED_IVS_DATETIME
+PROOFING_LEVEL_ACHIEVED
+LOA_ACHIEVED_DATETIME
+
+Notes:
+
+PERSON_ID = internal IVS identifier
+SPONSOR_ID = sponsor/application identifier from REF_SPONSOR
+SPONSOR_USER_ID = external sponsor-side user/transaction reference
+
+⸻
+
+PERSON_DATA
+
+Stores person demographic/contact data.
+
+Important columns:
+
+PERSON_ID
+FIRST_NAME
+MIDDLE_NAME
+LAST_NAME
+EMAIL_ADDRESS
+ADDRESS_LINE_1
+ADDRESS_LINE_2
+ADDRESS_LINE_3
+CITY
+STATE_PROVINCE
+POSTAL_CODE
+PHONE_NUMBER
+PHONE_TYPE
+BIRTH_DATE
+CREATE_DATE
+
+⸻
+
+PERSON_PROOFING_STATUS
+
+Stores latest/current proofing status for the person.
+
+Important columns:
+
+PERSON_ID
+PROOFING_LEVEL_SOUGHT
+PROOFING_STATUS
+PROOFING_STATUS_DATETIME
+CREATE_DATE
+UPDATE_DATE
+
+⸻
+
+AUDIT_PERSON
+
+Stores proofing status audit/history.
+
+Important columns:
+
+AUDIT_PERSON_ID
+PERSON_ID
+SPONSOR_ID
+SPONSOR_USER_ID
+FULL_PERSON_NAME
+EMAIL_ADDRESS
+PROOFING_STATUS
+PROOFING_STATUS_DATETIME
+PROOFING_LEVEL
+CREATE_DATE
+
+Useful statuses observed:
+
+Just Login
+New to IPS, No Proofing Events
+Attempt to verify identity with Low Confidence
+Started remote proofing
+Started device reputation
+Phone verification initiated
+SMFA initiated
+SMFA validation initiated
+SMFA sent
+LOA level achieved
+
+This table is useful for tracing the proofing flow, but supplier selection still needs to be validated through event/result tables or supplier-specific logs.
+
+⸻
+
+3. Current Java Flow
+
+Main Service
+
+VerificationProviderServiceImpl
+
+This service is responsible for determining the phone verification supplier.
+
+Primary entry method:
+
+determineVerificationMethod(PersonVo personVo)
+
+This delegates to:
+
+determineVerificationMethod(PersonVo personVo, Long excludedSupplierId)
+
+and then:
+
+determineVerificationMethod(PersonVo personVo, RefLoaLevel level, RefSponsor sponsor, Long excludedSupplierId)
+
+⸻
+
+4. Current Supplier Selection Logic
+
+Step 1: Identify proofing level and sponsor
+
+The service loads:
+
+RefLoaLevel level = refLoaLevelService.findByLevel(personVo.getProofingLevelSought());
+RefSponsor sponsor = refSponsorService.findBySponsorName(personVo.getSponsor());
+
+The sponsor identifies the calling application, such as:
+
+Change of Address
+CustomReg
+Operation Santa
+
+⸻
+
+Step 2: Build eligible supplier list
+
+The code builds a list of eligible supplier IDs:
+
+Equifax OTP
+Equifax DIT SMFA
+Lexis Nexis OTP
+Experian CrossCore
+
+If a supplier should be excluded due to prior failure/failover logic, it is removed from the list.
+
+Example:
+
+if (excludedSupplierId != 0L) {
+    otpSupplierIds.remove(excludedSupplierId);
+}
+
+⸻
+
+Step 3: Check special failover conditions
+
+The code has special handling for conditions such as:
+
+personVo.isLexisNexisIndividualNotFound()
+personVo.isExperianCustomerNotOnFile()
+personVo.isExperianErrorResponse()
+
+These conditions may remove a supplier from the eligible list and force selection of an alternate supplier.
+
+⸻
+
+Step 4: Retrieve supplier routing rows
+
+For the normal phone verification flow, the service retrieves supplier configuration from RP_KBA_ATTEMPTS.
+
+Conceptually:
+
+otpAttemptConfigService.getByProofingLevelSorted(
+    otpSupplierIds,
+    level.getLoaCode(),
+    sponsor.getSponsorId()
+);
+
+The query retrieves rows where:
+
+PROOFING_LEVEL = selected proofing level
+SPONSOR_ID = selected sponsor
+KBA_SUPPLIER_ID is in eligible supplier list
+TOTAL_ATTEMPTS <> 0
+
+Rows are sorted by:
+
+ATTEMPTS ascending
+KBA_SUPPLIER_ID descending
+
+This means the supplier with the lowest current runtime count is selected first.
+
+⸻
+
+5. Current Selection Method
+
+The current selection method is:
+
+selectSupplier(PersonVo personVo, RefLoaLevel level, List<RpOtpAttemptConfig> list)
+
+Current logic:
+
+1. Loop through sorted supplier rows.
+2. Pick the first supplier where ATTEMPTS < TOTAL_ATTEMPTS.
+3. If all suppliers reached their limit, pick first supplier in sorted list.
+4. Call updatePvAttempts().
+5. Return selected supplier.
+
+This method selects the supplier and then updates the runtime counter.
+
+⸻
+
+6. Current Attempts Update Logic
+
+After the supplier is selected, the current code calls:
+
+updatePvAttempts(personVo, level, chosen);
+
+This method checks if supplier switching is configured.
+
+If one supplier is configured with TOTAL_ATTEMPTS = 100, then switching is considered disabled and the system does not update runtime attempts.
+
+If split configuration exists, such as 60/40 or 50/50, switching is enabled and runtime attempts are updated.
+
+⸻
+
+100% supplier behavior
+
+Example:
+
+Supplier 4 = 100
+Supplier 5 = 0
+Supplier 6 = 0
+
+In this case:
+
+Switching is false.
+Supplier 4 is selected.
+ATTEMPTS is not updated.
+
+This is why 100% configuration avoids the database contention issue.
+
+⸻
+
+Split supplier behavior
+
+Example:
+
+Supplier 5 = 60
+Supplier 4 = 40
+
+In this case:
+
+Switching is true.
+Supplier is selected based on current ATTEMPTS.
+Selected supplier's ATTEMPTS is incremented.
+
+⸻
+
+7. Current Counter Update Service
+
+The update goes through:
+
+OtpAttemptConfigService.callingOTP(...)
+
+Despite the method name, this method does not actually call the OTP provider. It updates the runtime counter.
+
+Current behavior:
+
+1. Load RP_KBA_ATTEMPTS row by primary key.
+2. Increment ATTEMPTS by 1.
+3. Set UPDATE_DATE.
+4. Merge/update entity.
+
+Conceptually:
+
+chosen.setAttempts(chosen.getAttempts() + 1);
+chosen.setUpdateDate(new Timestamp(date.getTime()));
+dao.update(chosen);
+
+This results in an Oracle UPDATE against RP_KBA_ATTEMPTS.
+
+⸻
+
+8. Reset Logic
+
+If the selected supplier has reached its configured TOTAL_ATTEMPTS, the code resets attempts for all supplier rows for that sponsor/proofing level.
+
+Conceptually:
+
+if (attemptConfig.getAttempts() >= attemptConfig.getTotalAttempts()) {
+    otpAttemptConfigService.reset(loaLevel.getLoaCode(), sponsorId);
+}
+
+Reset behavior:
+
+Set ATTEMPTS = 0 for all configured suppliers for the sponsor/proofing level.
+
+⸻
+
+9. Current Issue / Contention Point
+
+The current design uses RP_KBA_ATTEMPTS.ATTEMPTS as runtime mutable state.
+
+Under split configuration, every transaction must update the selected supplier row.
+
+Example:
+
+Supplier 5 selected -> update Supplier 5 ATTEMPTS
+Supplier 4 selected -> update Supplier 4 ATTEMPTS
+
+Under high COA transaction volume, many concurrent requests attempt to update the same small set of rows.
+
+Oracle locks the row being updated. Other transactions that need the same row must wait until the lock is released.
+
+This creates:
+
+Row-level lock contention
+Blocking sessions
+Delayed request processing
+Read timeouts / 504 errors
+High response time
+
+⸻
+
+10. Current Flow Summary
+
+User starts remote proofing
+        |
+        v
+VerificationProviderServiceImpl.determineVerificationMethod()
+        |
+        v
+Load sponsor and proofing level
+        |
+        v
+Build eligible supplier list
+        |
+        v
+Query RP_KBA_ATTEMPTS for configured suppliers
+        |
+        v
+Sort by ATTEMPTS ASC, KBA_SUPPLIER_ID DESC
+        |
+        v
+Select supplier where ATTEMPTS < TOTAL_ATTEMPTS
+        |
+        v
+If split configuration, update ATTEMPTS for selected supplier
+        |
+        v
+Return selected RefOtpSupplier
+        |
+        v
+Continue phone verification / SMFA / OTP flow
+
+⸻
+
+11. Relevant Methods
+
+VerificationProviderServiceImpl
+
+determineVerificationMethod(PersonVo personVo)
+determineVerificationMethod(PersonVo personVo, Long excludedSupplierId)
+determineVerificationMethod(PersonVo personVo, RefLoaLevel level, RefSponsor sponsor, Long excludedSupplierId)
+selectSupplier(...)
+selectSupplierForInf(...)
+updatePvAttempts(...)
+updatePvAttemptsForInf(...)
+isSwitchingConfigured(...)
+isSwitchingInfSupplierConfigured(...)
+isSwitchingConfiguredForInf(...)
+
+⸻
+
+OtpAttemptConfigService
+
+getByProofingLevel(...)
+getByProofingLevelSorted(...)
+callingOTP(...)
+reset(...)
+findByPrimaryKey(...)
+
+⸻
+
+RpOtpAttemptConfig Entity
+
+Maps to:
+
+RP_KBA_ATTEMPTS
+
+Important fields:
+
+id.kbaSupplierId
+id.proofingLevel
+id.sponsorId
+totalAttempts
+attempts
+refOtpSupplier
+createDate
+updateDate
+version
+
+⸻
+
+12. Validation Notes
+
+For before/after validation:
+
+Before fix
+
+RP_KBA_ATTEMPTS.ATTEMPTS increments during supplier selection.
+
+After proposed fix
+
+RP_KBA_ATTEMPTS.TOTAL_ATTEMPTS remains as configuration.
+RP_KBA_ATTEMPTS.ATTEMPTS should no longer be updated during runtime supplier selection.
+Supplier selection should still follow configured allocation percentages statistically.
+
+Useful validation query:
+
+SELECT
+    a.SPONSOR_ID,
+    r.SPONSOR_NAME,
+    a.PROOFING_LEVEL,
+    a.KBA_SUPPLIER_ID,
+    s.KBA_SUPPLIER_NAME,
+    a.TOTAL_ATTEMPTS,
+    a.ATTEMPTS,
+    a.UPDATE_DATE
+FROM IPS_OWN.RP_KBA_ATTEMPTS a
+JOIN IPS_OWN.REF_SPONSOR r
+    ON r.SPONSOR_ID = a.SPONSOR_ID
+JOIN IPS_OWN.REF_KBA_SUPPLIER s
+    ON s.KBA_SUPPLIER_ID = a.KBA_SUPPLIER_ID
+WHERE a.SPONSOR_ID = 32
+  AND a.PROOFING_LEVEL = 1
+ORDER BY a.KBA_SUPPLIER_ID;
+
+Expected result after fix:
+
+TOTAL_ATTEMPTS continues to show configured allocation.
+ATTEMPTS does not change during runtime transaction processing.
