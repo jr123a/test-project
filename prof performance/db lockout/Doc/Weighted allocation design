@@ -1,0 +1,499 @@
+Below is a paste-ready proposed design section.
+
+⸻
+
+Proposed Design Approach - Stateless Weighted Supplier Selection
+
+1. Objective
+
+The objective of this design is to remove runtime database updates from the phone verification supplier selection path and reduce database row-level lock contention during high-volume remote proofing transactions, especially for Change of Address.
+
+The current implementation uses RP_KBA_ATTEMPTS.ATTEMPTS as a runtime counter and updates the selected supplier row for every transaction when split allocation is configured. Under high concurrency, multiple transactions attempt to update the same small set of rows, causing Oracle row-level locking, blocking sessions, delayed processing, and timeout errors.
+
+The proposed design keeps the existing supplier allocation configuration in the database but changes the runtime supplier selection logic to use stateless weighted selection based on configured percentages.
+
+⸻
+
+2. High-Level Design Summary
+
+The existing TOTAL_ATTEMPTS values in RP_KBA_ATTEMPTS will continue to represent configured supplier allocation percentages.
+
+Example:
+
+Sponsor: Change of Address
+Proofing Level: 1
+Supplier 5 - Equifax DIT SMFA  = 60
+Supplier 4 - Lexis Nexis OTP   = 40
+
+The proposed design will use these configured values as weights.
+
+Instead of selecting the supplier by sorting on runtime ATTEMPTS and incrementing the selected supplier row, the application will generate a random number within the total configured weight and select the supplier based on the configured weighted range.
+
+Example for 60/40 allocation:
+
+Random value range: 0 - 99
+0 - 59   -> Equifax DIT SMFA
+60 - 99  -> Lexis Nexis OTP
+
+This removes the need to update ATTEMPTS during runtime transaction processing.
+
+⸻
+
+3. Key Design Change
+
+Current Design
+
+Read supplier rows from RP_KBA_ATTEMPTS
+        |
+        v
+Sort by ATTEMPTS ASC
+        |
+        v
+Select supplier with lowest current ATTEMPTS
+        |
+        v
+Update selected supplier ATTEMPTS = ATTEMPTS + 1
+        |
+        v
+Continue phone verification flow
+
+Proposed Design
+
+Read supplier rows from RP_KBA_ATTEMPTS
+        |
+        v
+Filter eligible suppliers where TOTAL_ATTEMPTS > 0
+        |
+        v
+Use TOTAL_ATTEMPTS as supplier weight
+        |
+        v
+Generate random number within total weight
+        |
+        v
+Select supplier based on weighted range
+        |
+        v
+Continue phone verification flow
+
+No runtime update will be performed on RP_KBA_ATTEMPTS.ATTEMPTS.
+
+⸻
+
+4. Database Design Impact
+
+No new runtime selection table is required.
+
+The existing tables will continue to be used.
+
+RP_KBA_ATTEMPTS
+
+This table will continue to store configured allocation.
+
+Relevant columns:
+
+SPONSOR_ID
+PROOFING_LEVEL
+KBA_SUPPLIER_ID
+TOTAL_ATTEMPTS
+ATTEMPTS
+
+Proposed usage:
+
+TOTAL_ATTEMPTS = configured supplier allocation weight
+ATTEMPTS       = no longer updated during runtime supplier selection
+
+TOTAL_ATTEMPTS will continue to be updated through IVS Admin when supplier allocation configuration changes.
+
+ATTEMPTS will not be used for runtime supplier selection after this change.
+
+⸻
+
+5. Supplier Configuration Behavior
+
+100 Percent Single Supplier Configuration
+
+Example:
+
+Supplier 4 - Lexis Nexis OTP = 100
+Supplier 5 - Equifax DIT SMFA = 0
+Supplier 6 - Experian CrossCore = 0
+
+Proposed behavior:
+
+Only supplier 4 is eligible.
+Supplier 4 is selected directly.
+No runtime counter update is performed.
+
+This preserves existing behavior while avoiding database updates.
+
+⸻
+
+Split Supplier Configuration
+
+Example:
+
+Supplier 5 - Equifax DIT SMFA = 60
+Supplier 4 - Lexis Nexis OTP = 40
+
+Proposed behavior:
+
+Total weight = 60 + 40 = 100
+Random number generated between 0 and 99
+0 - 59  -> Supplier 5
+60 - 99 -> Supplier 4
+
+The selected supplier is returned to the existing verification flow.
+
+No insert or update is required during selection.
+
+⸻
+
+Three Supplier Configuration
+
+Example:
+
+Supplier 5 - Equifax DIT SMFA = 40
+Supplier 4 - Lexis Nexis OTP = 35
+Supplier 6 - Experian CrossCore = 25
+
+Proposed behavior:
+
+Total weight = 40 + 35 + 25 = 100
+0 - 39  -> Supplier 5
+40 - 74 -> Supplier 4
+75 - 99 -> Supplier 6
+
+The same weighted selection logic can support two or more configured suppliers.
+
+⸻
+
+6. Multi-JVM Behavior
+
+The proposed approach is stateless.
+
+No runtime counter is stored in the JVM, database, or distributed cache.
+
+Each transaction independently performs weighted selection using the configured percentages.
+
+This means multiple WebSphere JVMs can process transactions without requiring counter synchronization.
+
+Example:
+
+JVM 1 receives transaction -> generates random value -> selects supplier
+JVM 2 receives transaction -> generates random value -> selects supplier
+JVM 3 receives transaction -> generates random value -> selects supplier
+
+Each JVM uses the same configured TOTAL_ATTEMPTS values from the database. Since each transaction has the same weighted probability, the combined distribution across all JVMs trends toward the configured allocation over volume.
+
+This avoids the distributed counter problem associated with local in-memory counters.
+
+⸻
+
+7. Statistical vs Exact Allocation
+
+The proposed design provides statistical allocation, not exact per-cycle allocation.
+
+Current Counter-Based Model
+
+The existing design attempts to enforce allocation through runtime counters.
+
+Example:
+
+60 out of 100 transactions -> Equifax
+40 out of 100 transactions -> Lexis Nexis
+
+However, this requires shared mutable state and creates database contention under high concurrency.
+
+Proposed Weighted Model
+
+The proposed design gives each transaction an independent weighted probability.
+
+Example:
+
+Each transaction has a 60 percent chance of selecting Equifax
+Each transaction has a 40 percent chance of selecting Lexis Nexis
+
+Over a small number of transactions, the split may not be exact.
+
+Example:
+
+10 transactions may produce 7/3 or 5/5
+
+Over larger transaction volume, the distribution should trend toward the configured percentage.
+
+Example:
+
+1,000 or 10,000 transactions should be close to 60/40
+
+This tradeoff removes the runtime database contention and improves scalability.
+
+⸻
+
+8. Supplier Exclusion and Failover Handling
+
+The existing flow supports excluding a supplier from selection in certain cases.
+
+Examples:
+
+Lexis Nexis Individual Not Found
+Experian Customer Not On File
+Experian error response
+Supplier timeout/error response
+
+When a supplier is excluded, the proposed weighted selection logic will remove that supplier from the eligible supplier list and recalculate the total weight using only the remaining suppliers.
+
+Example:
+
+Original configuration:
+
+Supplier 5 - Equifax DIT SMFA = 40
+Supplier 4 - Lexis Nexis OTP = 35
+Supplier 6 - Experian CrossCore = 25
+
+If Experian is excluded:
+
+Eligible suppliers:
+Supplier 5 = 40
+Supplier 4 = 35
+Total remaining weight = 75
+
+The weighted selection range becomes:
+
+0 - 39  -> Supplier 5
+40 - 74 -> Supplier 4
+
+This preserves failover behavior without requiring database counter updates.
+
+If only one eligible supplier remains, that supplier will be selected directly.
+
+If no eligible supplier remains, the method will return null and existing error handling should continue to apply.
+
+⸻
+
+9. Proposed Code-Level Changes
+
+Primary Class
+
+VerificationProviderServiceImpl
+
+Primary methods impacted:
+
+determineVerificationMethod(...)
+selectSupplier(...)
+selectSupplierForInf(...)
+updatePvAttempts(...)
+updatePvAttemptsForInf(...)
+
+Main Change
+
+The current selectSupplier(...) method should be changed to select the supplier using weighted selection based on TOTAL_ATTEMPTS.
+
+The method should no longer call:
+
+updatePvAttempts(...)
+
+during runtime supplier selection.
+
+⸻
+
+10. Proposed Helper Method
+
+A new helper method or utility class can be introduced to keep the selection logic isolated and testable.
+
+Example class:
+
+WeightedSupplierSelector
+
+Responsibilities:
+
+- Accept list of configured suppliers
+- Filter suppliers where TOTAL_ATTEMPTS > 0
+- Remove excluded suppliers if applicable
+- Calculate total configured weight
+- Generate random number using ThreadLocalRandom
+- Select supplier based on cumulative weighted range
+- Return selected supplier configuration
+
+⸻
+
+11. Proposed Pseudocode
+
+private RpOtpAttemptConfig selectByWeightedRandom(List<RpOtpAttemptConfig> supplierConfigs) {
+    List<RpOtpAttemptConfig> candidates = new ArrayList<>();
+    for (RpOtpAttemptConfig config : supplierConfigs) {
+        if (config != null && config.getTotalAttempts() > 0) {
+            candidates.add(config);
+        }
+    }
+    if (candidates.isEmpty()) {
+        return null;
+    }
+    if (candidates.size() == 1) {
+        return candidates.get(0);
+    }
+    int totalWeight = 0;
+    for (RpOtpAttemptConfig candidate : candidates) {
+        totalWeight += candidate.getTotalAttempts();
+    }
+    int random = ThreadLocalRandom.current().nextInt(totalWeight);
+    int cumulative = 0;
+    for (RpOtpAttemptConfig candidate : candidates) {
+        cumulative += candidate.getTotalAttempts();
+        if (random < cumulative) {
+            return candidate;
+        }
+    }
+    return candidates.get(candidates.size() - 1);
+}
+
+Updated selectSupplier(...) flow:
+
+private RefOtpSupplier selectSupplier(PersonVo personVo, RefLoaLevel level, List<RpOtpAttemptConfig> list) {
+    RpOtpAttemptConfig chosen = selectByWeightedRandom(list);
+    if (chosen == null) {
+        return null;
+    }
+    return chosen.getRefOtpSupplier();
+}
+
+⸻
+
+12. Logging Recommendation
+
+Add application logging at the supplier selection point.
+
+Recommended log fields:
+
+PERSON_ID if available
+SPONSOR_ID
+SPONSOR_USER_ID
+PROOFING_LEVEL
+Selected KBA_SUPPLIER_ID
+Selected supplier name
+Configured weights used for selection
+Excluded supplier ID if applicable
+
+This helps support before/after validation without relying only on database updates.
+
+Example log message:
+
+Weighted supplier selected for sponsorId=32, proofingLevel=1, selectedSupplierId=5, selectedSupplierName=Equifax DIT SMFA, configuredWeights=[5:60,4:40], excludedSupplierId=0
+
+⸻
+
+13. Validation Approach
+
+Before Fix
+
+Run test transactions and confirm that RP_KBA_ATTEMPTS.ATTEMPTS changes after supplier selection.
+
+Query:
+
+SELECT
+    a.SPONSOR_ID,
+    r.SPONSOR_NAME,
+    a.PROOFING_LEVEL,
+    a.KBA_SUPPLIER_ID,
+    s.KBA_SUPPLIER_NAME,
+    a.TOTAL_ATTEMPTS,
+    a.ATTEMPTS,
+    a.UPDATE_DATE
+FROM IPS_OWN.RP_KBA_ATTEMPTS a
+JOIN IPS_OWN.REF_SPONSOR r
+    ON r.SPONSOR_ID = a.SPONSOR_ID
+JOIN IPS_OWN.REF_KBA_SUPPLIER s
+    ON s.KBA_SUPPLIER_ID = a.KBA_SUPPLIER_ID
+WHERE a.SPONSOR_ID = 32
+  AND a.PROOFING_LEVEL = 1
+ORDER BY a.KBA_SUPPLIER_ID;
+
+Expected current behavior:
+
+ATTEMPTS increments for selected supplier during runtime.
+
+⸻
+
+After Fix
+
+Run test transactions and confirm:
+
+ATTEMPTS does not change during runtime supplier selection.
+Supplier selection continues to occur based on configured TOTAL_ATTEMPTS.
+No row-level lock contention occurs on RP_KBA_ATTEMPTS during runtime selection.
+
+Expected result:
+
+RP_KBA_ATTEMPTS.TOTAL_ATTEMPTS remains as configured.
+RP_KBA_ATTEMPTS.ATTEMPTS remains unchanged.
+
+⸻
+
+14. Unit Testing Scope
+
+Unit tests should cover:
+
+100% single supplier configuration
+60/40 two-supplier split
+40/35/25 three-supplier split
+Zero-weight suppliers are not selected
+No eligible supplier returns null
+Only one eligible supplier is selected directly
+Distribution is statistically close to configured percentages over larger sample size
+Supplier exclusion removes supplier from candidate list
+ATTEMPTS value does not affect supplier selection
+
+⸻
+
+15. Risks and Considerations
+
+Statistical Distribution
+
+The weighted approach does not guarantee exact allocation in every small transaction batch.
+
+Mitigation:
+
+Validate expected distribution over larger transaction volume.
+Confirm business acceptance of statistical allocation.
+
+Existing Reporting Dependency on ATTEMPTS
+
+If any reporting or operational process depends on RP_KBA_ATTEMPTS.ATTEMPTS, that dependency should be reviewed.
+
+Mitigation:
+
+Confirm ATTEMPTS is not required as a business audit counter.
+Use logs or event/result tables for transaction-level supplier validation.
+
+Failover Logic
+
+Existing supplier exclusion and retry behavior should be preserved.
+
+Mitigation:
+
+Add unit tests and integration validation for excluded supplier scenarios.
+
+⸻
+
+16. Expected Benefits
+
+Eliminates runtime update to RP_KBA_ATTEMPTS.ATTEMPTS
+Removes Oracle hot-row contention from supplier selection path
+Avoids introducing a new insert-per-transaction table
+Avoids distributed cache/counter complexity
+Supports multiple WebSphere JVMs without shared runtime state
+Simplifies supplier selection logic
+Improves scalability under high COA transaction volume
+Maintains existing IVS Admin supplier allocation configuration
+
+⸻
+
+17. Proposed Design Summary
+
+The proposed design changes supplier selection from a stateful counter-based model to a stateless weighted-selection model.
+
+The database remains the source for configured supplier allocation percentages through RP_KBA_ATTEMPTS.TOTAL_ATTEMPTS.
+
+The application performs supplier selection using the configured weights and no longer updates RP_KBA_ATTEMPTS.ATTEMPTS during runtime.
+
+This design removes the current database contention point while preserving configurable supplier allocation behavior.
