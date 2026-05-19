@@ -1,0 +1,744 @@
+# IVSPersistence — Entity Relationship Model
+
+**Source:** IVSPersistence.zip · `com.ips.entity` package · 773 Java files  
+**Total @Entity classes:** 120 (including embedded PK classes)  
+**Analysis date:** May 2026
+
+-----
+
+## A. Executive Summary
+
+The IVSPersistence module is the Oracle-backed JPA persistence layer for the USPS Identity Verification System (IVS). It covers four functional domains:
+
+|Domain                       |Core Entities                                                                                                                         |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+|**Person & Identity**        |`Person`, `PersonData`, `PersonProofingStatus`, `DataConsent`                                                                         |
+|**Remote Proofing (RP)**     |`RpEvent`, `RpPhoneVerification`, `RpEquifaxResult`, `RpLexisNexisResult`, `RpExperianDecisionResult`, `RpSmfaAttempt`, `RpOtpAttempt`|
+|**In-Person Proofing (IPP)** |`IppEvent`, `IppAppointment`, `IppBarcodeScans`, `IppEventIDValidation`, `IppEventSecondaryID`                                        |
+|**Supplier Routing & Config**|`RpOtpAttemptConfig`, `RpInfPvAttemptConfig`, `RefOtpSupplier`, `RefSponsor`, `RefLoaLevel`                                           |
+
+**Central aggregate root:** `Person` → owns `IppEvent`, `RpEvent`, `PersonData`, `PersonProofingStatus`, `OtpLockoutInfo`, `RpProofingSession`, `DataConsent` all via bidirectional `@OneToMany`/`@OneToOne`.
+
+**`RpEvent`** is the second major hub — 9 child entities map back to it via `mappedBy="rpEvent"`.
+
+**Key risks identified:** `version` fields without `@Version`, missing `@Id` on several entities, `CascadeType.ALL` on `@ManyToOne` (DataConsent → RefRelyingParty), inconsistent schema qualification, and multiple `@OneToOne` owning sides on the same FK column.
+
+-----
+
+## B. Entity-to-Table Mapping
+
+|Entity Class                     |DB Table                                       |Primary Key Type          |PK Column(s)                                       |Notes                                                                    |
+|---------------------------------|-----------------------------------------------|--------------------------|---------------------------------------------------|-------------------------------------------------------------------------|
+|`AddressVerification`            |`address_verification`                         |**MISSING @Id**           |`ADDRESS_VERIFICATION_ID` (inferred)               |No `@Id` annotation found                                                |
+|`ApplicationWorkflows`           |`ips_own.application_workflows`                |`@GeneratedValue` SEQUENCE|`APPLICATION_WORKFLOW_ID`                          |Schema-qualified with `ips_own.` in name                                 |
+|`DataConsent`                    |`data_consent`                                 |`@GeneratedValue` SEQUENCE|`data_consent_id`                                  |                                                                         |
+|`EquifaxIdVerificationDetails`   |`efx_id_verification_details`                  |`@GeneratedValue` SEQUENCE|`VERIFICATION_DETAIL_ID`                           |No relationship to `IppEvent` via JPA (raw `long ippEventId` column only)|
+|`HighRiskAddress`                |`high_risk_addresses`                          |`@GeneratedValue` SEQUENCE|`high_risk_address_id`                             |                                                                         |
+|`HighRiskAddressAttempt`         |`high_risk_address_attempts`                   |`@GeneratedValue` SEQUENCE|`high_risk_attempt_id`                             |                                                                         |
+|`IdDocumentDetails`              |`id_document_details`                          |`@GeneratedValue` SEQUENCE|`DOCUMENT_DETAIL_ID`                               |                                                                         |
+|`IdImages`                       |`id_images`                                    |`@GeneratedValue` SEQUENCE|`FAIR_ID_IMAGE_ID`                                 |No JPA relationship to `IppEvent` (raw `long ippEventId`)                |
+|`IdPersonDetails`                |`id_person_details`                            |`@GeneratedValue` SEQUENCE|`PERSON_DETAIL_ID`                                 |                                                                         |
+|`IdVerifyServiceRequest`         |`id_verify_service_requests`                   |`@GeneratedValue` SEQUENCE|`VERIFY_REQUEST_ID`                                |                                                                         |
+|`IppAppointment`                 |`ipp_appointment`                              |**MISSING @Id**           |`IPP_EVENT_ID` (inferred)                          |No `@Id`; `IPP_EVENT_ID` is both a raw column and a `@OneToOne` FK       |
+|`IppBarcodeScans`                |`ipp_barcode_scans`                            |`@GeneratedValue` SEQUENCE|`SCAN_ID`                                          |                                                                         |
+|`IppEvent`                       |`ipp_event`                                    |`@GeneratedValue` SEQUENCE|`ipp_event_id`                                     |Central IPP hub                                                          |
+|`IppEventIDValidation`           |`ipp_event_id_validation`                      |`@GeneratedValue` SEQUENCE|`ID_VALIDATION_ID`                                 |Raw `long ippEventId` — no JPA FK to `IppEvent`                          |
+|`IppEventSecondaryID`            |`ipp_event_secondary_ids`                      |`@GeneratedValue` SEQUENCE|`EVENT_SECONDARY_ID`                               |                                                                         |
+|`IppFacilityStaging`             |`ipp_facility_staging`                         |`@EmbeddedId`             |`FACILITY_ID` + `UFN`                              |Composite PK; no relationships                                           |
+|`IvsAdminUser`                   |`ivs_admin_user`                               |**MISSING @Id**           |`USER_ID` (inferred)                               |No `@Id`                                                                 |
+|`Location`                       |`locations`                                    |`@GeneratedValue` SEQUENCE|`location_id`                                      |No relationships; isolated                                               |
+|`LookupCodesEnv`                 |`lookup_codes_env`                             |`@EmbeddedId`             |`ENV` + `NAME`                                     |No relationships                                                         |
+|`OtpLockoutInfo`                 |`kba_lockout_info`                             |`@EmbeddedId`             |`PERSON_ID` + `LOA_CODE`                           |                                                                         |
+|`Person`                         |`person` *(no @Table — inferred)*              |`@GeneratedValue` SEQUENCE|`PERSON_ID`                                        |**Missing @Table** — defaults to `PERSON`                                |
+|`PersonData`                     |`person_data`                                  |**MISSING @Id**           |`PERSON_ID` (inferred)                             |No `@Id`; `PERSON_ID` is raw column + FK                                 |
+|`PersonProofingStatus`           |`person_proofing_status`                       |`@EmbeddedId`             |`PERSON_ID` + `PROOFING_LEVEL_SOUGHT`              |                                                                         |
+|`PhysicalLetterData`             |`physical_letter_data`                         |`@GeneratedValue` SEQUENCE|`PHYSICAL_LETTER_ID`                               |                                                                         |
+|`ProgramOnlineStats`             |`program_online_stats`                         |**MISSING @Id**           |`statistics_id` (inferred)                         |No `@Id`                                                                 |
+|`RefAdminEvent`                  |`ref_admin_event`                              |**MISSING @Id**           |`ADMIN_EVENT_ID` (inferred)                        |No `@Id`                                                                 |
+|`RefAdminGroup`                  |`ref_admin_group`                              |**MISSING @Id**           |`REF_ADMIN_GROUP_ID` (inferred)                    |No `@Id`                                                                 |
+|`RefApp`                         |`ref_app`                                      |**MISSING @Id**           |`APP_ID` (inferred)                                |No `@Id`                                                                 |
+|`RefArea`                        |`ref_area`                                     |`@GeneratedValue` SEQUENCE|`area_id`                                          |**MISSING @Id** annotation                                               |
+|`RefAttributeGroup`              |`REF_ATTRIBUTE_GROUP`                          |`@EmbeddedId`             |`ATTRIBUTE_INDEX` + `ATTRIBUTE_NAME`               |No relationships                                                         |
+|`RefCustomerCategory`            |`ref_customer_category`                        |**MISSING @Id**           |`CUSTOMER_CATEGORY_ID` (inferred)                  |                                                                         |
+|`RefDeviceConfidence`            |`ref_device_confidence` (schema: `IPS_OWN`)    |**MISSING @Id**           |`device_confidence_id` (inferred)                  |Schema-qualified                                                         |
+|`RefDeviceTypes`                 |`ref_device_types`                             |**MISSING @Id**           |`DEVICE_TYPE_ID` (inferred)                        |                                                                         |
+|`RefDistrict`                    |`ref_district`                                 |`@GeneratedValue` SEQUENCE|`district_id`                                      |**MISSING @Id** annotation                                               |
+|`RefEfxDitDecisionMap`           |`ref_efx_dit_decision_map`                     |**MISSING @Id**           |`decision_map_id` (inferred)                       |                                                                         |
+|`RefEmailType`                   |`ref_email_type`                               |**MISSING @Id**           |`id_type` (inferred)                               |                                                                         |
+|`RefEquifaxFraudIndicator`       |`ref_equifax_fraud_indicator`                  |**MISSING @Id**           |`fraud_indicator_code` (inferred)                  |                                                                         |
+|`RefEquifaxMatchAssessment`      |`ref_equifax_match_assessment`                 |**MISSING @Id**           |`match_assessment_code` (inferred)                 |                                                                         |
+|`RefFacFacility`                 |`ref_fac_facility`                             |`@GeneratedValue` SEQUENCE|`REF_FACILITY_ID`                                  |Dual-mapped `DEVICE_TYPE_ID` (raw + FK)                                  |
+|`RefFieldCheck`                  |`ref_field_checks`                             |**MISSING @Id**           |`REF_FIELD_CHECK_ID` (inferred)                    |                                                                         |
+|`RefHighRiskAddressType`         |`ref_high_risk_address_types`                  |**MISSING @Id**           |`high_risk_address_type_id` (inferred)             |                                                                         |
+|`RefIAL2ConfirmationNotification`|`ref_ial2_notification_types`                  |**MISSING @Id**           |`notification_id` (inferred)                       |                                                                         |
+|`RefIdValidationVendor`          |`ref_id_validation_vendors`                    |**MISSING @Id**           |`VENDOR_ID` (inferred)                             |                                                                         |
+|`RefIppApplications`             |`ref_ipp_applications`                         |**MISSING @Id**           |`IPP_APPLICATION_ID` (inferred)                    |                                                                         |
+|`RefIppEndpoints`                |`REF_IPP_ENDPOINTS`                            |`@GeneratedValue` IDENTITY|`ENDPOINT_ID`                                      |                                                                         |
+|`RefIppEventStatus`              |`ref_ipp_event_status`                         |**MISSING @Id**           |`ipp_event_status` (inferred)                      |                                                                         |
+|`RefIppFailureReason`            |`ref_ipp_failure_reason`                       |**MISSING @Id**           |`failure_reason_code` (inferred)                   |                                                                         |
+|`RefIppWorkflows`                |`ref_ipp_workflows`                            |**MISSING @Id**           |`WORKFLOW_ID` (inferred)                           |                                                                         |
+|`RefLexisNexisReasonCodeMap`     |`ref_lexisnexis_reason_code_map`               |**MISSING @Id**           |`LN_MAPPING_ID` (inferred)                         |                                                                         |
+|`RefLexisNexisResponseCode`      |`ref_lexisnexis_response_code`                 |**MISSING @Id**           |`RESPONSE_CODE` (inferred, String)                 |                                                                         |
+|`RefLoaLevel`                    |`ref_loa_level`                                |**MISSING @Id**           |`loa_code` (inferred)                              |Widely referenced; missing `@Id` is risky                                |
+|`RefMainFacility`                |`ref_main_facility`                            |`@GeneratedValue` SEQUENCE|`REF_MAIN_FACILITY_ID`                             |**MISSING @Id** annotation                                               |
+|`RefMatchLevel`                  |`ref_match_levels`                             |**MISSING @Id**           |`match_level_id` (inferred)                        |                                                                         |
+|`RefOtpAttemptType`              |`ref_otp_attempt_types`                        |**MISSING @Id**           |`attempt_type_id` (inferred)                       |                                                                         |
+|`RefOtpMatchQuality`             |`ref_otp_match_qualities`                      |**MISSING @Id**           |`otp_match_quality_id` (inferred)                  |                                                                         |
+|`RefOtpReasonCode`               |`ref_kba_reason_code`                          |**MISSING @Id**           |`REASON_CODE` (inferred, String)                   |                                                                         |
+|`RefOtpSupplier`                 |`ref_kba_supplier`                             |**MISSING @Id**           |`KBA_SUPPLIER_ID` (inferred)                       |Critical ref table; missing `@Id`                                        |
+|`RefOtpVelocity`                 |`ref_kba_velocity`                             |**MISSING @Id**           |`VELOCITY_ID` (inferred)                           |                                                                         |
+|`RefPhoneMatchQuality`           |`ref_phone_match_qualities`                    |**MISSING @Id**           |`phone_match_quality_id` (inferred)                |                                                                         |
+|`RefPhoneType`                   |`ref_phone_types`                              |**MISSING @Id**           |`phone_type_id` (inferred)                         |                                                                         |
+|`RefPrimaryIdType`               |`ref_primary_id_type`                          |**MISSING @Id**           |`id_type` (inferred)                               |                                                                         |
+|`RefProductStatusCode`           |`ref_product_status_codes`                     |**MISSING @Id**           |`product_status_id` (inferred)                     |                                                                         |
+|`RefRelyingParty`                |`ref_relying_party`                            |**MISSING @Id**           |`relying_party_code` (inferred)                    |                                                                         |
+|`RefReports`                     |`ref_reports`                                  |**MISSING @Id**           |`REPORT_ID` (inferred)                             |                                                                         |
+|`RefRpDecisionCode`              |`ref_rp_decision_code`                         |**MISSING @Id**           |`DECISION_CODE` (inferred, String)                 |                                                                         |
+|`RefRpStatus`                    |`ref_rp_status`                                |**MISSING @Id**           |`status_code` (inferred)                           |                                                                         |
+|`RefSecondaryIdType`             |`ref_secondary_id_type`                        |**MISSING @Id**           |`id_type` (inferred)                               |                                                                         |
+|`RefServiceStatusCode`           |`ref_service_status_codes`                     |**MISSING @Id**           |`status_code_id` (inferred)                        |                                                                         |
+|`RefSponsor`                     |`ref_sponsor`                                  |**MISSING @Id**           |`SPONSOR_ID` (inferred)                            |Central config entity; missing `@Id`                                     |
+|`RefSponsorConfiguration`        |`ref_sponsor_configuration` (schema: `IPS_OWN`)|**MISSING @Id**           |`configuration_id` (inferred)                      |                                                                         |
+|`RefState`                       |`ref_state`                                    |**MISSING @Id**           |`state_code` (inferred, String)                    |                                                                         |
+|`RefTruthDataSendEvent`          |`ref_truth_data_send_event` (schema: `IPS_OWN`)|**MISSING @Id**           |`event_id` (inferred)                              |                                                                         |
+|`RefValidationStatusCode`        |`ref_validation_status_codes`                  |**MISSING @Id**           |`STATUS_ID` (inferred)                             |                                                                         |
+|`RefWorkflowApiType`             |`ref_workflow_api_type`                        |**MISSING @Id**           |`API_TYPE_ID` (inferred)                           |                                                                         |
+|`ReportExecuted`                 |`report_executed`                              |**MISSING @Id**           |`REPORT_NAME` (inferred, String)                   |                                                                         |
+|`RpAdmin`                        |`rp_admin`                                     |**MISSING @Id**           |not clear from code                                |                                                                         |
+|`RpAllVerificationResults`       |`rp_all_verification_results`                  |`@GeneratedValue` SEQUENCE|`VER_RESULT_ID`                                    |No JPA relationships; raw `personId` only                                |
+|`RpDeviceReputation`             |`rp_device_reputation`                         |`@GeneratedValue` SEQUENCE|`device_reputation_id`                             |                                                                         |
+|`RpDeviceReputationResponse`     |`rp_device_reputation_response`                |`@GeneratedValue` SEQUENCE|`device_reputation_response_id`                    |                                                                         |
+|`RpDitResponse`                  |`rp_dit_response`                              |`@GeneratedValue` SEQUENCE|`DIT_RESPONSE_ID`                                  |                                                                         |
+|`RpEfxDitDetails`                |`rp_efx_dit_details`                           |`@GeneratedValue` SEQUENCE|`IDENTITY_DETAIL_ID`                               |                                                                         |
+|`RpEquifaxError`                 |`rp_equifax_errors`                            |`@GeneratedValue` SEQUENCE|`EQUIFAX_ERROR_ID`                                 |                                                                         |
+|`RpEquifaxFieldCheck`            |`rp_equifax_field_checks`                      |`@GeneratedValue` SEQUENCE|`FIELD_CHECK_FAILURE_ID`                           |                                                                         |
+|`RpEquifaxFinalReasonCode`       |`rp_equifax_final_reason_codes`                |`@GeneratedValue` SEQUENCE|`EQUIFAX_RC_ID`                                    |                                                                         |
+|`RpEquifaxResult`                |`rp_equifax_result`                            |`@Id` explicit            |`EVENT_ID`                                         |Only entity with explicit `@Id` on a non-generated PK                    |
+|`RpEvent`                        |`rp_event`                                     |`@GeneratedValue` SEQUENCE|`event_id`                                         |Central RP hub                                                           |
+|`RpExperianDecisionResult`       |`rp_experian_decision_result`                  |`@GeneratedValue` SEQUENCE|`EXP_RESULT_ID`                                    |                                                                         |
+|`RpExperianHeaderData`           |`rp_experian_header_data`                      |`@GeneratedValue` SEQUENCE|`EXP_HEADER_ID`                                    |Links to `RpExperianDecisionResult` via raw `long expResultId` only      |
+|`RpExperianResponsePayload`      |`rp_experian_response_payload`                 |`@GeneratedValue` SEQUENCE|`EXP_RESPONSE_ID`                                  |Links via raw `long expResultId` only                                    |
+|`RpFeatureAttempt`               |`rp_features_attempts`                         |**MISSING @Id**           |`fEATURE_ID` (inferred, note typo)                 |`version` field not annotated `@Version`                                 |
+|`RpInfPvAttemptConfig`           |`rp_inf_pv_attempts`                           |`@EmbeddedId`             |`PROOFING_LEVEL` + `SPONSOR_ID` + `SUPPLIER_ID`    |`version` not `@Version` — **DB lock bug source**                        |
+|`RpLexisNexisFinalReasonCode`    |`rp_lexisnexis_finalreason_code`               |`@GeneratedValue` SEQUENCE|`LEXISNEXIS_RC_ID`                                 |                                                                         |
+|`RpLexisNexisResult`             |`rp_lexisnexis_result`                         |**MISSING @Id**           |`EVENT_ID` (inferred)                              |No `@Id`                                                                 |
+|`RpOtpAttempt`                   |`rp_otp_attempts`                              |`@GeneratedValue` SEQUENCE|`otp_attempt_id`                                   |                                                                         |
+|`RpOtpAttemptConfig`             |`rp_kba_attempts`                              |`@EmbeddedId`             |`PROOFING_LEVEL` + `SPONSOR_ID` + `KBA_SUPPLIER_ID`|`version` not `@Version` — **DB lock bug source**                        |
+|`RpPhoneVerification`            |`rp_phone_verifications`                       |`@GeneratedValue` SEQUENCE|`phone_verification_id`                            |                                                                         |
+|`RpPhoneVerificationResult`      |`rp_phone_verification_results`                |**MISSING @Id**           |`event_id` (inferred)                              |Raw `long eventId` + insertable=false FK                                 |
+|`RpProofingSession`              |`rp_proofing_session`                          |`@GeneratedValue` SEQUENCE|`proofing_session_id`                              |                                                                         |
+|`RpSmfaAttempt`                  |`rp_smfa_attempts`                             |`@GeneratedValue` SEQUENCE|`MFA_ATTEMPT_ID`                                   |                                                                         |
+|`RpSmfaInitiateResponse`         |`rp_smfa_initiate_response`                    |`@GeneratedValue` SEQUENCE|`SMFA_IN_RESPONSE_ID`                              |                                                                         |
+|`RpSmfaValidateResponse`         |`rp_smfa_validate_response`                    |`@GeneratedValue` SEQUENCE|`SMFA_VA_RESPONSE_ID`                              |                                                                         |
+|`RpSupplierToken`                |`RP_SUPPLIER_TOKEN`                            |`@GeneratedValue` SEQUENCE|`TOKEN_ID`                                         |No relationships                                                         |
+|`RpTruthDataSendEmail`           |`rp_truth_data_send_email`                     |`@GeneratedValue` SEQUENCE|`truth_data_send_email_id`                         |No relationships                                                         |
+|`RpTruthDataSendResponse`        |`rp_truth_data_send_response`                  |`@GeneratedValue` SEQUENCE|`truth_data_send_response_id`                      |                                                                         |
+|`SecondaryAddressAttempt`        |`secondary_address_attempts`                   |`@GeneratedValue` SEQUENCE|`secondary_attempt_id`                             |                                                                         |
+|`SponsorApplicationMap`          |`sponsor_application_map`                      |`@EmbeddedId`             |`sponsor_id` + `app_id`                            |                                                                         |
+|`SponsorEmailValues`             |`sponsor_email_values`                         |`@EmbeddedId`             |`sponsor_id` + `email_type`                        |No JPA relationships                                                     |
+|`SponsorEndpoints`               |`sponsor_endpoints`                            |**MISSING @Id**           |`ENDPOINT_ID` (inferred)                           |                                                                         |
+|`SponsorFacilities`              |`sponsor_facilities`                           |`@EmbeddedId`             |`SPONSOR_ID` + `REF_FACILITY_ID`                   |No JPA relationships                                                     |
+|`SponsorFairId`                  |`sponsor_fair_ids`                             |`@EmbeddedId`             |`SPONSOR_ID` + `ID_TYPE`                           |No relationships                                                         |
+|`SponsorIncomingRequests`        |`SPONSOR_INCOMING_REQUESTS`                    |`@GeneratedValue` SEQUENCE|`SERVICE_REQUEST_ID`                               |                                                                         |
+|`SponsorReportHistory`           |`sponsor_report_history`                       |`@GeneratedValue` SEQUENCE|`history_id`                                       |                                                                         |
+|`SponsorReports`                 |`sponsor_reports`                              |`@GeneratedValue` SEQUENCE|`report_email_id`                                  |                                                                         |
+|`SponsorStrongId`                |`sponsor_strong_ids`                           |`@EmbeddedId`             |`SPONSOR_ID` + `ID_TYPE`                           |No relationships                                                         |
+|`SponsorTokens`                  |`sponsor_tokens`                               |**MISSING @Id**           |`SPONSOR_ID` (inferred)                            |                                                                         |
+|`SponsorWebServiceHistory`       |`sponsor_web_service_history`                  |`@GeneratedValue` SEQUENCE|`HISTORY_ID`                                       |                                                                         |
+|`SponsorWebServicePending`       |`sponsor_web_service_pending`                  |`@GeneratedValue` SEQUENCE|`QUEUE_ID`                                         |                                                                         |
+|`SponsorWebServiceQueue`         |`sponsor_web_service_queue`                    |`@GeneratedValue` SEQUENCE|`QUEUE_ID`                                         |                                                                         |
+|`SponsorWebServiceRequests`      |`sponsor_web_service_requests`                 |`@GeneratedValue` SEQUENCE|`SERVICE_REQUEST_ID`                               |                                                                         |
+|`VendorAPI`                      |`VENDOR_APIS`                                  |`@GeneratedValue` IDENTITY|`API_ID`                                           |                                                                         |
+|`VendorToken`                    |`VENDOR_TOKENS`                                |`@GeneratedValue` SEQUENCE|`TOKEN_ID`                                         |                                                                         |
+
+-----
+
+## C. Entity Relationship Table
+
+### Person Cluster (Core Identity)
+
+|From Entity           |To Entity               |Type     |Owning Side         |FK Column                                 |mappedBy|Cascade  |Fetch         |
+|----------------------|------------------------|---------|--------------------|------------------------------------------|--------|---------|--------------|
+|`Person`              |`RefLoaLevel` (sought)  |ManyToOne|Person              |`PROOFING_LEVEL_SOUGHT`                   |—       |REFRESH  |EAGER         |
+|`Person`              |`RefLoaLevel` (achieved)|ManyToOne|Person              |`PROOFING_LEVEL_ACHIEVED`                 |—       |REFRESH  |EAGER         |
+|`Person`              |`RefSponsor`            |ManyToOne|Person              |`SPONSOR_ID`                              |—       |—        |default (LAZY)|
+|`Person`              |`PersonProofingStatus`  |OneToMany|PersonProofingStatus|`person_id` (in child)                    |`person`|ALL      |EAGER         |
+|`Person`              |`PersonData`            |OneToOne |PersonData          |`person_id` (in PersonData)               |`person`|ALL      |default       |
+|`Person`              |`OtpLockoutInfo`        |OneToMany|OtpLockoutInfo      |`Person_Id` (in child)                    |`person`|ALL      |EAGER         |
+|`Person`              |`IppEvent`              |OneToMany|IppEvent            |`person_id` (in child)                    |`person`|ALL      |EAGER         |
+|`Person`              |`RpProofingSession`     |OneToMany|RpProofingSession   |`person_id` (in child)                    |`person`|—        |default       |
+|`Person`              |`RpEvent`               |OneToMany|RpEvent             |`person_id` (in child)                    |`person`|—        |EAGER         |
+|`Person`              |`DataConsent`           |OneToMany|DataConsent         |`person_id` (in child)                    |`person`|ALL      |EAGER         |
+|`PersonData`          |`Person`                |OneToOne |PersonData          |`person_id` (insertable=false)            |—       |—        |default       |
+|`PersonProofingStatus`|`Person`                |ManyToOne|PersonProofingStatus|`person_id` (insertable=false)            |—       |—        |default       |
+|`PersonProofingStatus`|`RefRpStatus`           |ManyToOne|PersonProofingStatus|`Proofing_status`                         |—       |ALL      |EAGER         |
+|`PersonProofingStatus`|`RefLoaLevel`           |ManyToOne|PersonProofingStatus|`proofing_level_sought` (insertable=false)|—       |REFRESH  |EAGER         |
+|`DataConsent`         |`RefLoaLevel`           |ManyToOne|DataConsent         |`proofing_level`                          |—       |REFRESH  |EAGER         |
+|`DataConsent`         |`Person`                |ManyToOne|DataConsent         |`person_id`                               |—       |—        |default       |
+|`DataConsent`         |`RefRelyingParty`       |ManyToOne|DataConsent         |`relying_party`                           |—       |**ALL** ⚠️|EAGER         |
+
+### Remote Proofing (RP) Cluster
+
+|From Entity                  |To Entity                           |Type     |Owning Side                |FK Column                                 |mappedBy            |Cascade|Fetch  |
+|-----------------------------|------------------------------------|---------|---------------------------|------------------------------------------|--------------------|-------|-------|
+|`RpEvent`                    |`Person`                            |ManyToOne|RpEvent                    |`person_id` (insertable=false)            |—                   |—      |default|
+|`RpEvent`                    |`RefOtpSupplier`                    |ManyToOne|RpEvent                    |`KBA_supplier_id` (insertable=false)      |—                   |—      |default|
+|`RpEvent`                    |`RefRpDecisionCode`                 |ManyToOne|RpEvent                    |`final_decision` (insertable=false)       |—                   |—      |default|
+|`RpEvent`                    |`RefLoaLevel`                       |ManyToOne|RpEvent                    |`proofing_level_sought`                   |—                   |REFRESH|EAGER  |
+|`RpEvent`                    |`RefApp` (origin)                   |OneToOne |RpEvent                    |`transaction_origin_id`                   |—                   |REFRESH|EAGER  |
+|`RpEvent`                    |`RpEquifaxResult`                   |OneToOne |RpEquifaxResult            |`EVENT_ID` (in child)                     |`rpEvent`           |ALL    |default|
+|`RpEvent`                    |`RpLexisNexisResult`                |OneToOne |RpLexisNexisResult         |`Event_ID` (in child)                     |`rpEvent`           |ALL    |default|
+|`RpEvent`                    |`RpExperianDecisionResult`          |OneToOne |RpExperianDecisionResult   |`EVENT_ID` (in child)                     |`rpEvent`           |ALL    |default|
+|`RpEvent`                    |`RpPhoneVerification`               |OneToOne |RpPhoneVerification        |`event_id` (in child)                     |`rpEvent`           |ALL    |default|
+|`RpEvent`                    |`RpPhoneVerificationResult`         |OneToOne |RpPhoneVerificationResult  |`event_id` (in child)                     |`rpEvent`           |ALL    |default|
+|`RpEvent`                    |`RpEquifaxError` (list)             |OneToMany|RpEquifaxError             |`EVENT_ID` (in child)                     |`rpEvent`           |ALL    |EAGER  |
+|`RpEvent`                    |`RpEquifaxFieldCheck` (list)        |OneToMany|RpEquifaxFieldCheck        |`EVENT_ID` (in child)                     |`rpEvent`           |ALL    |EAGER  |
+|`RpEvent`                    |`RpOtpAttempt` (list)               |OneToMany|RpOtpAttempt               |`event_id` (in child)                     |`rpEvent`           |ALL    |EAGER  |
+|`RpEvent`                    |`RpSmfaAttempt` (list)              |OneToMany|RpSmfaAttempt              |`EVENT_ID` (in child)                     |`rpEvent`           |ALL    |EAGER  |
+|`RpEquifaxResult`            |`RpEquifaxFinalReasonCode` (list)   |OneToMany|RpEquifaxFinalReasonCode   |`EVENT_ID` (in child)                     |`rpEquifaxResult`   |ALL    |EAGER  |
+|`RpEquifaxResult`            |`RpEvent`                           |OneToOne |RpEquifaxResult            |`EVENT_ID` (insertable=false)             |—                   |—      |default|
+|`RpEquifaxResult`            |`RefEquifaxFraudIndicator`          |ManyToOne|RpEquifaxResult            |`FRAUD_INDICATOR_CODE` (insertable=false) |—                   |—      |default|
+|`RpEquifaxResult`            |`RefEquifaxMatchAssessment`         |ManyToOne|RpEquifaxResult            |`MATCH_ASSESSMENT_CODE` (insertable=false)|—                   |—      |default|
+|`RpEquifaxFinalReasonCode`   |`RpEquifaxResult`                   |ManyToOne|RpEquifaxFinalReasonCode   |`EVENT_ID`                                |—                   |—      |default|
+|`RpEquifaxFinalReasonCode`   |`RefOtpReasonCode`                  |ManyToOne|RpEquifaxFinalReasonCode   |`REASON_CODE` (insertable=false)          |—                   |ALL ⚠️  |EAGER  |
+|`RpEquifaxError`             |`RpEvent`                           |ManyToOne|RpEquifaxError             |`EVENT_ID`                                |—                   |—      |default|
+|`RpEquifaxFieldCheck`        |`RpEvent`                           |ManyToOne|RpEquifaxFieldCheck        |`EVENT_ID`                                |—                   |—      |default|
+|`RpEquifaxFieldCheck`        |`RefFieldCheck`                     |ManyToOne|RpEquifaxFieldCheck        |`REF_FIELD_CHECK_ID`                      |—                   |—      |default|
+|`RpLexisNexisResult`         |`RpEvent`                           |OneToOne |RpLexisNexisResult         |`Event_ID` (insertable=false)             |—                   |—      |default|
+|`RpLexisNexisResult`         |`RefLexisNexisResponseCode`         |ManyToOne|RpLexisNexisResult         |`Response_Code`                           |—                   |—      |default|
+|`RpLexisNexisResult`         |`RpLexisNexisFinalReasonCode` (list)|OneToMany|RpLexisNexisFinalReasonCode|`EVENT_ID` (in child)                     |`rpLexisNexisResult`|ALL    |EAGER  |
+|`RpLexisNexisFinalReasonCode`|`RpLexisNexisResult`                |ManyToOne|RpLexisNexisFinalReasonCode|`EVENT_ID` (insertable=false)             |—                   |—      |default|
+|`RpLexisNexisFinalReasonCode`|`RefOtpReasonCode`                  |ManyToOne|RpLexisNexisFinalReasonCode|`REASON_CODE`                             |—                   |—      |default|
+|`RpExperianDecisionResult`   |`RpEvent`                           |OneToOne |RpExperianDecisionResult   |`EVENT_ID`                                |—                   |—      |default|
+|`RpPhoneVerification`        |`RpEvent`                           |OneToOne |RpPhoneVerification        |`event_id`                                |—                   |—      |default|
+|`RpPhoneVerification`        |`RefPhoneType`                      |ManyToOne|RpPhoneVerification        |`phone_type_id`                           |—                   |REFRESH|EAGER  |
+|`RpPhoneVerificationResult`  |`RpEvent`                           |OneToOne |RpPhoneVerificationResult  |`event_id` (insertable=false)             |—                   |—      |default|
+|`RpPhoneVerificationResult`  |`RefPhoneMatchQuality`              |ManyToOne|RpPhoneVerificationResult  |`phone_match_quality_id`                  |—                   |—      |default|
+|`RpPhoneVerificationResult`  |`RefMatchLevel`                     |ManyToOne|RpPhoneVerificationResult  |`match_level_id`                          |—                   |REFRESH|EAGER  |
+|`RpPhoneVerificationResult`  |`RefServiceStatusCode`              |ManyToOne|RpPhoneVerificationResult  |`status_code_id`                          |—                   |REFRESH|EAGER  |
+|`RpPhoneVerificationResult`  |`RefProductStatusCode`              |ManyToOne|RpPhoneVerificationResult  |`product_status_id`                       |—                   |REFRESH|EAGER  |
+|`RpOtpAttempt`               |`RpEvent`                           |OneToOne |RpOtpAttempt               |`event_id`                                |—                   |—      |default|
+|`RpOtpAttempt`               |`RefProductStatusCode`              |ManyToOne|RpOtpAttempt               |`product_status_id`                       |—                   |REFRESH|EAGER  |
+|`RpOtpAttempt`               |`RefOtpAttemptType`                 |ManyToOne|RpOtpAttempt               |`attempt_type_id`                         |—                   |REFRESH|EAGER  |
+|`RpOtpAttempt`               |`RefOtpMatchQuality`                |ManyToOne|RpOtpAttempt               |`otp_match_quality_id`                    |—                   |REFRESH|EAGER  |
+|`RpSmfaAttempt`              |`RpEvent`                           |OneToOne |RpSmfaAttempt              |`EVENT_ID`                                |—                   |—      |default|
+|`RpEfxDitDetails`            |`RpEvent`                           |OneToOne |RpEfxDitDetails            |`EVENT_ID`                                |—                   |—      |default|
+|`RpEfxDitDetails`            |`Person`                            |ManyToOne|RpEfxDitDetails            |`PERSON_ID`                               |—                   |—      |default|
+|`RpDeviceReputation`         |`Person`                            |ManyToOne|RpDeviceReputation         |`person_id`                               |—                   |—      |default|
+|`RpDeviceReputation`         |`RefDeviceConfidence`               |ManyToOne|RpDeviceReputation         |`device_confidence_id`                    |—                   |—      |default|
+|`RpDeviceReputation`         |`RpEvent`                           |OneToOne |RpDeviceReputation         |`event_id`                                |—                   |—      |default|
+|`RpDeviceReputation`         |`IppEvent`                          |OneToOne |RpDeviceReputation         |`ipp_event_id`                            |—                   |—      |default|
+|`RpDeviceReputation`         |`RefApp`                            |ManyToOne|RpDeviceReputation         |`app_id`                                  |—                   |—      |default|
+|`RpDeviceReputationResponse` |`Person`                            |ManyToOne|RpDeviceReputationResponse |`person_id`                               |—                   |—      |default|
+|`RpDitResponse`              |`Person`                            |ManyToOne|RpDitResponse              |`PERSON_ID`                               |—                   |—      |default|
+|`RpSmfaInitiateResponse`     |`Person`                            |ManyToOne|RpSmfaInitiateResponse     |`PERSON_ID`                               |—                   |—      |default|
+|`RpSmfaValidateResponse`     |`Person`                            |ManyToOne|RpSmfaValidateResponse     |`PERSON_ID`                               |—                   |—      |default|
+|`RpTruthDataSendResponse`    |`Person`                            |ManyToOne|RpTruthDataSendResponse    |`person_id`                               |—                   |—      |default|
+|`RpTruthDataSendResponse`    |`RefTruthDataSendEvent`             |ManyToOne|RpTruthDataSendResponse    |`event_type`                              |—                   |—      |default|
+|`RpProofingSession`          |`Person`                            |ManyToOne|RpProofingSession          |`person_id`                               |—                   |—      |default|
+
+### Supplier Routing Cluster
+
+|From Entity           |To Entity                  |Type     |Owning Side         |FK Column                           |mappedBy        |Cascade|Fetch  |
+|----------------------|---------------------------|---------|--------------------|------------------------------------|----------------|-------|-------|
+|`RpOtpAttemptConfig`  |`RefOtpSupplier`           |ManyToOne|RpOtpAttemptConfig  |`KBA_SUPPLIER_ID` (insertable=false)|—               |—      |default|
+|`RpInfPvAttemptConfig`|`RefOtpSupplier`           |ManyToOne|RpInfPvAttemptConfig|`SUPPLIER_ID` (insertable=false)    |—               |—      |default|
+|`RefOtpSupplier`      |`RpEvent` (list)           |OneToMany|RpEvent             |`KBA_supplier_id`                   |`refOtpSupplier`|—      |default|
+|`RefOtpSupplier`      |`RpOtpAttemptConfig` (list)|OneToMany|RpOtpAttemptConfig  |`KBA_SUPPLIER_ID`                   |`refOtpSupplier`|—      |default|
+|`RefOtpSupplier`      |`OtpLockoutInfo` (list)    |OneToMany|OtpLockoutInfo      |`KBA_Supplier_Id`                   |`refOtpSupplier`|—      |default|
+|`RefOtpSupplier`      |`RefOtpVelocity` (list)    |OneToMany|RefOtpVelocity      |`KBA_SUPPLIER_ID`                   |`refOtpSupplier`|—      |default|
+|`RefOtpVelocity`      |`RefOtpSupplier`           |ManyToOne|RefOtpVelocity      |`KBA_SUPPLIER_ID`                   |—               |—      |default|
+|`OtpLockoutInfo`      |`RefOtpSupplier`           |ManyToOne|OtpLockoutInfo      |`KBA_Supplier_Id` (insertable=false)|—               |—      |default|
+|`OtpLockoutInfo`      |`Person`                   |OneToOne |OtpLockoutInfo      |`Person_Id` (insertable=false)      |—               |—      |default|
+|`OtpLockoutInfo`      |`RefLoaLevel`              |ManyToOne|OtpLockoutInfo      |`LOA_CODE` (insertable=false)       |—               |REFRESH|EAGER  |
+
+### IPP Cluster
+
+|From Entity                |To Entity               |Type     |Owning Side              |FK Column                        |mappedBy|Cascade|Fetch  |
+|---------------------------|------------------------|---------|-------------------------|---------------------------------|--------|-------|-------|
+|`IppEvent`                 |`Person`                |ManyToOne|IppEvent                 |`person_id`                      |—       |REFRESH|EAGER  |
+|`IppEvent`                 |`RefIppEventStatus`     |ManyToOne|IppEvent                 |`Ipp_event_status`               |—       |REFRESH|EAGER  |
+|`IppEvent`                 |`RefPrimaryIdType`      |ManyToOne|IppEvent                 |`Primary_id_type`                |—       |REFRESH|EAGER  |
+|`IppEvent`                 |`RefSecondaryIdType`    |ManyToOne|IppEvent                 |`Secondary_id_type`              |—       |REFRESH|EAGER  |
+|`IppAppointment`           |`IppEvent`              |OneToOne |IppAppointment           |`IPP_Event_ID` (insertable=false)|—       |—      |default|
+|`IppBarcodeScans`          |`IppEvent`              |ManyToOne|IppBarcodeScans          |`IPP_EVENT_ID`                   |—       |REFRESH|EAGER  |
+|`IppBarcodeScans`          |`RefIppApplications`    |ManyToOne|IppBarcodeScans          |`IPP_APPLICATION_ID`             |—       |REFRESH|EAGER  |
+|`IppBarcodeScans`          |`RefDeviceTypes`        |ManyToOne|IppBarcodeScans          |`DEVICE_TYPE_ID`                 |—       |REFRESH|EAGER  |
+|`IppBarcodeScans`          |`RefFacFacility`        |ManyToOne|IppBarcodeScans          |`ref_facility_id`                |—       |REFRESH|EAGER  |
+|`IppEventSecondaryID`      |`IppEvent`              |OneToOne |IppEventSecondaryID      |`IPP_Event_ID` (insertable=false)|—       |—      |default|
+|`IppEventSecondaryID`      |`RefSecondaryIdType`    |ManyToOne|IppEventSecondaryID      |`secondary_id_type`              |—       |REFRESH|EAGER  |
+|`HighRiskAddressAttempt`   |`Person`                |ManyToOne|HighRiskAddressAttempt   |`person_id`                      |—       |—      |default|
+|`HighRiskAddressAttempt`   |`IppEvent`              |OneToOne |HighRiskAddressAttempt   |`ipp_event_id`                   |—       |—      |default|
+|`HighRiskAddressAttempt`   |`HighRiskAddress`       |ManyToOne|HighRiskAddressAttempt   |`high_risk_address_id`           |—       |—      |default|
+|`HighRiskAddress`          |`RefHighRiskAddressType`|ManyToOne|HighRiskAddress          |`high_risk_address_type_id`      |—       |REFRESH|EAGER  |
+|`PhysicalLetterData`       |`IppEvent`              |ManyToOne|PhysicalLetterData       |`ipp_event_id`                   |—       |—      |default|
+|`PhysicalLetterData`       |`RefSponsor`            |ManyToOne|PhysicalLetterData       |`SPONSOR_ID`                     |—       |—      |default|
+|`SponsorWebServiceRequests`|`IppEvent`              |OneToOne |SponsorWebServiceRequests|`IPP_EVENT_ID`                   |—       |—      |default|
+|`SponsorWebServiceRequests`|`RefSponsor`            |ManyToOne|SponsorWebServiceRequests|`SPONSOR_ID`                     |—       |—      |default|
+|`SponsorWebServiceRequests`|`SponsorEndpoints`      |ManyToOne|SponsorWebServiceRequests|`ENDPOINT_ID`                    |—       |—      |default|
+
+### Sponsor / Admin Cluster
+
+|From Entity               |To Entity        |Type     |Owning Side             |FK Column       |mappedBy       |Cascade|Fetch  |
+|--------------------------|-----------------|---------|------------------------|----------------|---------------|-------|-------|
+|`RefSponsor`              |`Person` (list)  |OneToMany|Person                  |`SPONSOR_ID`    |`refSponsor`   |—      |default|
+|`SponsorApplicationMap`   |`RefSponsor`     |OneToOne |SponsorApplicationMap   |`sponsor_id`    |—              |—      |default|
+|`SponsorApplicationMap`   |`RefApp`         |OneToOne |SponsorApplicationMap   |`app_id`        |—              |—      |default|
+|`SponsorEndpoints`        |`RefSponsor`     |ManyToOne|SponsorEndpoints        |`SPONSOR_ID`    |—              |—      |default|
+|`SponsorIncomingRequests` |`RefSponsor`     |ManyToOne|SponsorIncomingRequests |`SPONSOR_ID`    |—              |—      |default|
+|`SponsorIncomingRequests` |`RefIppEndpoints`|ManyToOne|SponsorIncomingRequests |`ENDPOINT_ID`   |—              |—      |default|
+|`SponsorReportHistory`    |`RefSponsor`     |ManyToOne|SponsorReportHistory    |`SPONSOR_ID`    |—              |—      |default|
+|`SponsorReportHistory`    |`RefReports`     |ManyToOne|SponsorReportHistory    |`REPORT_ID`     |—              |—      |default|
+|`SponsorReports`          |`RefSponsor`     |ManyToOne|SponsorReports          |`sponsor_id`    |—              |—      |default|
+|`SponsorReports`          |`RefReports`     |ManyToOne|SponsorReports          |`report_id`     |—              |—      |default|
+|`SponsorWebServiceHistory`|`RefSponsor`     |ManyToOne|SponsorWebServiceHistory|`SPONSOR_ID`    |—              |—      |default|
+|`SponsorWebServicePending`|`RefSponsor`     |ManyToOne|SponsorWebServicePending|`SPONSOR_ID`    |—              |—      |default|
+|`SponsorWebServiceQueue`  |`RefSponsor`     |ManyToOne|SponsorWebServiceQueue  |`SPONSOR_ID`    |—              |—      |default|
+|`IvsAdminUser`            |`RefAdminGroup`  |ManyToOne|IvsAdminUser            |`GROUP_ID`      |—              |—      |default|
+|`RpAdmin`                 |`RefAdminEvent`  |ManyToOne|RpAdmin                 |`ADMIN_EVENT_ID`|—              |—      |default|
+|`RefAdminEvent`           |`RpAdmin` (list) |OneToMany|RpAdmin                 |`ADMIN_EVENT_ID`|`refAdminEvent`|—      |default|
+|`RpFeatureAttempt`        |`RefSponsor`     |ManyToOne|RpFeatureAttempt        |`SPONSOR_ID`    |—              |—      |default|
+|`RpFeatureAttempt`        |`RefApp`         |ManyToOne|RpFeatureAttempt        |`APP_ID`        |—              |—      |default|
+
+### Facility / Geography Cluster
+
+|From Entity           |To Entity           |Type     |Owning Side         |FK Column                          |mappedBy|Cascade|Fetch|
+|----------------------|--------------------|---------|--------------------|-----------------------------------|--------|-------|-----|
+|`RefDistrict`         |`RefArea`           |ManyToOne|RefDistrict         |`area_id`                          |—       |REFRESH|EAGER|
+|`RefFacFacility`      |`RefDeviceTypes`    |ManyToOne|RefFacFacility      |`DEVICE_TYPE_ID` (insertable=false)|—       |REFRESH|EAGER|
+|`RefFacFacility`      |`RefArea`           |ManyToOne|RefFacFacility      |`AREA_ID`                          |—       |REFRESH|EAGER|
+|`RefFacFacility`      |`RefDistrict`       |ManyToOne|RefFacFacility      |`DISTRICT_ID`                      |—       |REFRESH|EAGER|
+|`ApplicationWorkflows`|`RefIppApplications`|ManyToOne|ApplicationWorkflows|`IPP_APPLICATION_ID`               |—       |REFRESH|EAGER|
+|`ApplicationWorkflows`|`RefDeviceTypes`    |ManyToOne|ApplicationWorkflows|`DEVICE_TYPE_ID`                   |—       |REFRESH|EAGER|
+|`ApplicationWorkflows`|`RefSponsor`        |ManyToOne|ApplicationWorkflows|`SPONSOR_ID`                       |—       |REFRESH|EAGER|
+|`ApplicationWorkflows`|`RefIppWorkflows`   |ManyToOne|ApplicationWorkflows|`WORKFLOW_ID`                      |—       |REFRESH|EAGER|
+|`RefIppWorkflows`     |`RefLoaLevel`       |ManyToOne|RefIppWorkflows     |`ASSURANCE_LEVEL`                  |—       |REFRESH|EAGER|
+
+### Document Validation Cluster
+
+|From Entity                 |To Entity                           |Type     |Owning Side                |FK Column                      |mappedBy          |Cascade|Fetch  |
+|----------------------------|------------------------------------|---------|---------------------------|-------------------------------|------------------|-------|-------|
+|`IdDocumentDetails`         |`RefState` (issuer)                 |ManyToOne|IdDocumentDetails          |`ISSUER`                       |—                 |—      |default|
+|`IdDocumentDetails`         |`RefState` (state)                  |ManyToOne|IdDocumentDetails          |`STATE`                        |—                 |—      |default|
+|`IdDocumentDetails`         |`IdPersonDetails`                   |OneToOne |IdPersonDetails            |`DOCUMENT_DETAIL_ID` (in child)|`documentDetail`  |ALL    |default|
+|`IdPersonDetails`           |`IdDocumentDetails`                 |OneToOne |IdPersonDetails            |`DOCUMENT_DETAIL_ID`           |—                 |—      |default|
+|`IdVerifyServiceRequest`    |`VendorAPI`                         |ManyToOne|IdVerifyServiceRequest     |`API_ID`                       |—                 |—      |default|
+|`IdVerifyServiceRequest`    |`RefSponsor`                        |ManyToOne|IdVerifyServiceRequest     |`SPONSOR_ID`                   |—                 |—      |default|
+|`IdVerifyServiceRequest`    |`RefPrimaryIdType`                  |ManyToOne|IdVerifyServiceRequest     |`document_type`                |—                 |REFRESH|EAGER  |
+|`IdVerifyServiceRequest`    |`RefValidationStatusCode`           |ManyToOne|IdVerifyServiceRequest     |`STATUS_ID`                    |—                 |REFRESH|EAGER  |
+|`VendorAPI`                 |`RefIdValidationVendor`             |ManyToOne|VendorAPI                  |`VENDOR_ID`                    |—                 |—      |default|
+|`VendorToken`               |`RefIdValidationVendor`             |ManyToOne|VendorToken                |`VENDOR_ID`                    |—                 |—      |default|
+|`IppEventIDValidation`      |`RefPrimaryIdType`                  |ManyToOne|IppEventIDValidation       |`primary_id_type`              |—                 |REFRESH|EAGER  |
+|`IppEventIDValidation`      |`RefIdValidationVendor`             |ManyToOne|IppEventIDValidation       |`vendor_id`                    |—                 |REFRESH|EAGER  |
+|`SecondaryAddressAttempt`   |`Person`                            |ManyToOne|SecondaryAddressAttempt    |`person_id`                    |—                 |—      |default|
+|`SecondaryAddressAttempt`   |`RpEvent`                           |OneToOne |SecondaryAddressAttempt    |`event_id`                     |—                 |—      |default|
+|`SecondaryAddressAttempt`   |`HighRiskAddress`                   |ManyToOne|SecondaryAddressAttempt    |`high_risk_address_id`         |—                 |—      |default|
+|`ProgramOnlineStats`        |`RefOtpSupplier`                    |ManyToOne|ProgramOnlineStats         |`kba_supplier_id`              |—                 |—      |default|
+|`RefLexisNexisReasonCodeMap`|`RefOtpReasonCode`                  |ManyToOne|RefLexisNexisReasonCodeMap |`Reason_Code`                  |—                 |—      |default|
+|`RefOtpReasonCode`          |`RefLexisNexisReasonCodeMap` (list) |OneToMany|RefLexisNexisReasonCodeMap |`Reason_Code`                  |`refOtpReasonCode`|—      |default|
+|`RefOtpReasonCode`          |`RpEquifaxFinalReasonCode` (list)   |OneToMany|RpEquifaxFinalReasonCode   |`REASON_CODE`                  |`refOtpReasonCode`|—      |default|
+|`RefOtpReasonCode`          |`RpLexisNexisFinalReasonCode` (list)|OneToMany|RpLexisNexisFinalReasonCode|`REASON_CODE`                  |`refOtpReasonCode`|—      |default|
+
+-----
+
+## D. Primary Keys and Foreign Keys Summary
+
+### Composite Keys (@EmbeddedId)
+
+|Entity                 |Table                    |PK Columns                                       |Embedded Class           |
+|-----------------------|-------------------------|-------------------------------------------------|-------------------------|
+|`IppFacilityStaging`   |`ipp_facility_staging`   |`FACILITY_ID`, `UFN`                             |`IppFacilityStagingPK`   |
+|`LookupCodesEnv`       |`lookup_codes_env`       |`ENV`, `NAME`                                    |`LookupCodesEnvPK`       |
+|`OtpLockoutInfo`       |`kba_lockout_info`       |`PERSON_ID`, `LOA_CODE`                          |`OtpLockoutInfoPK`       |
+|`PersonProofingStatus` |`person_proofing_status` |`PERSON_ID`, `PROOFING_LEVEL_SOUGHT`             |`PersonProofingStatusPK` |
+|`RefAttributeGroup`    |`REF_ATTRIBUTE_GROUP`    |`ATTRIBUTE_INDEX`, `ATTRIBUTE_NAME`              |`RefAttributeGroupPK`    |
+|`RpInfPvAttemptConfig` |`rp_inf_pv_attempts`     |`PROOFING_LEVEL`, `SPONSOR_ID`, `SUPPLIER_ID`    |`RpInfPvAttemptConfigPK` |
+|`RpOtpAttemptConfig`   |`rp_kba_attempts`        |`PROOFING_LEVEL`, `SPONSOR_ID`, `KBA_SUPPLIER_ID`|`RpOtpAttemptConfigPK`   |
+|`SponsorApplicationMap`|`sponsor_application_map`|`sponsor_id`, `app_id`                           |`SponsorApplicationMapPK`|
+|`SponsorEmailValues`   |`sponsor_email_values`   |`sponsor_id`, `email_type`                       |`SponsorEmailValuesPK`   |
+|`SponsorFacilities`    |`sponsor_facilities`     |`SPONSOR_ID`, `REF_FACILITY_ID`                  |`SponsorFacilitiesPK`    |
+|`SponsorFairId`        |`sponsor_fair_ids`       |`SPONSOR_ID`, `ID_TYPE`                          |`SponsorFairIdPK`        |
+|`SponsorStrongId`      |`sponsor_strong_ids`     |`SPONSOR_ID`, `ID_TYPE`                          |`SponsorStrongIdPK`      |
+
+### Most Referenced Foreign Key Columns
+
+|FK Column                        |Referenced By (count)|Points To         |
+|---------------------------------|---------------------|------------------|
+|`SPONSOR_ID`                     |12 entities          |`ref_sponsor`     |
+|`person_id` / `PERSON_ID`        |11 entities          |`person`          |
+|`event_id` / `EVENT_ID`          |9 entities           |`rp_event`        |
+|`ipp_event_id` / `IPP_EVENT_ID`  |5 entities           |`ipp_event`       |
+|`proofing_level_sought`          |3 entities           |`ref_loa_level`   |
+|`KBA_SUPPLIER_ID` / `SUPPLIER_ID`|3 entities           |`ref_kba_supplier`|
+
+-----
+
+## E. Observations, Risks, and Unclear Mappings
+
+### 🔴 Critical
+
+**1. Widespread missing `@Id` annotation (~40 entities)**
+Almost all `Ref*` lookup tables and several transactional entities define a PK column via `@Column` but omit `@Id`. JPA requires `@Id` to function. These entities likely work only because Hibernate infers it or the application never calls `em.find()` directly — but this is fragile and will cause issues with any JPA-compliant tool (schema validators, query by primary key, cache eviction).
+
+**Highest-risk missing `@Id` entities:** `RefOtpSupplier`, `RefLoaLevel`, `RefSponsor`, `RefLexisNexisResponseCode`, `RefRpDecisionCode`, `RpLexisNexisResult`
+
+**2. `version` field without `@Version` in supplier routing entities**
+`RpOtpAttemptConfig`, `RpInfPvAttemptConfig`, and `RpFeatureAttempt` all have a `private long version` field but no `@Version` annotation. This means JPA’s optimistic locking is **completely disabled** for these entities even though the intent is clearly to use it. This directly contributed to the Oracle row-lock / DB contention issue documented in the meetings.
+
+**3. `CascadeType.ALL` on `@ManyToOne` — `DataConsent → RefRelyingParty`**
+`CascadeType.ALL` on a `@ManyToOne` means that deleting a `DataConsent` row will attempt to delete the `ref_relying_party` row it references. This is almost certainly unintended and will cause constraint violation errors or unintended data loss.
+
+**4. `Person` entity missing `@Table`**
+`Person` has no `@Table` annotation. JPA defaults to the class name, producing table `PERSON` (or `person` depending on dialect). If the actual table is named differently, all queries silently fail. Given that `Person` is the central aggregate root for the entire application, this is the highest-impact missing annotation.
+
+### 🟡 High Risk
+
+**5. Bidirectional `@OneToOne` with duplicate `@JoinColumn` on same FK — `IppAppointment` / `IppEventSecondaryID`**
+Both `IppAppointment` and `IppEventSecondaryID` declare:
+
+```java
+@OneToOne
+@JoinColumn(name="IPP_Event_ID", insertable=false, updatable=false)
+private IppEvent ippEvent;
+```
+
+And also store `IPP_EVENT_ID` as a raw `long`. If both rows reference the same `ipp_event`, JPA will attempt to manage two different `@OneToOne` relationships pointing at the same FK column, which breaks the one-to-one contract.
+
+**6. `RpOtpAttempt` declares `@OneToOne` to `RpEvent`, but `RpEvent` declares `@OneToMany` back**
+`RpOtpAttempt.rpEvent` is `@OneToOne @JoinColumn(name="event_id")`. But `RpEvent.otpAttempts` is `@OneToMany(mappedBy="rpEvent")`. A single `RpEvent` can have many `RpOtpAttempt` records — so the `@OneToOne` on the child side is logically incorrect (should be `@ManyToOne`). Same pattern applies to `RpSmfaAttempt`.
+
+**7. `RpEquifaxResult` uses `EVENT_ID` as both `@Id` and a `@OneToOne` FK**
+`RpEquifaxResult.eventId` is `@Id` (explicit), and simultaneously `@OneToOne @JoinColumn(name="EVENT_ID", insertable=false, updatable=false)` back to `RpEvent`. This is a shared PK/FK pattern — valid in JPA but requires that the `eventId` value is set before persist and never generated. There is no `@GeneratedValue` here, meaning the caller must manually set `eventId = rpEvent.eventId` before saving. Easy to miss.
+
+**8. `RpExperianHeaderData` and `RpExperianResponsePayload` link to `RpExperianDecisionResult` via raw `long expResultId` only**
+No `@ManyToOne`/`@OneToOne` annotation — just `@Column(name="EXP_RESULT_ID")`. JPA has no knowledge of this relationship. Cascades will not work; lazy loading is impossible. These must be queried separately by the application.
+
+**9. Schema inconsistency — `ApplicationWorkflows` uses schema in table name string**
+`@Table(name = "ips_own.application_workflows")` embeds the schema in the name string rather than using the `schema` attribute. Other entities use `schema="IPS_OWN"` properly. Mixed approaches can cause portability issues between environments.
+
+**10. `RefFacFacility` maps `DEVICE_TYPE_ID` twice — as both raw column and `@ManyToOne` FK**
+
+```java
+@Column(name="DEVICE_TYPE_ID")
+private long deviceTypeId;
+@ManyToOne
+@JoinColumn(name="DEVICE_TYPE_ID", insertable=false, updatable=false)
+private RefDeviceTypes deviceType;
+```
+
+The `insertable=false, updatable=false` on the association is correct, but this is a smell. Updates to `deviceTypeId` will not cascade to the managed entity. Ensure always updating via the primitive field, not the entity reference.
+
+**11. `RpFeatureAttempt.featureId` column name typo**
+`@Column(name="fEATURE_ID")` — mixed case with lowercase `f`. Oracle is case-insensitive for unquoted identifiers, so this works in practice, but it is inconsistent with every other column name in the codebase and will break if schema ever uses quoted identifiers.
+
+### 🟢 Informational
+
+**12. 47 isolated entities with no JPA relationships**
+These are valid lookup/reference tables (`Ref*`) or audit/log tables that are accessed only by column name in native queries or through `@ManyToOne` from child entities (the parent side has no `@OneToMany` back-reference). Not a bug, but means object graph navigation from these entities is impossible.
+
+**13. `OtpLockoutInfo` PK embeds `PERSON_ID` + `LOA_CODE` but `KBA_SUPPLIER_ID` is not in the PK**
+The composite key is `(PERSON_ID, LOA_CODE)` — meaning only one lockout record per person per LOA level, regardless of supplier. If the intent is to track lockout per-supplier, the PK is incomplete.
+
+**14. `SponsorFairId` and `SponsorStrongId` share the same PK structure (`SPONSOR_ID` + `ID_TYPE`) and have no relationships**
+These appear to be join tables but are mapped as standalone entities. No JPA `@ManyToMany` uses them. Queried likely via JPQL or native SQL directly.
+
+-----
+
+## F. Mermaid ER Diagram
+
+```mermaid
+erDiagram
+    Person {
+        long personId PK
+        long SPONSOR_ID FK
+        long PROOFING_LEVEL_SOUGHT FK
+        long PROOFING_LEVEL_ACHIEVED FK
+    }
+    PersonData {
+        long personId FK
+    }
+    PersonProofingStatus {
+        long personId PK_FK
+        long proofingLevelSought PK_FK
+    }
+    OtpLockoutInfo {
+        long personId PK_FK
+        long loaCode PK_FK
+        long KBA_SUPPLIER_ID FK
+    }
+    DataConsent {
+        long dataConsentId PK
+        long person_id FK
+        long proofing_level FK
+        long relying_party FK
+    }
+    RpEvent {
+        long eventId PK
+        long person_id FK
+        long KBA_supplier_id FK
+        long proofing_level_sought FK
+        long transaction_origin_id FK
+    }
+    RpEquifaxResult {
+        long eventId PK_FK
+    }
+    RpLexisNexisResult {
+        long eventId FK
+    }
+    RpExperianDecisionResult {
+        long expResultId PK
+        long EVENT_ID FK
+    }
+    RpPhoneVerification {
+        long phoneVerificationId PK
+        long event_id FK
+        long phone_type_id FK
+    }
+    RpPhoneVerificationResult {
+        long eventId FK
+    }
+    RpOtpAttempt {
+        long otpAttemptId PK
+        long event_id FK
+    }
+    RpSmfaAttempt {
+        long mfaAttemptId PK
+        long EVENT_ID FK
+    }
+    RpEquifaxFinalReasonCode {
+        long equifaxRcId PK
+        long EVENT_ID FK
+        string REASON_CODE FK
+    }
+    RpLexisNexisFinalReasonCode {
+        long lexisNexisRCId PK
+        long EVENT_ID FK
+        string REASON_CODE FK
+    }
+    RpEquifaxError {
+        long equifaxErrorId PK
+        long EVENT_ID FK
+    }
+    RpEquifaxFieldCheck {
+        long fieldCheckFailureId PK
+        long EVENT_ID FK
+    }
+    RpOtpAttemptConfig {
+        long PROOFING_LEVEL PK
+        long SPONSOR_ID PK
+        long KBA_SUPPLIER_ID PK_FK
+    }
+    RpInfPvAttemptConfig {
+        long PROOFING_LEVEL PK
+        long SPONSOR_ID PK
+        long SUPPLIER_ID PK_FK
+    }
+    IppEvent {
+        long ippEventId PK
+        long person_id FK
+        long Ipp_event_status FK
+        long Primary_id_type FK
+        long Secondary_id_type FK
+    }
+    IppAppointment {
+        long IPP_EVENT_ID FK
+    }
+    IppBarcodeScans {
+        long scanId PK
+        long IPP_EVENT_ID FK
+        long SPONSOR_ID FK
+    }
+    IppEventSecondaryID {
+        long eventSecondaryId PK
+        long ipp_event_id FK
+    }
+    IppEventIDValidation {
+        long idValidationId PK
+        long ipp_event_id RAW_ONLY
+    }
+    RefSponsor {
+        long sponsorId PK
+    }
+    RefOtpSupplier {
+        long otpSupplierId PK
+    }
+    RefLoaLevel {
+        long loaCode PK
+    }
+    RefOtpReasonCode {
+        string reasonCode PK
+    }
+    RefPrimaryIdType {
+        long idType PK
+    }
+    RefSecondaryIdType {
+        long idType PK
+    }
+    RefIppEventStatus {
+        long ippEventStatus PK
+    }
+    RefRpDecisionCode {
+        string decisionCode PK
+    }
+    RefLexisNexisResponseCode {
+        string responseCode PK
+    }
+    RefEquifaxFraudIndicator {
+        string fraudIndicatorCode PK
+    }
+    RefEquifaxMatchAssessment {
+        string matchAssessmentCode PK
+    }
+    VendorAPI {
+        long apiId PK
+        long VENDOR_ID FK
+    }
+    RefIdValidationVendor {
+        long vendorId PK
+    }
+    IdDocumentDetails {
+        long documentDetailId PK
+    }
+    IdPersonDetails {
+        long personDetailId PK
+        long DOCUMENT_DETAIL_ID FK
+    }
+    RpDeviceReputation {
+        long deviceReputationId PK
+        long person_id FK
+        long event_id FK
+        long ipp_event_id FK
+    }
+
+    Person ||--o{ PersonProofingStatus : "has"
+    Person ||--o| PersonData : "has"
+    Person ||--o{ OtpLockoutInfo : "has"
+    Person ||--o{ IppEvent : "has"
+    Person ||--o{ RpEvent : "has"
+    Person ||--o{ DataConsent : "has"
+    Person }o--|| RefSponsor : "belongs to"
+    Person }o--|| RefLoaLevel : "sought"
+    Person }o--|| RefLoaLevel : "achieved"
+
+    RpEvent }o--|| Person : "for"
+    RpEvent }o--|| RefOtpSupplier : "used"
+    RpEvent }o--|| RefLoaLevel : "level"
+    RpEvent ||--o| RpEquifaxResult : "has"
+    RpEvent ||--o| RpLexisNexisResult : "has"
+    RpEvent ||--o| RpExperianDecisionResult : "has"
+    RpEvent ||--o| RpPhoneVerification : "has"
+    RpEvent ||--o| RpPhoneVerificationResult : "has"
+    RpEvent ||--o{ RpOtpAttempt : "has"
+    RpEvent ||--o{ RpSmfaAttempt : "has"
+    RpEvent ||--o{ RpEquifaxError : "has"
+    RpEvent ||--o{ RpEquifaxFieldCheck : "has"
+
+    RpEquifaxResult ||--o{ RpEquifaxFinalReasonCode : "has"
+    RpEquifaxFinalReasonCode }o--|| RefOtpReasonCode : "maps"
+    RpLexisNexisResult ||--o{ RpLexisNexisFinalReasonCode : "has"
+    RpLexisNexisFinalReasonCode }o--|| RefOtpReasonCode : "maps"
+
+    RpOtpAttemptConfig }o--|| RefOtpSupplier : "for supplier"
+    RpInfPvAttemptConfig }o--|| RefOtpSupplier : "for supplier"
+
+    IppEvent }o--|| Person : "for"
+    IppEvent }o--|| RefIppEventStatus : "status"
+    IppEvent }o--|| RefPrimaryIdType : "primary id"
+    IppAppointment }o--|| IppEvent : "for"
+    IppBarcodeScans }o--|| IppEvent : "for"
+    IppEventSecondaryID }o--|| IppEvent : "for"
+
+    VendorAPI }o--|| RefIdValidationVendor : "from"
+    IdPersonDetails }o--|| IdDocumentDetails : "details of"
+
+    RpDeviceReputation }o--|| Person : "for"
+    RpDeviceReputation }o--|| RpEvent : "for"
+    RpDeviceReputation }o--|| IppEvent : "for"
+```
+
+-----
+
+## G. Suggested SQL Validation Queries
+
+```sql
+-- 1. Verify Person → RefSponsor FK integrity
+SELECT COUNT(*) AS orphan_persons
+FROM person p
+WHERE NOT EXISTS (SELECT 1 FROM ref_sponsor s WHERE s.sponsor_id = p.sponsor_id);
+
+-- 2. Verify RpEvent → Person FK integrity
+SELECT COUNT(*) AS orphan_rp_events
+FROM rp_event e
+WHERE NOT EXISTS (SELECT 1 FROM person p WHERE p.person_id = e.person_id);
+
+-- 3. Verify each RpEvent has at most one RpEquifaxResult (enforces OneToOne)
+SELECT event_id, COUNT(*) AS cnt
+FROM rp_equifax_result
+GROUP BY event_id
+HAVING COUNT(*) > 1;
+
+-- 4. Verify each RpEvent has at most one RpPhoneVerification (enforces OneToOne)
+SELECT event_id, COUNT(*) AS cnt
+FROM rp_phone_verifications
+GROUP BY event_id
+HAVING COUNT(*) > 1;
+
+-- 5. Verify RpOtpAttemptConfig supplier FK integrity
+SELECT a.*, s.kba_supplier_name
+FROM rp_kba_attempts a
+LEFT JOIN ref_kba_supplier s ON s.kba_supplier_id = a.kba_supplier_id
+WHERE s.kba_supplier_id IS NULL;
+
+-- 6. Validate composite PK uniqueness on RpOtpAttemptConfig
+SELECT proofing_level, sponsor_id, kba_supplier_id, COUNT(*)
+FROM rp_kba_attempts
+GROUP BY proofing_level, sponsor_id, kba_supplier_id
+HAVING COUNT(*) > 1;
+
+-- 7. Validate composite PK uniqueness on RpInfPvAttemptConfig
+SELECT proofing_level, sponsor_id, supplier_id, COUNT(*)
+FROM rp_inf_pv_attempts
+GROUP BY proofing_level, sponsor_id, supplier_id
+HAVING COUNT(*) > 1;
+
+-- 8. Verify PersonProofingStatus composite FK to Person and RefLoaLevel
+SELECT COUNT(*) AS orphan_statuses
+FROM person_proofing_status ps
+WHERE NOT EXISTS (SELECT 1 FROM person p WHERE p.person_id = ps.person_id)
+   OR NOT EXISTS (SELECT 1 FROM ref_loa_level l WHERE l.loa_code = ps.proofing_level_sought);
+
+-- 9. Check for RpEquifaxFinalReasonCode with missing EVENT_ID parent
+SELECT COUNT(*) AS orphan_reason_codes
+FROM rp_equifax_final_reason_codes rc
+WHERE NOT EXISTS (SELECT 1 FROM rp_equifax_result r WHERE r.event_id = rc.event_id);
+
+-- 10. Verify IppEvent → Person FK
+SELECT COUNT(*) AS orphan_ipp_events
+FROM ipp_event ie
+WHERE NOT EXISTS (SELECT 1 FROM person p WHERE p.person_id = ie.person_id);
+
+-- 11. Check DataConsent → RefRelyingParty (dangerous CascadeType.ALL)
+SELECT COUNT(*) AS consent_with_missing_rp
+FROM data_consent dc
+WHERE NOT EXISTS (SELECT 1 FROM ref_relying_party rp WHERE rp.relying_party_code = dc.relying_party);
+
+-- 12. Verify OtpLockoutInfo composite PK covers person + loa (not per-supplier)
+SELECT person_id, loa_code, COUNT(*) AS cnt
+FROM kba_lockout_info
+GROUP BY person_id, loa_code
+HAVING COUNT(*) > 1;
+
+-- 13. Check split-config rows in rp_kba_attempts (should sum to 100 per sponsor+level)
+SELECT sponsor_id, proofing_level, SUM(total_attempts) AS total_pct
+FROM rp_kba_attempts
+GROUP BY sponsor_id, proofing_level
+HAVING SUM(total_attempts) NOT IN (0, 100);
+
+-- 14. Identify any locked rows in rp_kba_attempts (run during load to diagnose contention)
+SELECT s.sid, s.serial#, s.username, l.type, l.lmode, l.request, o.object_name
+FROM v$lock l
+JOIN v$session s ON l.sid = s.sid
+JOIN dba_objects o ON l.id1 = o.object_id
+WHERE o.object_name IN ('RP_KBA_ATTEMPTS','RP_INF_PV_ATTEMPTS')
+  AND l.lmode > 0;
+```
