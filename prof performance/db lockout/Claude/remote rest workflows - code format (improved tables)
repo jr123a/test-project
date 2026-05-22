@@ -1,0 +1,331 @@
+# RemoteRest + RemoteServices — Complete Architecture Analysis (Improved Table Rendering)
+**Sources:** RemoteRest.zip, RemoteServices.zip  
+**Analysis date:** May 2026
+
+---
+
+## D. REST Endpoint Inventory (Reformatted)
+
+**Base path:** `POST /resources/remote/{path}`  
+**Content-Type:** `application/json` (both request and response)  
+**Auth:** None  
+**Single resource class:** `RemoteRestResource` (`@Path("remote")`)
+
+### Proofing Endpoints — Summary
+
+| # | Path | Service Method |
+|---|---|---|
+| 1 | `POST /AssessDevicePlusEmailRisk` | `remoteProofingService.assessDevicePlusEmailRisk()` |
+| 2 | `POST /CheckDevice` | `remoteProofingService.checkDevice()` |
+| 3 | `POST /VerifyPhone` | `remoteProofingService.verifyPhone()` |
+| 4 | `POST /ConfirmPasscode` | `remoteProofingService.confirmPasscode()` |
+| 5 | `POST /RequestPasscode` | `remoteProofingService.requestPasscode()` |
+| 6 | `POST /ResendLink` | `remoteProofingService.resendLink()` |
+| 7 | `POST /ValidateLink` | `remoteProofingService.validateLink()` |
+
+### Proofing Endpoints — Detailed Specifications
+
+<details>
+<summary><strong>AssessDevicePlusEmailRisk (#1)</strong></summary>
+
+**Purpose:** Device + email risk assessment (LexisNexis bundled product). No `sponsorUserId` required — uses address hash as fallback.
+
+**Key Inputs:**
+- `sponsorCode`, `appCode`
+- `firstName`, `lastName`, address fields
+- `email` (optional)
+- `profilingSessionID`, `webSessionID`
+
+**Key Response Fields:**
+- `reviewStatus` (PASS/REVIEW/REJECT)
+- `reasonCode`
+- `verified`
+
+</details>
+
+<details>
+<summary><strong>CheckDevice (#2)</strong></summary>
+
+**Purpose:** Device reputation check only (LexisNexis). Requires `sponsorUserId`.
+
+**Key Inputs:**
+- `sponsorCode`, `sponsorId`
+- `appCode`, `appId`
+- `firstName`, `lastName`, address
+- `mobilePhone`
+- `profilingSessionID`
+
+**Key Response Fields:**
+- `reviewStatus`
+- `reasonCode`
+- `verified`
+
+</details>
+
+<details>
+<summary><strong>VerifyPhone (#3)</strong></summary>
+
+**Purpose:** Phone verification + passcode/SMFA delivery. **Most complex endpoint.**
+
+**Key Inputs:**
+- All PII fields (name, address, DOB)
+- `mobilePhone` (required)
+- `birthDate` (required, format: MMddyyyy)
+- `profilingSessionID`, `webSessionID`
+
+**Key Response Fields:**
+- `verified` (boolean)
+- `transactionID` (vendor transaction)
+- `reasonCode` (SuccessfulOTPDelivery, FailedPhoneVelocity, etc.)
+- `passcodeSent`
+- `kbaAttemptCount`
+
+</details>
+
+<details>
+<summary><strong>ConfirmPasscode (#4)</strong></summary>
+
+**Purpose:** Validate OTP entered by user against vendor records.
+
+**Key Inputs:**
+- `sponsorCode`, `sponsorId`
+- `customerUniqueID`
+- `passcode` (numeric only)
+
+**Key Response Fields:**
+- `verified`
+- `reasonCode` (PassedOTPConfirmation, FailedOTPConfirmation, etc.)
+- `kbaAttemptCount`
+
+</details>
+
+<details>
+<summary><strong>RequestPasscode (#5)</strong></summary>
+
+**Purpose:** Resend OTP to previously-verified phone.
+
+**Key Inputs:**
+- `sponsorCode`, `sponsorId`
+- `customerUniqueID`
+
+**Key Response Fields:**
+- `passcodeSent`
+- `transactionID`
+- `reasonCode`
+
+</details>
+
+<details>
+<summary><strong>ResendLink (#6)</strong></summary>
+
+**Purpose:** Resend Equifax SMFA link (DIT only).
+
+**Key Inputs:**
+- `sponsorCode`, `sponsorId`
+- `customerUniqueID`
+
+**Key Response Fields:**
+- `passcodeSent`
+- `transactionID`
+- `reasonCode`
+
+</details>
+
+<details>
+<summary><strong>ValidateLink (#7)</strong></summary>
+
+**Purpose:** Check if user tapped the SMFA link (DIT only). Polls Equifax SMFA status.
+
+**Key Inputs:**
+- `sponsorCode`, `sponsorId`
+- `customerUniqueID`
+
+**Key Response Fields:**
+- `verified`
+- `sessionID`
+- `reasonCode`
+
+</details>
+
+---
+
+### Admin/Utility Endpoints — Summary
+
+| # | Path | Purpose |
+|---|---|---|
+| 8 | `POST /CreateRefSponsorConfigurationRecords` | Bootstrap sponsor config rows |
+| 9 | `POST /CreateRpOtpAttemptConfigRecords` | Bootstrap OTP attempt config |
+| 10 | `POST /CreateRpInfPvAttemptConfigRecords` | Bootstrap INF attempt config |
+| 11 | `POST /CreateRpFeatureAttemptRecords` | Bootstrap feature attempt rows |
+| 12 | `POST /RemoveRefSponsorConfigurationRecords` | Remove sponsor config |
+| 13 | `POST /RemoveRpFeatureAttemptRecords` | Remove feature attempts |
+| 14 | `POST /RemoveRpOtpAttemptConfigRecords` | Remove OTP config |
+| 15 | `POST /GetModificationFingerprint` | Get module build fingerprint |
+| 16 | `POST /ConfigVerificationMethod` | Set supplier split percentages |
+| 17 | `POST /RetrieveSupplierConfig` | Read supplier allocation config |
+| 18 | `POST /ConfigPhoneVelocityWindow` | Update velocity window (hours) |
+| 19 | `POST /UpdatePersonProofingStatus` | Direct DB status override (admin) |
+| 20 | `POST /SaveExperianAltApiInfo` | Write Experian JWT credentials |
+| 21 | `POST /RemoveExperianAltApiInfo` | Delete Experian credentials |
+| 22 | `POST /SaveRefSponsorConfiguration` | Write key-value config |
+| 23 | `POST /RetrieveRefSponsorConfiguration` | Read key-value config |
+| 24 | `POST /RemoveRefSponsorConfiguration` | Delete key-value config |
+| 25 | `POST /ObtainExperianWebToken` | Get Experian JWT (debug) |
+| 26 | `POST /GetHighRiskAddresses` | List high-risk addresses |
+| 27 | `POST /UpdateHighRiskAddress` | Add/update high-risk address |
+| 28 | `POST /CheckRegExForMatch` | Test regex pattern |
+
+### Admin/Utility Endpoints — Key Inputs
+
+<details>
+<summary><strong>ConfigVerificationMethod (#16)</strong></summary>
+
+**Purpose:** Set supplier split percentages for a sponsor (how calls are routed).
+
+**Key Inputs:**
+```json
+{
+  "sponsorCode": "COA",
+  "lexisNexisOTPAllocation": 60,
+  "equifaxSMFAAllocation": 40,
+  "equifaxIDFSAllocation": 0,
+  "experianCCAllocation": 0
+}
+```
+**Note:** Must sum to 100.
+
+</details>
+
+<details>
+<summary><strong>SaveExperianAltApiInfo (#20)</strong></summary>
+
+**Purpose:** Write Experian JWT/XCORE credentials to `rp_supplier_token` table for runtime credential rotation.
+
+**Key Inputs:**
+- `experianTokenCode`
+- `experianTokenType` (JWT, XCORE, etc.)
+- `experianAccessToken` (the actual credential)
+
+</details>
+
+---
+
+## C. Technology / Configuration Inventory (Improved Layout)
+
+### Core Technologies
+
+| Technology | Version/Details |
+|---|---|
+| **Java** | 8+ (inferred from JJWT 0.10.5 + Gradle 8.1.1) |
+| **App Server** | IBM WebSphere 9.x (`IBMRestServlet`, `ibm-web-bnd.xml`) |
+| **Build Tool** | Gradle 8.1.1 (WAR plugin) |
+
+### REST & Web Frameworks
+
+| Framework | Details |
+|---|---|
+| **REST** | JAX-RS 2.1 via IBM `IBMRestServlet` + `JacksonJsonProvider` 2.15.2 |
+| **Dependency Injection** | Spring 5.3.33 (`@Autowired`, `@Service`) |
+| **JSON** | Jackson 2.15.2 + IBM JSON4J |
+
+### Data & Transactions
+
+| Layer | Details |
+|---|---|
+| **ORM** | EclipseLink (weaving=false), persistence unit `RemoteRestPUN` |
+| **Datasource** | `ipsWebDS` (JNDI) |
+| **Transactions** | JTA via `JtaTransactionManager` (WebSphere-managed) |
+
+### Other
+
+| Category | Value |
+|---|---|
+| **Logging** | Log4j2 2.17.1 via custom `CustomLogger` wrapper |
+| **Security** | **None in code** — Network-level only |
+| **Session** | **Completely stateless** — No `HttpSession` |
+| **Config** | `ips.properties` — URLs, credentials, secrets |
+
+### ⚠️ Critical: `ips.properties` Plaintext Credentials
+
+- Experian JWT username/password (prod secrets included)
+- Experian client ID + secret
+- ThreatMetrix API keys
+- SSA OAuth client IDs
+- 30 Experian test user records with full PII
+
+---
+
+## G. Database / Table Usage Analysis (Improved Layout)
+
+### Tables Read per Endpoint
+
+<details>
+<summary><strong>Click to expand table</strong></summary>
+
+| Table | Endpoints Reading | Purpose |
+|---|---|---|
+| `ref_sponsor` | All | Sponsor lookup by code/name |
+| `ref_app` | All | App lookup by code/name |
+| `ref_kba_supplier` | VerifyPhone, ConfirmPasscode, RequestPasscode, ValidateLink, ResendLink | Supplier type flags |
+| `rp_kba_attempts` | VerifyPhone | **Supplier routing query (lock hotspot)** |
+| `rp_inf_pv_attempts` | VerifyPhone (if INF flag) | Supplier routing for INF path |
+| `rp_event` | ConfirmPasscode, RequestPasscode, ValidateLink, ResendLink | Latest phone verification |
+| `rp_phone_verifications` | ConfirmPasscode, RequestPasscode, ValidateLink, ResendLink | Mobile phone on file |
+| `rp_otp_attempts` | ConfirmPasscode, RequestPasscode | Passcode attempt count |
+| `rp_smfa_attempts` | ValidateLink, ResendLink | SMFA attempt count |
+| `kba_lockout_info` | VerifyPhone, RequestPasscode, ResendLink | Lockout status |
+| `person` | All (create/find) | Person record |
+| `person_data` | All | PII including address_hash |
+| `person_proofing_status` | ConfirmPasscode, RequestPasscode, ResendLink | LOA status check |
+| `rp_device_reputation_response` | VerifyPhone | INF flag check |
+| `sponsor_application_map` | All | Is sponsor+app enabled? |
+| `sponsor_incoming_requests` | All (writes) | **Audit log — every call** |
+| `ref_sponsor_configuration` | Various | Sponsor feature flags |
+| `rp_supplier_token` | Experian flows | Alternative JWT credentials |
+
+</details>
+
+### Tables Written per Endpoint
+
+| Endpoint Group | Tables Written |
+|---|---|
+| `CheckDevice`, `AssessDevicePlusEmailRisk` | `person`, `person_data`, `kba_lockout_info`, `rp_proofing_session`, `person_proofing_status`, `rp_device_reputation`, `rp_device_reputation_response` |
+| `VerifyPhone` | All above + `rp_kba_attempts` (**LOCK**), `rp_event`, `rp_phone_verifications`, `rp_otp_attempts` or `rp_smfa_attempts`, vendor results tables |
+| `ConfirmPasscode` | `rp_otp_attempts`, `person_proofing_status`, `rp_truth_data_send_response`, `sponsor_incoming_requests` |
+| `RequestPasscode` | `rp_otp_attempts`, `sponsor_incoming_requests` |
+| `ValidateLink` / `ResendLink` | `rp_smfa_attempts`, `sponsor_incoming_requests` |
+| `ConfigVerificationMethod` | `rp_kba_attempts` total_attempts columns |
+| `UpdatePersonProofingStatus` | `person_proofing_status` directly (admin override) |
+
+---
+
+## H. Integration Map (Simplified)
+
+| Vendor | Triggered By | Protocol |
+|---|---|---|
+| **LexisNexis RDP** | VerifyPhone (OTP), CheckDevice, AssessDevicePlusEmailRisk | HTTPS REST |
+| **Equifax IDFS** | VerifyPhone, ConfirmPasscode, RequestPasscode | HTTPS SOAP |
+| **Equifax DIT** | VerifyPhone (device assessment) | HTTPS REST + OAuth2 |
+| **Equifax SMFA** | VerifyPhone, ValidateLink, ResendLink | HTTPS REST + OAuth2 |
+| **Experian CrossCore** | VerifyPhone, ConfirmPasscode (Experian path) | HTTPS REST + JWT |
+| **CustReg / EntReg** | ConfirmPasscode (final assertion) | HTTPS SOAP |
+| **ThreatMetrix** | AssessDevicePlusEmailRisk, CheckDevice | Browser profiling + LexisNexis RDP |
+| **Oracle DB** | All endpoints | JDBC via JNDI `ipsWebDS` |
+
+---
+
+## L. Recommended Onboarding Order (Quick Reference)
+
+| Order | File | Time | Why |
+|---|---|---|---|
+| 1 | `ips.properties` | 5m | All URLs, credentials, env config |
+| 2 | `RemoteRestResource.java` | 5m | All 26 endpoints in one file |
+| 3 | `RemoteRequest.java` + `RemoteResponse.java` | 10m | Input/output contracts |
+| 4 | `RemoteProofingValidation.java` | 10m | What gets rejected before biz logic |
+| 5 | `RemoteProofingServiceImpl.verifyPhone()` | 20m | Most complex, most-called |
+| 6 | `RemoteSupportServiceImpl.checkPhoneVerified()` | 15m | Cross-server state problem |
+| 7 | `RemoteProofingServiceImpl.confirmPasscode()` | 15m | Success path endpoint |
+| 8 | `RemoteSupportServiceImpl.buildRemoteResponse()` | 10m | Response builder |
+| 9 | `RemoteUtilityServiceImpl` | 10m | Config & credential management |
+
+**Total:** ~1.5 hours for solid understanding
