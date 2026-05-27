@@ -1,0 +1,356 @@
+You uploaded the JSF [JavaServer Faces] layer files, but the DB-lockout supplier-selection fix should still be tested primarily in VerificationProviderServiceImpl and the new WeightedSupplierSelector. These three beans are still useful for IPS Web unit tests because they show how IPS Web calls into the provider service.
+
+Below are JUnit 5 tests you can start with.
+
+Required test dependencies
+
+Use these if not already present:
+
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <version>5.10.2</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.mockito</groupId>
+    <artifactId>mockito-junit-jupiter</artifactId>
+    <version>5.11.0</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>org.mockito</groupId>
+    <artifactId>mockito-inline</artifactId>
+    <version>5.2.0</version>
+    <scope>test</scope>
+</dependency>
+
+mockito-inline is needed because VerificationBean.determineVerificationMethod(...) uses static calls:
+
+FacesContext.getCurrentInstance()
+WebApplicationContextUtils.getWebApplicationContext(ctx)
+
+1. VerificationBeanTest.java
+
+This tests the IPS Web entry point that calls VerificationProviderService.
+
+package com.ips.bean;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import javax.faces.context.ExternalContext;
+import javax.faces.context.FacesContext;
+import javax.servlet.ServletContext;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.persistence.common.PersonVo;
+import com.ips.proofing.VerificationProviderService;
+class VerificationBeanTest {
+    @Test
+    void determineVerificationMethod_shouldCallProviderServiceAndReturnSelectedSupplier() {
+        TestableVerificationBean bean = new TestableVerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setSponsorUserId("test-sponsor-user-1");
+        personVo.setSponsor("Change of Address");
+        bean.sessionPersonVo = personVo;
+        RefOtpSupplier selectedSupplier = supplier(5L, "Equifax DIT SMFA");
+        VerificationProviderService verificationProviderService = mock(VerificationProviderService.class);
+        when(verificationProviderService.determineVerificationMethod(any(PersonVo.class)))
+            .thenReturn(selectedSupplier);
+        ServletContext servletContext = mock(ServletContext.class);
+        FacesContext facesContext = mock(FacesContext.class);
+        ExternalContext externalContext = mock(ExternalContext.class);
+        WebApplicationContext webApplicationContext = mock(WebApplicationContext.class);
+        when(facesContext.getExternalContext()).thenReturn(externalContext);
+        when(externalContext.getContext()).thenReturn(servletContext);
+        when(webApplicationContext.getBean(anyString(), eq(VerificationProviderService.class)))
+            .thenReturn(verificationProviderService);
+        try (
+            MockedStatic<FacesContext> facesContextStatic = mockStatic(FacesContext.class);
+            MockedStatic<WebApplicationContextUtils> webAppCtxStatic =
+                mockStatic(WebApplicationContextUtils.class)
+        ) {
+            facesContextStatic.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            webAppCtxStatic.when(() -> WebApplicationContextUtils.getWebApplicationContext(servletContext))
+                .thenReturn(webApplicationContext);
+            RefOtpSupplier actual = bean.callDetermineVerificationMethod(false);
+            assertNotNull(actual);
+            assertEquals(5L, actual.getOtpSupplierId());
+            assertEquals("Equifax DIT SMFA", actual.getOtpSupplierName());
+            assertFalse(personVo.isLexisNexisIndividualNotFound());
+            assertNull(bean.lastPage);
+            verify(verificationProviderService).determineVerificationMethod(personVo);
+        }
+    }
+    @Test
+    void determineVerificationMethod_shouldSetIndividualNotFoundFlag_whenRequested() {
+        TestableVerificationBean bean = new TestableVerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setSponsorUserId("test-sponsor-user-2");
+        bean.sessionPersonVo = personVo;
+        RefOtpSupplier selectedSupplier = supplier(4L, "Lexis Nexis OTP");
+        VerificationProviderService verificationProviderService = mock(VerificationProviderService.class);
+        when(verificationProviderService.determineVerificationMethod(any(PersonVo.class)))
+            .thenReturn(selectedSupplier);
+        ServletContext servletContext = mock(ServletContext.class);
+        FacesContext facesContext = mock(FacesContext.class);
+        ExternalContext externalContext = mock(ExternalContext.class);
+        WebApplicationContext webApplicationContext = mock(WebApplicationContext.class);
+        when(facesContext.getExternalContext()).thenReturn(externalContext);
+        when(externalContext.getContext()).thenReturn(servletContext);
+        when(webApplicationContext.getBean(anyString(), eq(VerificationProviderService.class)))
+            .thenReturn(verificationProviderService);
+        try (
+            MockedStatic<FacesContext> facesContextStatic = mockStatic(FacesContext.class);
+            MockedStatic<WebApplicationContextUtils> webAppCtxStatic =
+                mockStatic(WebApplicationContextUtils.class)
+        ) {
+            facesContextStatic.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            webAppCtxStatic.when(() -> WebApplicationContextUtils.getWebApplicationContext(servletContext))
+                .thenReturn(webApplicationContext);
+            RefOtpSupplier actual = bean.callDetermineVerificationMethod(true);
+            assertNotNull(actual);
+            assertTrue(personVo.isLexisNexisIndividualNotFound());
+            verify(verificationProviderService).determineVerificationMethod(personVo);
+        }
+    }
+    @Test
+    void determineVerificationMethod_shouldGoToSystemErrorPage_whenProviderReturnsNull() {
+        TestableVerificationBean bean = new TestableVerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setSponsorUserId("test-sponsor-user-3");
+        bean.sessionPersonVo = personVo;
+        VerificationProviderService verificationProviderService = mock(VerificationProviderService.class);
+        when(verificationProviderService.determineVerificationMethod(any(PersonVo.class)))
+            .thenReturn(null);
+        ServletContext servletContext = mock(ServletContext.class);
+        FacesContext facesContext = mock(FacesContext.class);
+        ExternalContext externalContext = mock(ExternalContext.class);
+        WebApplicationContext webApplicationContext = mock(WebApplicationContext.class);
+        when(facesContext.getExternalContext()).thenReturn(externalContext);
+        when(externalContext.getContext()).thenReturn(servletContext);
+        when(webApplicationContext.getBean(anyString(), eq(VerificationProviderService.class)))
+            .thenReturn(verificationProviderService);
+        try (
+            MockedStatic<FacesContext> facesContextStatic = mockStatic(FacesContext.class);
+            MockedStatic<WebApplicationContextUtils> webAppCtxStatic =
+                mockStatic(WebApplicationContextUtils.class)
+        ) {
+            facesContextStatic.when(FacesContext::getCurrentInstance).thenReturn(facesContext);
+            webAppCtxStatic.when(() -> WebApplicationContextUtils.getWebApplicationContext(servletContext))
+                .thenReturn(webApplicationContext);
+            RefOtpSupplier actual = bean.callDetermineVerificationMethod(false);
+            assertNull(actual);
+            assertNotNull(bean.lastPage);
+            assertTrue(bean.lastPage.toLowerCase().contains("error"));
+        }
+    }
+    @Test
+    void getLogInfoMapAsString_shouldReturnFormattedMapString() {
+        VerificationBean bean = new VerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.addLogInfoMapEntry("supplier", "Equifax");
+        personVo.addLogInfoMapEntry("decision", "FAIL");
+        String result = bean.getLogInfoMapAsString(personVo);
+        assertNotNull(result);
+        assertTrue(result.startsWith("{"));
+        assertTrue(result.endsWith("}"));
+        assertTrue(result.contains("supplier=Equifax"));
+        assertTrue(result.contains("decision=FAIL"));
+    }
+    @Test
+    void getLogInfoMapAsString_shouldReturnNull_whenMapIsEmpty() {
+        VerificationBean bean = new VerificationBean();
+        PersonVo personVo = new PersonVo();
+        assertNull(bean.getLogInfoMapAsString(personVo));
+    }
+    @Test
+    void formatPhoneNumber_shouldFormatTenDigitNumber() {
+        VerificationBean bean = new VerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setPhoneNumber("9165551212");
+        bean.setPersonVo(personVo);
+        assertEquals("(916) 555-1212", bean.formatPhoneNumber());
+    }
+    @Test
+    void formatPhoneNumber_shouldReturnOriginalValue_whenNotTenDigits() {
+        VerificationBean bean = new VerificationBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setPhoneNumber("12345");
+        bean.setPersonVo(personVo);
+        assertEquals("12345", bean.formatPhoneNumber());
+    }
+    private RefOtpSupplier supplier(long id, String name) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(id);
+        supplier.setOtpSupplierName(name);
+        return supplier;
+    }
+    private static class TestableVerificationBean extends VerificationBean {
+        private PersonVo sessionPersonVo;
+        private String lastPage;
+        RefOtpSupplier callDetermineVerificationMethod(boolean individualNotFound) {
+            return determineVerificationMethod(individualNotFound);
+        }
+        @Override
+        public PersonVo getSessionPersonVo() {
+            return sessionPersonVo;
+        }
+        @Override
+        public void setSessionPersonVo(PersonVo personVo) {
+            this.sessionPersonVo = personVo;
+        }
+        @Override
+        public void goToPage(String page) {
+            this.lastPage = page;
+        }
+    }
+}
+
+If getSessionPersonVo(), setSessionPersonVo(...), or goToPage(...) are not overridable in your project, use a Mockito spy instead, or move the determineVerificationMethod(...) logic into a small injectable helper. That would be cleaner long term.
+
+2. VerificationUserInfoBeanTest.java
+
+This tests safe local logic from VerificationUserInfoBean without JSF startup.
+
+package com.ips.bean;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import com.ips.persistence.common.PersonVo;
+class VerificationUserInfoBeanTest {
+    @Test
+    void getPhoneNumber_shouldReturnExplicitPhoneNumber_whenSet() {
+        VerificationUserInfoBean bean = new VerificationUserInfoBean();
+        bean.setPhoneNumber("9165551212");
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumber_shouldRemoveNonNumericCharacters_whenPhoneLongerThanTenChars() {
+        VerificationUserInfoBean bean = new VerificationUserInfoBean();
+        bean.setPhoneNumber("(916) 555-1212");
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumber_shouldReadFromPersonVo_whenPhoneNumberFieldIsNull() {
+        TestableVerificationUserInfoBean bean = new TestableVerificationUserInfoBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("9165551212");
+        bean.setPersonVo(personVo);
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumberForUI_shouldReturnBlank_whenPhoneNumberIsEmpty() {
+        TestableVerificationUserInfoBean bean = new TestableVerificationUserInfoBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("");
+        bean.sessionPersonVo = personVo;
+        assertEquals("", bean.getPhoneNumberForUI());
+    }
+    @Test
+    void getPhoneNumberForUI_shouldFormatTenDigitNumber() {
+        TestableVerificationUserInfoBean bean = new TestableVerificationUserInfoBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("9165551212");
+        bean.sessionPersonVo = personVo;
+        assertEquals("(916) 555-1212", bean.getPhoneNumberForUI());
+    }
+    private static class TestableVerificationUserInfoBean extends VerificationUserInfoBean {
+        private PersonVo sessionPersonVo;
+        @Override
+        protected void getSavedPhone() {
+            // Avoid FacesContext/Spring lookup in unit test.
+        }
+        @Override
+        public PersonVo getSessionPersonVo() {
+            return sessionPersonVo;
+        }
+        @Override
+        public void setSessionPersonVo(PersonVo personVo) {
+            this.sessionPersonVo = personVo;
+        }
+    }
+}
+
+If getSavedPhone() is not protected in your actual code, this test will not compile because the method is protected in VerificationBean, but if your access differs, skip the getPhoneNumberForUI tests and keep getPhoneNumber tests only.
+
+3. VerificationUserInfoHmBeanTest.java
+
+Same idea for Hold Mail bean.
+
+package com.ips.bean;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import com.ips.persistence.common.PersonVo;
+class VerificationUserInfoHmBeanTest {
+    @Test
+    void getPhoneNumber_shouldReturnExplicitPhoneNumber_whenSet() {
+        VerificationUserInfoHmBean bean = new VerificationUserInfoHmBean();
+        bean.setPhoneNumber("9165551212");
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumber_shouldRemoveNonNumericCharacters_whenPhoneLongerThanTenChars() {
+        VerificationUserInfoHmBean bean = new VerificationUserInfoHmBean();
+        bean.setPhoneNumber("(916) 555-1212");
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumber_shouldReadFromPersonVo_whenPhoneNumberFieldIsNull() {
+        TestableVerificationUserInfoHmBean bean = new TestableVerificationUserInfoHmBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("9165551212");
+        bean.setPersonVo(personVo);
+        assertEquals("9165551212", bean.getPhoneNumber());
+    }
+    @Test
+    void getPhoneNumberForUI_shouldReturnBlank_whenPhoneNumberIsEmpty() {
+        TestableVerificationUserInfoHmBean bean = new TestableVerificationUserInfoHmBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("");
+        bean.sessionPersonVo = personVo;
+        assertEquals("", bean.getPhoneNumberForUI());
+    }
+    @Test
+    void getPhoneNumberForUI_shouldFormatTenDigitNumber() {
+        TestableVerificationUserInfoHmBean bean = new TestableVerificationUserInfoHmBean();
+        PersonVo personVo = new PersonVo();
+        personVo.setMobileNumber("9165551212");
+        bean.sessionPersonVo = personVo;
+        assertEquals("(916) 555-1212", bean.getPhoneNumberForUI());
+    }
+    private static class TestableVerificationUserInfoHmBean extends VerificationUserInfoHmBean {
+        private PersonVo sessionPersonVo;
+        @Override
+        protected void getSavedPhone() {
+            // Avoid FacesContext/Spring lookup in unit test.
+        }
+        @Override
+        public PersonVo getSessionPersonVo() {
+            return sessionPersonVo;
+        }
+        @Override
+        public void setSessionPersonVo(PersonVo personVo) {
+            this.sessionPersonVo = personVo;
+        }
+    }
+}
+
+What these tests give you
+
+These tests let you validate locally:
+
+IPS Web delegates supplier selection to VerificationProviderService
+Individual-not-found flag is passed into PersonVo
+Null supplier path routes to error page
+Phone formatting logic works in both normal and Hold Mail beans
+Log map formatting works
+
+But for the DB lockout fix, do not stop here. You still need the key tests in:
+
+WeightedSupplierSelectorTest
+VerificationProviderServiceImplTest
+
+because the uploaded JSF beans do not contain the actual weighted supplier selection algorithm.
