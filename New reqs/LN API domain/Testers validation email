@@ -1,0 +1,42 @@
+Don’t make the testers reverse-engineer the story. Give them:
+
+* what changed,
+* what environments are impacted,
+* what exact flows to run,
+* and what failures to watch for.
+
+Here’s a concise tester-facing email:
+
+Hi Team,
+
+As part of the LexisNexis domain transition effort, we updated the LexisNexis endpoint configuration from:
+
+* staging.ws.idms.lexisnexis.com
+    to
+* staging.ws.idms.lexisnexisrisk.com
+
+Please help validate the impacted IVS flows in the lower environment.
+
+Validation requested:
+
+* Verify normal LexisNexis-related proofing/verification flows continue to work successfully
+* Verify no SSL/certificate or connectivity errors occur
+* Verify no unexpected timeouts or HTTP errors are observed
+* Verify responses and downstream processing behave as expected
+
+Please specifically watch for errors such as:
+
+* SSLHandshakeException
+* PKIX / certificate path errors
+* Connection timeout / host unreachable
+* HTTP 4xx/5xx errors
+
+If any issues are observed, please capture:
+
+* screenshots
+* timestamps
+* request/transaction identifiers
+* application/server logs if available
+
+Thanks,
+Jagan
