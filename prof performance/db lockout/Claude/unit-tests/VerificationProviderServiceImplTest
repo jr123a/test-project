@@ -1,0 +1,688 @@
+cat > /mnt/user-data/outputs/VerificationProviderServiceImplTest.java << 'JAVAEOF'
+package com.ips.proofing;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.ips.entity.RefLoaLevel;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RefSponsor;
+import com.ips.entity.RpInfPvAttemptConfig;
+import com.ips.entity.RpOtpAttemptConfig;
+import com.ips.persistence.common.PersonVo;
+import com.ips.service.OtpAttemptConfigService;
+import com.ips.service.RefLoaLevelService;
+import com.ips.service.RefSponsorConfigurationService;
+import com.ips.service.RefSponsorDataService;
+import com.ips.service.RpInfPvAttemptConfigService;
+
+/**
+ * JUnit 5 / Mockito unit tests for the REFACTORED
+ * {@link VerificationProviderServiceImpl}.
+ *
+ * <h3>What changed in the refactored code</h3>
+ * <ul>
+ *   <li>{@code selectSupplier()} now delegates to
+ *       {@link WeightedSupplierSelector#select(List)} instead of
+ *       iterating on {@code attempts < totalAttempts}.</li>
+ *   <li>{@code updatePvAttempts()} is no longer called from
+ *       {@code selectSupplier()}.  No DB UPDATE, no row lock.</li>
+ *   <li>{@code OtpAttemptConfigService.callingOTP()} is never called
+ *       during normal supplier selection.</li>
+ *   <li>{@code OtpAttemptConfigService.reset()} is never called
+ *       during normal supplier selection.</li>
+ * </ul>
+ *
+ * <h3>Test design rationale</h3>
+ * <ul>
+ *   <li>All five {@code @Autowired} services are injected as Mockito mocks
+ *       via {@code @InjectMocks}. No Spring context, no Oracle, no WebSphere.</li>
+ *   <li>{@code CustomLogger} calls are fire-and-forget; Log4j degrades
+ *       gracefully without a config file in test scope.</li>
+ *   <li>{@code Utils.getEnvironmentWithoutDot()} is a static call inside
+ *       {@code selectSupplierForInf()}. We stub
+ *       {@code refSponsorConfigurationService.getConfigRecord()} to return
+ *       {@code null}, which skips the non-prod override block entirely —
+ *       the correct behaviour for all unit tests.</li>
+ *   <li>For every test that exercises the INF path,
+ *       {@code rpInfPvAttemptConfigService.getByProofingLevel()} must also
+ *       be stubbed because {@code isSwitchingInfSupplierConfigured()} is
+ *       called before the sorted query.</li>
+ * </ul>
+ *
+ * Naming convention: methodName_shouldExpectedBehavior_whenCondition()
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("VerificationProviderServiceImpl (post-WeightedSupplierSelector refactor)")
+class VerificationProviderServiceImplTest {
+
+    // ── Mocks (match exact @Autowired field names in the class) ────────────────
+    @Mock private RefLoaLevelService             refLoaLevelService;
+    @Mock private OtpAttemptConfigService        otpAttemptConfigService;
+    @Mock private RefSponsorDataService          refSponsorService;
+    @Mock private RpInfPvAttemptConfigService    rpInfPvAttemptConfigService;
+    @Mock private RefSponsorConfigurationService refSponsorConfigurationService;
+
+    // ── Class under test ───────────────────────────────────────────────────────
+    @InjectMocks
+    private VerificationProviderServiceImpl service;
+
+    // ── Shared fixtures ────────────────────────────────────────────────────────
+    /** LOA 1.5 code — {@code RefLoaLevel.LOA15_CODE = 1L} in production. */
+    private static final long LOA15_CODE  = 1L;
+    private static final long SPONSOR_COA = 32L;
+
+    private static final long LEXISNEXIS_ID = RefOtpSupplier.LEXISNEXIS_RDP_OTP_SUPPLIER_ID;
+    private static final long EQUIFAX_ID    = RefOtpSupplier.EQUIFAX_IDFS_OTP_SUPPLIER_ID;
+    private static final long SMFA_ID       = RefOtpSupplier.EQUIFAX_DIT_SMFA_SUPPLIER_ID;
+    private static final long EXPERIAN_ID   = RefOtpSupplier.EXPERIAN_CROSSCORE_SUPPLIER_ID;
+
+    private RefLoaLevel loaLevel;
+    private RefSponsor  sponsor;
+
+    @BeforeEach
+    void setUp() {
+        loaLevel = new RefLoaLevel();
+        loaLevel.setLoaCode(LOA15_CODE);
+
+        sponsor = new RefSponsor();
+        sponsor.setSponsorId(SPONSOR_COA);
+        sponsor.setSponsorName("Change of Address");
+    }
+
+    // ==========================================================================
+    // SECTION 1 — Public two-arg entry point (PersonVo only)
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("Public entry point — determineVerificationMethod(PersonVo)")
+    class PublicEntryPointTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnSupplier_whenValidConfigExists")
+        void determineVerificationMethod_shouldReturnSupplier_whenValidConfigExists() {
+            PersonVo pv = personVo();
+            when(refLoaLevelService.findByLevel(anyInt())).thenReturn(loaLevel);
+            when(refSponsorService.findBySponsorName("Change of Address")).thenReturn(sponsor);
+
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+            when(otpAttemptConfigService.getByProofingLevel(LOA15_CODE, SPONSOR_COA))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), eq(LOA15_CODE), eq(SPONSOR_COA)))
+                    .thenReturn(List.of(lnFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv);
+
+            assertNotNull(result);
+            assertEquals(LEXISNEXIS_ID, result.getOtpSupplierId());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldSetHasErrorOnPersonVo_whenNoSupplierReturned")
+        void determineVerificationMethod_shouldSetHasErrorOnPersonVo_whenNoSupplierReturned() {
+            PersonVo pv = personVo();
+            when(refLoaLevelService.findByLevel(anyInt())).thenReturn(loaLevel);
+            when(refSponsorService.findBySponsorName(anyString())).thenReturn(sponsor);
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(Collections.emptyList());
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(Collections.emptyList());
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv);
+
+            assertNull(result);
+            assertTrue(pv.isHasError(), "hasError must be true when no supplier is returned");
+            assertNotNull(pv.getErrorMessage(), "errorMessage must be set when no supplier is returned");
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldSetPhoneVerificationSupplierNameOnPersonVo")
+        void determineVerificationMethod_shouldSetPhoneVerificationSupplierNameOnPersonVo() {
+            PersonVo pv = personVo();
+            when(refLoaLevelService.findByLevel(anyInt())).thenReturn(loaLevel);
+            when(refSponsorService.findBySponsorName(anyString())).thenReturn(sponsor);
+
+            RpOtpAttemptConfig cfg = otpCfg(EQUIFAX_ID, "Equifax IDFS", 100);
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong())).thenReturn(List.of(cfg));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(cfg));
+
+            service.determineVerificationMethod(pv);
+
+            assertEquals("Equifax IDFS", pv.getPhoneVerificationSupplierName());
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 2 — THE KEY PROOF-OF-FIX: callingOTP and reset are never called
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("PROOF OF FIX — callingOTP() and reset() are never called")
+    class ProofOfFixTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldNeverCallCallingOtp_whenSingleSupplierAt100Percent")
+        void determineVerificationMethod_shouldNeverCallCallingOtp_whenSingleSupplierAt100Percent()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            // The hot-row DB UPDATE must NEVER be called
+            verify(otpAttemptConfigService, never()).callingOTP(any());
+            verify(otpAttemptConfigService, never()).reset(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldNeverCallCallingOtp_whenSplitConfigured")
+        void determineVerificationMethod_shouldNeverCallCallingOtp_whenSplitConfigured()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig ln = otpCfg(LEXISNEXIS_ID, "LexisNexis", 60);
+            RpOtpAttemptConfig ef = otpCfg(EQUIFAX_ID,    "Equifax",    40);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(ln, ef));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(ln, ef));
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            verify(otpAttemptConfigService, never()).callingOTP(any());
+            verify(otpAttemptConfigService, never()).reset(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldNeverCallCallingOtp_across10ConsecutiveCalls")
+        void determineVerificationMethod_shouldNeverCallCallingOtp_across10ConsecutiveCalls()
+                throws Exception {
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+
+            for (int i = 0; i < 10; i++) {
+                service.determineVerificationMethod(personVo(), loaLevel, sponsor);
+            }
+
+            verify(otpAttemptConfigService, never()).callingOTP(any());
+            verify(otpAttemptConfigService, never()).reset(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldNeverCallInfCallingOtp_whenInfPathTaken")
+        void determineVerificationMethod_shouldNeverCallInfCallingOtp_whenInfPathTaken()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setLexisNexisIndividualNotFound(true);
+
+            RpInfPvAttemptConfig efxInf = infCfg(EQUIFAX_ID, "Equifax", 100);
+            when(rpInfPvAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(rpInfPvAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(refSponsorConfigurationService.getConfigRecord(anyInt(), eq("Test.Supplier.Options")))
+                    .thenReturn(null);
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            verify(rpInfPvAttemptConfigService, never()).callingOTP(any());
+            verify(rpInfPvAttemptConfigService, never()).reset(anyLong(), anyLong());
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 3 — Supplier returned correctly for all standard configurations
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("Correct supplier is returned for standard configurations")
+    class SupplierSelectionCorrectnessTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnLexisNexis_whenOnlyLexisNexisConfigured")
+        void determineVerificationMethod_shouldReturnLexisNexis_whenOnlyLexisNexisConfigured()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNotNull(result);
+            assertEquals(LEXISNEXIS_ID, result.getOtpSupplierId());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnEquifaxIdfs_whenOnlyEquifaxIdfsConfigured")
+        void determineVerificationMethod_shouldReturnEquifaxIdfs_whenOnlyEquifaxIdfsConfigured()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig efFull = otpCfg(EQUIFAX_ID, "Equifax", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertEquals(EQUIFAX_ID, result.getOtpSupplierId());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnNull_whenSortedListIsEmpty")
+        void determineVerificationMethod_shouldReturnNull_whenSortedListIsEmpty() throws Exception {
+            PersonVo pv = personVo();
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(Collections.emptyList());
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(Collections.emptyList());
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNull(result);
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnNull_whenSortedListIsNull")
+        void determineVerificationMethod_shouldReturnNull_whenSortedListIsNull() throws Exception {
+            PersonVo pv = personVo();
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(Collections.emptyList());
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(null);
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNull(result);
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnAValidSupplier_whenSplitConfigured60_40")
+        void determineVerificationMethod_shouldReturnAValidSupplier_whenSplitConfigured60_40()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig ln = otpCfg(LEXISNEXIS_ID, "LexisNexis", 60);
+            RpOtpAttemptConfig ef = otpCfg(EQUIFAX_ID,    "Equifax",    40);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(ln, ef));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(ln, ef));
+
+            // Run 10 times — must always get one of the two valid suppliers
+            for (int i = 0; i < 10; i++) {
+                RefOtpSupplier result = service.determineVerificationMethod(personVo(), loaLevel, sponsor);
+                assertNotNull(result);
+                assertTrue(result.getOtpSupplierId() == LEXISNEXIS_ID ||
+                           result.getOtpSupplierId() == EQUIFAX_ID,
+                        "Unexpected supplier: " + result.getOtpSupplierId());
+            }
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 4 — Excluded supplier (failover path)
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("Excluded supplier — failover scenarios")
+    class ExcludedSupplierTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldExcludeLexisNexis_whenPassedAsExcludedSupplierId")
+        void determineVerificationMethod_shouldExcludeLexisNexis_whenPassedAsExcludedSupplierId()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig efFull = otpCfg(EQUIFAX_ID, "Equifax", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(
+                    pv, loaLevel, sponsor, LEXISNEXIS_ID);
+
+            assertNotNull(result);
+            assertEquals(EQUIFAX_ID, result.getOtpSupplierId());
+
+            // Verify LexisNexis ID was removed before calling the sorted query
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            verify(otpAttemptConfigService).getByProofingLevelSorted(
+                    captor.capture(), anyLong(), anyLong());
+            assertFalse(captor.getValue().contains(LEXISNEXIS_ID),
+                    "LexisNexis must be removed from supplier ID list when excluded");
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldExcludeEquifax_whenPassedAsExcludedSupplierId")
+        void determineVerificationMethod_shouldExcludeEquifax_whenPassedAsExcludedSupplierId()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(
+                    pv, loaLevel, sponsor, EQUIFAX_ID);
+
+            assertNotNull(result);
+            assertEquals(LEXISNEXIS_ID, result.getOtpSupplierId());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldPassAllFourIds_whenExcludedSupplierIdIsZero")
+        void determineVerificationMethod_shouldPassAllFourIds_whenExcludedSupplierIdIsZero()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig lnFull = otpCfg(LEXISNEXIS_ID, "LexisNexis", 100);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(lnFull));
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor, 0L);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            verify(otpAttemptConfigService).getByProofingLevelSorted(
+                    captor.capture(), anyLong(), anyLong());
+
+            List<Long> ids = captor.getValue();
+            assertTrue(ids.contains(LEXISNEXIS_ID), "LexisNexis must be in the list when excludedId=0");
+            assertTrue(ids.contains(EQUIFAX_ID),    "Equifax must be in the list when excludedId=0");
+            assertTrue(ids.contains(SMFA_ID),       "EquifaxSMFA must be in the list when excludedId=0");
+            assertTrue(ids.contains(EXPERIAN_ID),   "Experian must be in the list when excludedId=0");
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 5 — INF path (LexisNexis IndividualNotFound)
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("INF path — LexisNexis IndividualNotFound")
+    class InfPathTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldUseInfService_whenLexisNexisIndividualNotFound")
+        void determineVerificationMethod_shouldUseInfService_whenLexisNexisIndividualNotFound()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setLexisNexisIndividualNotFound(true);
+
+            RpInfPvAttemptConfig efxInf = infCfg(EQUIFAX_ID, "Equifax", 100);
+
+            when(rpInfPvAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(rpInfPvAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(refSponsorConfigurationService.getConfigRecord(anyInt(), eq("Test.Supplier.Options")))
+                    .thenReturn(null);
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNotNull(result);
+            // Standard OTP service must NOT be called when on INF path
+            verify(otpAttemptConfigService, never()).getByProofingLevelSorted(
+                    anyList(), anyLong(), anyLong());
+            // INF service MUST be called
+            verify(rpInfPvAttemptConfigService).getByProofingLevelSorted(
+                    anyList(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldExcludeLexisNexisFromInfQuery_whenIndividualNotFound")
+        void determineVerificationMethod_shouldExcludeLexisNexisFromInfQuery_whenIndividualNotFound()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setLexisNexisIndividualNotFound(true);
+
+            RpInfPvAttemptConfig efxInf = infCfg(EQUIFAX_ID, "Equifax", 100);
+
+            // isSwitchingInfSupplierConfigured() reads getByProofingLevel first
+            when(rpInfPvAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(rpInfPvAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(refSponsorConfigurationService.getConfigRecord(anyInt(), anyString())).thenReturn(null);
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            verify(rpInfPvAttemptConfigService).getByProofingLevelSorted(
+                    captor.capture(), anyLong(), anyLong());
+            assertFalse(captor.getValue().contains(LEXISNEXIS_ID),
+                    "LexisNexis must be excluded from INF query when individualNotFound=true");
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 6 — CNF path (Experian CustomerNotOnFile)
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("CNF path — Experian CustomerNotOnFile")
+    class CnfPathTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnNull_whenCnfSetAndSelectedIsExperianPhone")
+        void determineVerificationMethod_shouldReturnNull_whenCnfSetAndSelectedIsExperianPhone()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setExperianCustomerNotOnFile(true);
+
+            // Experian-only config, with isExperianPhone=true on the supplier
+            RpInfPvAttemptConfig expInf = infCfg(EXPERIAN_ID, "Experian", 100);
+            expInf.getRefOtpSupplier().setExperianPhone(true);
+
+            when(rpInfPvAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(expInf));
+            when(rpInfPvAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(expInf));
+            when(refSponsorConfigurationService.getConfigRecord(anyInt(), anyString())).thenReturn(null);
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNull(result,
+                    "Must return null when CNF is set and selected supplier has isExperianPhone=true");
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldExcludeExperian_fromInfQuery_whenCnfIsSet")
+        void determineVerificationMethod_shouldExcludeExperian_fromInfQuery_whenCnfIsSet()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setExperianCustomerNotOnFile(true);
+
+            RpInfPvAttemptConfig efxInf = infCfg(EQUIFAX_ID, "Equifax", 60);
+
+            when(rpInfPvAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(rpInfPvAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efxInf));
+            when(refSponsorConfigurationService.getConfigRecord(anyInt(), anyString())).thenReturn(null);
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            verify(rpInfPvAttemptConfigService).getByProofingLevelSorted(
+                    captor.capture(), anyLong(), anyLong());
+            assertFalse(captor.getValue().contains(EXPERIAN_ID),
+                    "Experian must be excluded from INF query when customerNotOnFile=true");
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 7 — Experian error response (non-INF path)
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("Experian error response — switching vs single-supplier")
+    class ExperianErrorTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldReturnNull_whenExperianErrorAndSingleSupplier")
+        void determineVerificationMethod_shouldReturnNull_whenExperianErrorAndSingleSupplier()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setExperianErrorResponse(true);
+
+            // 100% Experian → isSwitchingConfigured=false → return null immediately
+            RpOtpAttemptConfig expFull = otpCfg(EXPERIAN_ID, "Experian", 100);
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(expFull));
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNull(result);
+            // Sorted query must not be reached
+            verify(otpAttemptConfigService, never()).getByProofingLevelSorted(
+                    anyList(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldExcludeExperian_andReturnLexisNexis_whenSwitchingConfigured")
+        void determineVerificationMethod_shouldExcludeExperian_andReturnLexisNexis_whenSwitchingConfigured()
+                throws Exception {
+            PersonVo pv = personVo();
+            pv.setExperianErrorResponse(true);
+
+            RpOtpAttemptConfig ln  = otpCfg(LEXISNEXIS_ID, "LexisNexis", 60);
+            RpOtpAttemptConfig exp = otpCfg(EXPERIAN_ID,   "Experian",   40);
+
+            // isSwitchingConfigured sees 60+40 (no 100) → returns true
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(ln, exp));
+            // After removing Experian, only LexisNexis is queried
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(ln));
+
+            RefOtpSupplier result = service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            assertNotNull(result);
+            assertEquals(LEXISNEXIS_ID, result.getOtpSupplierId());
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            verify(otpAttemptConfigService).getByProofingLevelSorted(
+                    captor.capture(), anyLong(), anyLong());
+            assertFalse(captor.getValue().contains(EXPERIAN_ID),
+                    "Experian must be excluded from query when experianErrorResponse=true");
+        }
+    }
+
+    // ==========================================================================
+    // SECTION 8 — isSwitchingConfigured boundary conditions
+    // ==========================================================================
+
+    @Nested
+    @DisplayName("isSwitchingConfigured() — 100% boundary")
+    class SwitchingConfiguredBoundaryTests {
+
+        @Test
+        @DisplayName("determineVerificationMethod_shouldNotCallCallingOtp_whenExactly100PercentOnOneSupplier")
+        void determineVerificationMethod_shouldNotCallCallingOtp_whenExactly100PercentOnOneSupplier()
+                throws Exception {
+            PersonVo pv = personVo();
+            RpOtpAttemptConfig efFull = otpCfg(EQUIFAX_ID, "Equifax", 100);
+            RpOtpAttemptConfig lnZero = otpCfg(LEXISNEXIS_ID, "LexisNexis", 0);
+
+            when(otpAttemptConfigService.getByProofingLevel(anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull, lnZero));
+            when(otpAttemptConfigService.getByProofingLevelSorted(anyList(), anyLong(), anyLong()))
+                    .thenReturn(List.of(efFull));
+
+            service.determineVerificationMethod(pv, loaLevel, sponsor);
+
+            verify(otpAttemptConfigService, never()).callingOTP(any());
+        }
+    }
+
+    // ==========================================================================
+    // Shared fixture helpers
+    // ==========================================================================
+
+    /**
+     * Builds a minimal {@link PersonVo} in a normal (non-INF, non-CNF, non-error) state.
+     */
+    private PersonVo personVo() {
+        PersonVo pv = new PersonVo();
+        pv.setProofingLevelSought(1);   // LOA 1.5 → 1
+        pv.setSponsor("Change of Address");
+        pv.setSponsorId(SPONSOR_COA);
+        pv.setSponsorUserId("testUserId");
+        // All flags default to false — normal happy path
+        return pv;
+    }
+
+    /**
+     * Builds a minimal {@link RpOtpAttemptConfig} for the standard OTP path.
+     * {@code attempts} is intentionally set to 0 because it must no longer affect selection.
+     */
+    static RpOtpAttemptConfig otpCfg(long supplierId, String supplierName, int totalAttempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+
+        RpOtpAttemptConfig cfg = new RpOtpAttemptConfig();
+        cfg.setRefOtpSupplier(supplier);
+        cfg.setTotalAttempts(totalAttempts);
+        cfg.setAttempts(0);   // must be irrelevant after refactor
+        return cfg;
+    }
+
+    /**
+     * Builds a minimal {@link RpInfPvAttemptConfig} for the INF / CNF path.
+     */
+    static RpInfPvAttemptConfig infCfg(long supplierId, String supplierName, int totalAttempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+
+        RpInfPvAttemptConfig cfg = new RpInfPvAttemptConfig();
+        cfg.setRefOtpSupplier(supplier);
+        cfg.setTotalAttempts(totalAttempts);
+        cfg.setAttempts(0);
+        return cfg;
+    }
+}
+JAVAEOF
+echo "VerificationProviderServiceImplTest.java written"
