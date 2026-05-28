@@ -1,0 +1,492 @@
+cat > /mnt/user-data/outputs/WeightedSupplierSelectorTest.java << 'JAVAEOF'
+package com.ips.proofing;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RpOtpAttemptConfig;
+
+/**
+ * JUnit 5 unit tests for {@link WeightedSupplierSelector}.
+ *
+ * <p>No Spring context, no WebSphere, no Oracle, no Mockito needed.
+ * {@link WeightedSupplierSelector} is pure Java; every test constructs
+ * objects directly and calls {@code select()} synchronously.
+ *
+ * <p>Supplier IDs used throughout match the constants declared in
+ * {@link RefOtpSupplier}:
+ * <ul>
+ *   <li>4L = LexisNexis RDP OTP (LEXISNEXIS_RDP_OTP_SUPPLIER_ID)</li>
+ *   <li>5L = Equifax IDFS OTP   (EQUIFAX_IDFS_OTP_SUPPLIER_ID)</li>
+ *   <li>6L = Experian CrossCore  (EXPERIAN_CROSSCORE_SUPPLIER_ID)</li>
+ *   <li>7L = Equifax DIT SMFA   (EQUIFAX_DIT_SMFA_SUPPLIER_ID)</li>
+ * </ul>
+ *
+ * <p>Statistical tolerance is ±3% on the expected percentage.
+ * 100 000 iterations give a standard deviation of ~0.15%, so ±3% is
+ * more than 20 standard deviations — effectively never flaky.
+ */
+@DisplayName("WeightedSupplierSelector")
+class WeightedSupplierSelectorTest {
+
+    // Supplier IDs that match the production RefOtpSupplier constants
+    private static final long LEXISNEXIS_ID = 4L;   // LEXISNEXIS_RDP_OTP_SUPPLIER_ID
+    private static final long EQUIFAX_ID    = 5L;   // EQUIFAX_IDFS_OTP_SUPPLIER_ID
+    private static final long EXPERIAN_ID   = 6L;   // EXPERIAN_CROSSCORE_SUPPLIER_ID
+    private static final long SMFA_ID       = 7L;   // EQUIFAX_DIT_SMFA_SUPPLIER_ID
+
+    private static final int  STAT_ITERATIONS = 100_000;
+    private static final double TOLERANCE_PCT = 3.0;   // ±3 percentage points
+
+    private WeightedSupplierSelector selector;
+
+    @BeforeEach
+    void setUp() {
+        selector = new WeightedSupplierSelector();
+    }
+
+    // =========================================================================
+    // SECTION 1 — Null / empty / degenerate inputs
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Null / empty / degenerate inputs")
+    class NullAndEmptyInputTests {
+
+        @Test
+        @DisplayName("select_shouldReturnNull_whenListIsNull")
+        void select_shouldReturnNull_whenListIsNull() {
+            assertNull(selector.select(null));
+        }
+
+        @Test
+        @DisplayName("select_shouldReturnNull_whenListIsEmpty")
+        void select_shouldReturnNull_whenListIsEmpty() {
+            assertNull(selector.select(Collections.emptyList()));
+        }
+
+        @Test
+        @DisplayName("select_shouldReturnNull_whenListContainsOnlyNullElements")
+        void select_shouldReturnNull_whenListContainsOnlyNullElements() {
+            List<RpOtpAttemptConfig> configs = Arrays.asList(null, null);
+            assertNull(selector.select(configs));
+        }
+
+        @Test
+        @DisplayName("select_shouldReturnNull_whenAllSuppliersHaveTotalAttemptsOfZero")
+        void select_shouldReturnNull_whenAllSuppliersHaveTotalAttemptsOfZero() {
+            List<RpOtpAttemptConfig> configs = Arrays.asList(
+                    config(LEXISNEXIS_ID, "LexisNexis", 0),
+                    config(EQUIFAX_ID,    "Equifax",    0)
+            );
+            assertNull(selector.select(configs));
+        }
+    }
+
+    // =========================================================================
+    // SECTION 2 — Zero-percent / disabled suppliers are never selected
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Zero-totalAttempts suppliers are ignored")
+    class ZeroWeightSupplierTests {
+
+        @Test
+        @DisplayName("select_shouldIgnoreZeroPercentSupplier_whenOneActiveSupplierExists")
+        void select_shouldIgnoreZeroPercentSupplier_whenOneActiveSupplierExists() {
+            RpOtpAttemptConfig zero    = config(LEXISNEXIS_ID, "LexisNexis", 0);
+            RpOtpAttemptConfig hundred = config(EQUIFAX_ID,    "Equifax",  100);
+
+            // Run many times — zero-weight supplier must never appear
+            for (int i = 0; i < 1_000; i++) {
+                RpOtpAttemptConfig result = selector.select(Arrays.asList(zero, hundred));
+                assertNotNull(result, "Must return a supplier");
+                assertEquals(EQUIFAX_ID, result.getRefOtpSupplier().getOtpSupplierId(),
+                        "Zero-percent LexisNexis must never be selected");
+            }
+        }
+
+        @Test
+        @DisplayName("select_shouldIgnoreAllZeroPercentSuppliers_andSelectOnlyActive")
+        void select_shouldIgnoreAllZeroPercentSuppliers_andSelectOnlyActive() {
+            RpOtpAttemptConfig disabled1 = config(LEXISNEXIS_ID, "LexisNexis",  0);
+            RpOtpAttemptConfig active     = config(EQUIFAX_ID,    "Equifax",    60);
+            RpOtpAttemptConfig disabled2  = config(EXPERIAN_ID,   "Experian",    0);
+
+            for (int i = 0; i < 1_000; i++) {
+                RpOtpAttemptConfig result = selector.select(
+                        Arrays.asList(disabled1, active, disabled2));
+                assertNotNull(result);
+                assertEquals(EQUIFAX_ID, result.getRefOtpSupplier().getOtpSupplierId());
+            }
+        }
+
+        @Test
+        @DisplayName("select_shouldNeverSelectZeroWeightSupplier_inHighVolumeRun")
+        void select_shouldNeverSelectZeroWeightSupplier_inHighVolumeRun() {
+            RpOtpAttemptConfig zero    = config(LEXISNEXIS_ID, "LexisNexis",  0);
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    50);
+            RpOtpAttemptConfig experian = config(EXPERIAN_ID,  "Experian",   50);
+
+            List<RpOtpAttemptConfig> list = Arrays.asList(zero, equifax, experian);
+
+            for (int i = 0; i < STAT_ITERATIONS; i++) {
+                RpOtpAttemptConfig result = selector.select(list);
+                assertNotNull(result);
+                assertNotEquals(LEXISNEXIS_ID, result.getRefOtpSupplier().getOtpSupplierId(),
+                        "LexisNexis (totalAttempts=0) was selected at iteration " + i);
+            }
+        }
+    }
+
+    // =========================================================================
+    // SECTION 3 — Single active supplier (100% config)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Single active supplier — 100% configuration")
+    class SingleSupplierTests {
+
+        @Test
+        @DisplayName("select_shouldAlwaysReturnSameSupplier_whenOnlyOneSupplierHasWeight")
+        void select_shouldAlwaysReturnSameSupplier_whenOnlyOneSupplierHasWeight() {
+            RpOtpAttemptConfig only = config(EQUIFAX_ID, "Equifax", 100);
+
+            for (int i = 0; i < 1_000; i++) {
+                RpOtpAttemptConfig result = selector.select(Collections.singletonList(only));
+                assertNotNull(result);
+                assertEquals(EQUIFAX_ID, result.getRefOtpSupplier().getOtpSupplierId());
+            }
+        }
+
+        @Test
+        @DisplayName("select_shouldReturnOnlyEligibleSupplier_whenOthersAreAtZero")
+        void select_shouldReturnOnlyEligibleSupplier_whenOthersAreAtZero() {
+            List<RpOtpAttemptConfig> list = Arrays.asList(
+                    config(LEXISNEXIS_ID, "LexisNexis",   0),
+                    config(EQUIFAX_ID,    "Equifax",     100),
+                    config(EXPERIAN_ID,   "Experian",      0)
+            );
+
+            for (int i = 0; i < 1_000; i++) {
+                RpOtpAttemptConfig result = selector.select(list);
+                assertNotNull(result);
+                assertEquals(EQUIFAX_ID, result.getRefOtpSupplier().getOtpSupplierId());
+            }
+        }
+
+        @Test
+        @DisplayName("select_shouldReturnLexisNexis_whenLexisNexisIsAt100Percent")
+        void select_shouldReturnLexisNexis_whenLexisNexisIsAt100Percent() {
+            RpOtpAttemptConfig only = config(LEXISNEXIS_ID, "LexisNexis", 100);
+            RpOtpAttemptConfig result = selector.select(Collections.singletonList(only));
+            assertNotNull(result);
+            assertEquals(LEXISNEXIS_ID, result.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+
+    // =========================================================================
+    // SECTION 4 — ATTEMPTS column is irrelevant to selection
+    // =========================================================================
+
+    @Nested
+    @DisplayName("ATTEMPTS column is irrelevant — only TOTAL_ATTEMPTS drives selection")
+    class AttemptsColumnIgnoredTests {
+
+        @Test
+        @DisplayName("select_shouldSelectEquifax_evenWhenEquifaxHasHighAttempts")
+        void select_shouldSelectEquifax_evenWhenEquifaxHasHighAttempts() {
+            // Old code: attempts >= totalAttempts would skip this supplier.
+            // New code: attempts column is completely ignored.
+            RpOtpAttemptConfig equifaxAtLimit = config(EQUIFAX_ID, "Equifax", 60, /*attempts=*/60);
+            RpOtpAttemptConfig lexisBelowLimit = config(LEXISNEXIS_ID, "LexisNexis", 40, /*attempts=*/5);
+
+            // With old logic, Equifax would never be selected (60 >= 60).
+            // With new logic, Equifax must be selected ~60% of the time.
+            int equifaxCount = 0;
+            for (int i = 0; i < STAT_ITERATIONS; i++) {
+                long id = selector.select(Arrays.asList(equifaxAtLimit, lexisBelowLimit))
+                        .getRefOtpSupplier().getOtpSupplierId();
+                if (id == EQUIFAX_ID) equifaxCount++;
+            }
+            double pct = equifaxCount * 100.0 / STAT_ITERATIONS;
+            assertTrue(pct >= 60.0 - TOLERANCE_PCT && pct <= 60.0 + TOLERANCE_PCT,
+                    "Equifax should be selected ~60% of the time regardless of attempts column; was " + pct + "%");
+        }
+
+        @Test
+        @DisplayName("select_shouldHonorWeights_evenWhenAllSuppliersHaveMaxAttempts999")
+        void select_shouldHonorWeights_evenWhenAllSuppliersHaveMaxAttempts999() {
+            // attempts=999 would have caused the old counter-based logic to reset every time
+            RpOtpAttemptConfig equifax  = config(EQUIFAX_ID,    "Equifax",    60, 999);
+            RpOtpAttemptConfig lexis    = config(LEXISNEXIS_ID, "LexisNexis", 40, 999);
+
+            int equifaxCount = 0;
+            for (int i = 0; i < STAT_ITERATIONS; i++) {
+                long id = selector.select(Arrays.asList(equifax, lexis))
+                        .getRefOtpSupplier().getOtpSupplierId();
+                if (id == EQUIFAX_ID) equifaxCount++;
+            }
+            double pct = equifaxCount * 100.0 / STAT_ITERATIONS;
+            assertTrue(pct >= 60.0 - TOLERANCE_PCT && pct <= 60.0 + TOLERANCE_PCT,
+                    "Equifax should be ~60% even at attempts=999; was " + pct + "%");
+        }
+    }
+
+    // =========================================================================
+    // SECTION 5 — Statistical distribution tests (60/40 split)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("60/40 split — statistical distribution")
+    class SixtyFortySplitTests {
+
+        @Test
+        @DisplayName("select_shouldApproximatelyHonor60_40Split_overLargeNumberOfCalls")
+        void select_shouldApproximatelyHonor60_40Split_overLargeNumberOfCalls() {
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    60);
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis", 40);
+
+            Map<Long, Integer> counts = runMany(Arrays.asList(equifax, lexis), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    60.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 40.0, "LexisNexis");
+        }
+
+        @Test
+        @DisplayName("select_shouldReturn60PercentEquifax_and40PercentLexisNexis_reversed")
+        void select_shouldReturn60PercentEquifax_and40PercentLexisNexis_reversed() {
+            // Same weights, reversed order in list — result must be the same
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis", 40);
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    60);
+
+            Map<Long, Integer> counts = runMany(Arrays.asList(lexis, equifax), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    60.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 40.0, "LexisNexis");
+        }
+    }
+
+    // =========================================================================
+    // SECTION 6 — Statistical distribution tests (40/35/25 three-way split)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("40/35/25 three-way split — statistical distribution")
+    class ThreeWaySplitTests {
+
+        @Test
+        @DisplayName("select_shouldApproximatelyHonor40_35_25Split_overLargeNumberOfCalls")
+        void select_shouldApproximatelyHonor40_35_25Split_overLargeNumberOfCalls() {
+            RpOtpAttemptConfig equifax  = config(EQUIFAX_ID,    "Equifax",    40);
+            RpOtpAttemptConfig lexis    = config(LEXISNEXIS_ID, "LexisNexis", 35);
+            RpOtpAttemptConfig experian = config(EXPERIAN_ID,   "Experian",   25);
+
+            Map<Long, Integer> counts = runMany(
+                    Arrays.asList(equifax, lexis, experian), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    40.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 35.0, "LexisNexis");
+            assertWithinTolerance(counts, EXPERIAN_ID,   25.0, "Experian");
+        }
+
+        @Test
+        @DisplayName("select_shouldNeverSelectDisabledSupplier_inThreeWayMixedConfig")
+        void select_shouldNeverSelectDisabledSupplier_inThreeWayMixedConfig() {
+            RpOtpAttemptConfig equifax   = config(EQUIFAX_ID,    "Equifax",    60);
+            RpOtpAttemptConfig lexis     = config(LEXISNEXIS_ID, "LexisNexis",  0); // disabled
+            RpOtpAttemptConfig experian  = config(EXPERIAN_ID,   "Experian",   40);
+
+            Map<Long, Integer> counts = runMany(
+                    Arrays.asList(equifax, lexis, experian), STAT_ITERATIONS);
+
+            assertEquals(0, counts.getOrDefault(LEXISNEXIS_ID, 0),
+                    "Disabled supplier (totalAttempts=0) must have zero selections");
+            assertWithinTolerance(counts, EQUIFAX_ID,  60.0, "Equifax");
+            assertWithinTolerance(counts, EXPERIAN_ID, 40.0, "Experian");
+        }
+    }
+
+    // =========================================================================
+    // SECTION 7 — Weights that do not sum to 100
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Weights do not have to sum to 100")
+    class ArbitraryWeightTests {
+
+        @Test
+        @DisplayName("select_shouldWorkCorrectly_whenWeightsSumToLessThan100")
+        void select_shouldWorkCorrectly_whenWeightsSumToLessThan100() {
+            // 6 + 4 = 10, not 100 — proportional selection still gives 60/40
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    6);
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis", 4);
+
+            Map<Long, Integer> counts = runMany(Arrays.asList(equifax, lexis), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    60.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 40.0, "LexisNexis");
+        }
+
+        @Test
+        @DisplayName("select_shouldWorkCorrectly_whenWeightsSumToMoreThan100")
+        void select_shouldWorkCorrectly_whenWeightsSumToMoreThan100() {
+            // 120 + 80 = 200, proportional 60/40
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    120);
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis",  80);
+
+            Map<Long, Integer> counts = runMany(Arrays.asList(equifax, lexis), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    60.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 40.0, "LexisNexis");
+        }
+
+        @Test
+        @DisplayName("select_shouldWorkCorrectly_withEqualWeights50_50")
+        void select_shouldWorkCorrectly_withEqualWeights50_50() {
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    50);
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis", 50);
+
+            Map<Long, Integer> counts = runMany(Arrays.asList(equifax, lexis), STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    50.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 50.0, "LexisNexis");
+        }
+    }
+
+    // =========================================================================
+    // SECTION 8 — All four production suppliers
+    // =========================================================================
+
+    @Nested
+    @DisplayName("All four production suppliers")
+    class AllFourSuppliersTests {
+
+        @Test
+        @DisplayName("select_shouldDistributeAcrossAllFourSuppliers_givenEqualWeights")
+        void select_shouldDistributeAcrossAllFourSuppliers_givenEqualWeights() {
+            List<RpOtpAttemptConfig> list = Arrays.asList(
+                    config(EQUIFAX_ID,    "Equifax",    25),
+                    config(LEXISNEXIS_ID, "LexisNexis", 25),
+                    config(EXPERIAN_ID,   "Experian",   25),
+                    config(SMFA_ID,       "EquifaxSMFA",25)
+            );
+
+            Map<Long, Integer> counts = runMany(list, STAT_ITERATIONS);
+
+            assertWithinTolerance(counts, EQUIFAX_ID,    25.0, "Equifax");
+            assertWithinTolerance(counts, LEXISNEXIS_ID, 25.0, "LexisNexis");
+            assertWithinTolerance(counts, EXPERIAN_ID,   25.0, "Experian");
+            assertWithinTolerance(counts, SMFA_ID,       25.0, "EquifaxSMFA");
+        }
+    }
+
+    // =========================================================================
+    // SECTION 9 — Thread safety (light concurrency smoke test)
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Thread safety — concurrent access")
+    class ThreadSafetyTests {
+
+        @Test
+        @DisplayName("select_shouldNotThrow_whenCalledConcurrentlyFromMultipleThreads")
+        void select_shouldNotThrow_whenCalledConcurrentlyFromMultipleThreads()
+                throws InterruptedException {
+            RpOtpAttemptConfig equifax = config(EQUIFAX_ID,    "Equifax",    60);
+            RpOtpAttemptConfig lexis   = config(LEXISNEXIS_ID, "LexisNexis", 40);
+            List<RpOtpAttemptConfig> list = Arrays.asList(equifax, lexis);
+
+            int threadCount = 20;
+            Thread[] threads = new Thread[threadCount];
+            Throwable[] errors = new Throwable[threadCount];
+
+            for (int i = 0; i < threadCount; i++) {
+                final int idx = i;
+                threads[i] = new Thread(() -> {
+                    try {
+                        for (int j = 0; j < 1_000; j++) {
+                            RpOtpAttemptConfig result = selector.select(list);
+                            assertNotNull(result);
+                        }
+                    } catch (Throwable t) {
+                        errors[idx] = t;
+                    }
+                });
+            }
+
+            for (Thread t : threads) t.start();
+            for (Thread t : threads) t.join(5_000);
+
+            for (int i = 0; i < threadCount; i++) {
+                assertNull(errors[i],
+                        "Thread " + i + " threw: " + (errors[i] != null ? errors[i].getMessage() : ""));
+            }
+        }
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    /** Run {@code selector.select()} {@code iterations} times, return count per supplierId. */
+    private Map<Long, Integer> runMany(List<RpOtpAttemptConfig> list, int iterations) {
+        Map<Long, Integer> counts = new HashMap<>();
+        for (int i = 0; i < iterations; i++) {
+            RpOtpAttemptConfig result = selector.select(list);
+            assertNotNull(result, "selector.select() must never return null for a non-empty valid list");
+            long id = result.getRefOtpSupplier().getOtpSupplierId();
+            counts.merge(id, 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    private void assertWithinTolerance(Map<Long, Integer> counts, long supplierId,
+                                       double expectedPct, String supplierName) {
+        int count = counts.getOrDefault(supplierId, 0);
+        double actualPct = count * 100.0 / STAT_ITERATIONS;
+        assertTrue(
+                actualPct >= expectedPct - TOLERANCE_PCT && actualPct <= expectedPct + TOLERANCE_PCT,
+                String.format("%s expected ~%.0f%% ± %.0f%%, but was %.2f%%",
+                        supplierName, expectedPct, TOLERANCE_PCT, actualPct));
+    }
+
+    /**
+     * Creates a minimal {@link RpOtpAttemptConfig} test fixture.
+     * The {@code attempts} column is set to 0 by default.
+     */
+    static RpOtpAttemptConfig config(long supplierId, String supplierName, int totalAttempts) {
+        return config(supplierId, supplierName, totalAttempts, 0);
+    }
+
+    /**
+     * Creates a minimal {@link RpOtpAttemptConfig} with an explicit {@code attempts} value.
+     * Used in tests that verify the attempts column is completely ignored.
+     */
+    static RpOtpAttemptConfig config(long supplierId, String supplierName,
+                                     int totalAttempts, int attempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+
+        RpOtpAttemptConfig cfg = new RpOtpAttemptConfig();
+        cfg.setRefOtpSupplier(supplier);
+        cfg.setTotalAttempts(totalAttempts);
+        cfg.setAttempts(attempts);  // should have zero effect on selection after refactor
+        return cfg;
+    }
+}
+JAVAEOF
+echo "WeightedSupplierSelectorTest.java written"
