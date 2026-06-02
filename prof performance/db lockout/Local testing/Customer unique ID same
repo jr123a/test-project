@@ -1,0 +1,108 @@
+Good catch. No, the way I wrote it, the collection-level pre-request script would generate a new customerUniqueID before every request, which would break the COA flow.
+
+You need:
+
+Iteration 1
+------------
+CheckDevice      -> customerUniqueID = 1001
+VerifyPhone      -> customerUniqueID = 1001
+ConfirmPasscode  -> customerUniqueID = 1001
+Iteration 2
+------------
+CheckDevice      -> customerUniqueID = 1002
+VerifyPhone      -> customerUniqueID = 1002
+ConfirmPasscode  -> customerUniqueID = 1002
+
+NOT:
+
+CheckDevice      -> 1001
+VerifyPhone      -> 1002
+ConfirmPasscode  -> 1003
+
+That would fail because RemoteRest correlates the transaction using the same customer identifier.
+
+Better approach
+
+Generate the ID only once at the beginning of each collection run.
+
+Option 1 (Recommended)
+
+Put this only in the CheckDevice pre-request script:
+
+const id =
+    Date.now().toString() +
+    "_" +
+    Math.floor(Math.random() * 100000);
+pm.environment.set("customerUniqueID", id);
+
+Then:
+
+CheckDevice
+VerifyPhone
+ConfirmPasscode
+ValidateLink
+
+all use:
+
+"customerUniqueID": "{{customerUniqueID}}"
+
+and share the same value.
+
+When the Collection Runner starts the next iteration, CheckDevice generates a new ID and the entire flow uses that new ID.
+
+⸻
+
+Even better for debugging
+
+Add this test script to CheckDevice:
+
+console.log(
+    "Iteration CustomerUniqueID:",
+    pm.environment.get("customerUniqueID")
+);
+
+Now you can see exactly which transaction belongs to which iteration.
+
+⸻
+
+Another thing to verify
+
+From the COA flow documents we reviewed months ago, some downstream requests may require values returned by previous responses.
+
+Examples:
+
+personId
+verificationId
+sessionId
+passcodeId
+
+If your VerifyPhone or ConfirmPasscode endpoints require one of those values, you’ll need to capture them from the previous response:
+
+const response = pm.response.json();
+pm.environment.set(
+    "personId",
+    response.personId
+);
+
+and then use:
+
+{
+  "personId": "{{personId}}"
+}
+
+in the next request.
+
+Before building the automation, I would run:
+
+CheckDevice
+VerifyPhone
+ConfirmPasscode
+
+manually once and inspect:
+
+* request body
+* response body
+
+to see what correlation fields are actually required besides customerUniqueID.
+
+That will save you a lot of frustration when you automate 100 iterations.
