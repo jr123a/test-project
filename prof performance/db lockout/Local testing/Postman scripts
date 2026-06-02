@@ -1,0 +1,217 @@
+The uploaded Postman/docs are not available anymore in this chat session, so I can’t re-open the exact files. Based on the earlier COA RemoteRest collection and walkthrough, use this flow.
+
+COA RemoteRest validation flow
+
+0. Before running Postman
+
+Run this query and capture the current ATTEMPTS values:
+
+SELECT
+    a.SPONSOR_ID,
+    r.SPONSOR_NAME,
+    a.PROOFING_LEVEL,
+    a.KBA_SUPPLIER_ID,
+    s.KBA_SUPPLIER_NAME,
+    a.TOTAL_ATTEMPTS,
+    a.ATTEMPTS,
+    a.UPDATE_DATE
+FROM IPS_OWN.RP_KBA_ATTEMPTS a
+JOIN IPS_OWN.REF_SPONSOR r
+    ON r.SPONSOR_ID = a.SPONSOR_ID
+JOIN IPS_OWN.REF_KBA_SUPPLIER s
+    ON s.KBA_SUPPLIER_ID = a.KBA_SUPPLIER_ID
+WHERE a.SPONSOR_ID = 32
+  AND a.PROOFING_LEVEL = 1
+ORDER BY a.KBA_SUPPLIER_ID;
+
+Expected after your fix:
+
+ATTEMPTS should not change after transactions.
+
+⸻
+
+1. Postman environment variables
+
+Create these variables:
+
+local-ips = http://localhost:<your-port>
+jagan-cell = <your test mobile number>
+customerUniqueID = auto-generated
+firstName = Linda
+lastName = DavisUAT
+emailAddress = medium_confidence@usps.gov
+streetAddress1 = 42981 Bonnieblue Ct
+city = Ashburn
+state = VA
+zipCode = 20147
+
+Add this pre-request script at the collection level:
+
+pm.environment.set("customerUniqueID", Date.now().toString());
+
+⸻
+
+2. Request 1 - CheckDevice
+
+POST {{local-ips}}/RemoteRest/resources/remote/CheckDevice
+
+Body:
+
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "emailAddress": "{{emailAddress}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+  "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+  "trueIPAddress": "127.0.0.1"
+}
+
+Expected: successful response or “additional proofing required.”
+
+⸻
+
+3. Request 2 - VerifyPhone
+
+POST {{local-ips}}/RemoteRest/resources/remote/VerifyPhone
+
+Body:
+
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}"
+}
+
+Expected: phone verification path starts. Check app logs for selected supplier.
+
+⸻
+
+4. Request 3A - ConfirmPasscode, if OTP supplier selected
+
+POST {{local-ips}}/RemoteRest/resources/remote/ConfirmPasscode
+
+Body:
+
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "passcode": "1111"
+}
+
+⸻
+
+5. Request 3B - ValidateLink, if SMFA supplier selected
+
+POST {{local-ips}}/RemoteRest/resources/remote/ValidateLink
+
+Body:
+
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "mobilePhone": "{{jagan-cell}}"
+}
+
+⸻
+
+What to validate
+
+After running several iterations:
+
+1. RP_KBA_ATTEMPTS.ATTEMPTS did not change.
+2. Logs show selected supplier per transaction.
+3. Supplier selection roughly follows configured split.
+4. No DB blocking/timeouts occur.
+5. RemoteRest transaction flow still completes.
+
+For 60/40, do not expect exact split in 10 runs. Use at least 50-100 iterations.
+
+⸻
+
+Prompt for Postman AI
+
+Create a Postman collection runner setup for testing the USPS IVS RemoteRest COA flow locally.
+I need the collection to run multiple iterations with a unique customerUniqueID for each iteration.
+Environment variables:
+- local-ips
+- jagan-cell
+- customerUniqueID
+- firstName
+- lastName
+- emailAddress
+- streetAddress1
+- city
+- state
+- zipCode
+Collection-level pre-request script:
+Generate a unique customerUniqueID for each iteration using Date.now() plus iteration number.
+Requests to create:
+1. CheckDevice
+POST {{local-ips}}/RemoteRest/resources/remote/CheckDevice
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "emailAddress": "{{emailAddress}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+  "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+  "trueIPAddress": "127.0.0.1"
+}
+2. VerifyPhone
+POST {{local-ips}}/RemoteRest/resources/remote/VerifyPhone
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}"
+}
+3. ConfirmPasscode
+POST {{local-ips}}/RemoteRest/resources/remote/ConfirmPasscode
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "passcode": "1111"
+}
+4. ValidateLink
+POST {{local-ips}}/RemoteRest/resources/remote/ValidateLink
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "mobilePhone": "{{jagan-cell}}"
+}
+Add tests to each request:
+- Validate HTTP status is 200 or expected success status.
+- Log customerUniqueID.
+- Log response body.
+- Continue execution even if one request fails, so I can review failures after the run.
+Also add comments explaining when to use ConfirmPasscode versus ValidateLink depending on whether the selected supplier is OTP or SMFA.
+
+Use logs as the main supplier-selection validation point for now. DB validation is only to confirm ATTEMPTS stopped changing.
