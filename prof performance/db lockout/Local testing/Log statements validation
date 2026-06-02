@@ -1,0 +1,92 @@
+Yes, but I would be careful how you phrase it.
+
+If you tell them:
+
+Validation point = logs
+
+someone will immediately ask:
+
+What if logging is disabled?
+What if logs roll over?
+What if we need audit evidence?
+
+A better answer is:
+
+Primary validation = transaction-level supplier selection record
+Supporting validation = application logs
+
+The real question is: where does IPS currently persist or expose the selected supplier?
+
+Based on the code we reviewed, after determineVerificationMethod() returns a supplier, one of the following should happen:
+
+Selected supplier = Lexis
+or
+Selected supplier = Equifax
+or
+Selected supplier = Experian
+
+and then:
+
+* supplier-specific processing starts
+* supplier-specific response tables get populated
+* audit/event records get created
+
+So I would tell the testers:
+
+Option 1 (Best)
+
+Validate using a transaction-level record.
+
+Example:
+
+Person ID 12345
+→ Selected Supplier = Equifax
+
+Then run 100 transactions and aggregate.
+
+Option 2 (Good)
+
+Add a dedicated log statement:
+
+LOGGER.info(
+   "Supplier selected: sponsorId={}, personId={}, supplierId={}, supplierName={}",
+   sponsorId,
+   personId,
+   supplierId,
+   supplierName);
+
+Then testers can:
+
+Run 100 transactions
+Count Equifax selections
+Count Lexis selections
+Verify approximately 60/40
+
+What I would recommend
+
+For this story, add explicit logging.
+
+Something like:
+
+CustomLogger.info(
+   "Weighted supplier selected. SponsorId=" + sponsorId
+   + ", PersonId=" + personId
+   + ", SupplierId=" + supplierId
+   + ", SupplierName=" + supplierName
+);
+
+Then your validation becomes:
+
+1. ATTEMPTS column does not change.
+2. No DB lock contention occurs.
+3. Logs show supplier selected for each transaction.
+4. Aggregate logs across 100+ transactions.
+5. Distribution is approximately 60/40.
+
+That’s much easier for testers than trying to reverse-engineer supplier-specific database tables every time.
+
+One thing I would ask the team tomorrow:
+
+Do we already persist the selected supplier in RP_EVENT or another audit table?
+
+If the answer is yes, then use that table as the official validation point and use logs only as supplemental evidence. If not, then adding a supplier-selection log entry is probably the quickest validation mechanism.
