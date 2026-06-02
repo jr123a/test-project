@@ -1,0 +1,115 @@
+Use this updated Postman AI prompt:
+
+Create a Postman collection runner setup for testing the USPS IVS RemoteRest COA flow locally.
+Important requirement:
+The same customerUniqueID must be used across the full flow within one iteration:
+CheckDevice -> VerifyPhone -> ConfirmPasscode and/or ValidateLink.
+A new customerUniqueID should be generated only once per iteration, preferably in the CheckDevice pre-request script. Do not regenerate customerUniqueID before VerifyPhone, ConfirmPasscode, or ValidateLink.
+Environment variables:
+- local-ips
+- jagan-cell
+- customerUniqueID
+- firstName
+- lastName
+- emailAddress
+- streetAddress1
+- city
+- state
+- zipCode
+Use these default values:
+firstName = Linda
+lastName = DavisUAT
+emailAddress = medium_confidence@usps.gov
+streetAddress1 = 42981 Bonnieblue Ct
+city = Ashburn
+state = VA
+zipCode = 20147
+Request 1: CheckDevice
+POST {{local-ips}}/RemoteRest/resources/remote/CheckDevice
+Add this pre-request script ONLY to CheckDevice:
+const id = Date.now().toString() + "_" + pm.info.iteration;
+pm.environment.set("customerUniqueID", id);
+console.log("Starting COA flow for customerUniqueID:", id);
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "emailAddress": "{{emailAddress}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "profilingSessionID": "8236EA586816-19c77d19-e778-442c-bcfa",
+  "webSessionID": "rDDJL5AUy2eTmXjm3L_sb-Z",
+  "trueIPAddress": "127.0.0.1"
+}
+Test script:
+pm.test("CheckDevice status is 200 or 202", function () {
+    pm.expect([200, 202]).to.include(pm.response.code);
+});
+console.log("CheckDevice customerUniqueID:", pm.environment.get("customerUniqueID"));
+console.log("CheckDevice response:", pm.response.text());
+Request 2: VerifyPhone
+POST {{local-ips}}/RemoteRest/resources/remote/VerifyPhone
+Do NOT add a pre-request script that regenerates customerUniqueID.
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "firstName": "{{firstName}}",
+  "lastName": "{{lastName}}",
+  "mobilePhone": "{{jagan-cell}}",
+  "streetAddress1": "{{streetAddress1}}",
+  "city": "{{city}}",
+  "state": "{{state}}",
+  "zipCode": "{{zipCode}}"
+}
+Test script:
+pm.test("VerifyPhone status is 200 or 202", function () {
+    pm.expect([200, 202]).to.include(pm.response.code);
+});
+console.log("VerifyPhone customerUniqueID:", pm.environment.get("customerUniqueID"));
+console.log("VerifyPhone response:", pm.response.text());
+Request 3: ConfirmPasscode
+POST {{local-ips}}/RemoteRest/resources/remote/ConfirmPasscode
+Do NOT add a pre-request script that regenerates customerUniqueID.
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "passcode": "1111"
+}
+Test script:
+pm.test("ConfirmPasscode status is 200 or 202", function () {
+    pm.expect([200, 202]).to.include(pm.response.code);
+});
+console.log("ConfirmPasscode customerUniqueID:", pm.environment.get("customerUniqueID"));
+console.log("ConfirmPasscode response:", pm.response.text());
+Request 4: ValidateLink
+POST {{local-ips}}/RemoteRest/resources/remote/ValidateLink
+Do NOT add a pre-request script that regenerates customerUniqueID.
+JSON body:
+{
+  "sponsorCode": "coa",
+  "customerUniqueID": "{{customerUniqueID}}",
+  "mobilePhone": "{{jagan-cell}}"
+}
+Test script:
+pm.test("ValidateLink status is 200 or 202", function () {
+    pm.expect([200, 202]).to.include(pm.response.code);
+});
+console.log("ValidateLink customerUniqueID:", pm.environment.get("customerUniqueID"));
+console.log("ValidateLink response:", pm.response.text());
+Execution requirement:
+- In Collection Runner, run the requests in this order:
+  1. CheckDevice
+  2. VerifyPhone
+  3. ConfirmPasscode
+  4. ValidateLink
+- The same customerUniqueID must be used across all requests in the same iteration.
+- On the next iteration, CheckDevice should generate a new customerUniqueID.
+Validation purpose:
+This collection is used to validate COA weighted supplier selection changes. The app logs should show which supplier was selected for each transaction. The DB table RP_KBA_ATTEMPTS.ATTEMPTS should not change during runtime execution.
