@@ -1,0 +1,599 @@
+{
+  "info": {
+    "_postman_id": "9c2a8e45-6e47-4a6d-9b40-coaweighted002",
+    "name": "COA RemoteRest - Weighted Supplier Validation v2",
+    "description": "USPS IVS RemoteRest - COA Weighted Supplier Selection Validation\n\nPURPOSE\nValidates that the WeightedSupplierSelector refactor routes traffic correctly\nacross LexisNexis, Equifax IDFS, and Equifax SMFA without updating\nRP_KBA_ATTEMPTS.ATTEMPTS in the database.\n\nFOLDER STRUCTURE\n  01 - Runner Safe: CheckDevice + VerifyPhone only.\n       Use Collection Runner for 20/50/100 iterations.\n       Safe because it never calls ConfirmPasscode or ValidateLink.\n  02 - Manual Full Flow: CheckDevice, VerifyPhone, then ValidateLink OR\n       ConfirmPasscode depending on the detected supplier path.\n       Run requests one at a time and read the console before proceeding.\n\nHOW TO VALIDATE SUPPLIER DISTRIBUTION\n  1. Run Folder 01 with 50-100 iterations in Collection Runner.\n  2. Watch the WebSphere application logs for lines matching:\n       'RefOtpSupplier determineVerificationMethod selectedSupplier:'\n     Count how many times each supplier appears.\n  3. After all iterations, run this SQL against Oracle:\n       SELECT KBA_SUPPLIER_ID, ATTEMPTS, TOTAL_ATTEMPTS\n       FROM RP_KBA_ATTEMPTS\n       WHERE SPONSOR_ID = (SELECT SPONSOR_ID FROM REF_SPONSOR WHERE SPONSOR_NAME = 'Change of Address')\n       ORDER BY KBA_SUPPLIER_ID;\n     EXPECTED: ATTEMPTS column must NOT have changed from its value before the test.\n     If ATTEMPTS did NOT change, the WeightedSupplierSelector fix is working.\n     If ATTEMPTS DID change, callingOTP() is still being invoked — investigate.\n\nCUSTOMER UNIQUE ID RULES\n  - Numeric-only (no underscores, dashes, or special characters).\n  - Generated ONCE per flow in the CheckDevice pre-request script.\n  - Reused unchanged in VerifyPhone, ValidateLink, and ConfirmPasscode.\n  - A new ID is generated for each new iteration (CheckDevice pre-request runs every time).\n\nSUPPLIER PATH DETECTION\n  Because RemoteResponse does not include a supplierId field directly,\n  path detection reads the 'reasonCode' field in the JSON response:\n    SuccessfulSMFADelivery   -> EQUIFAX_SMFA  -> run ValidateLink next\n    SuccessfulOTPDelivery    -> OTP_LEXIS_OR_EQUIFAX_IDFS -> run ConfirmPasscode next\n    ApprovedPhoneVerification-> APPROVED_NO_OTP -> flow complete, no next step\n    FailedPhoneVerification  -> FAILED -> do not run ConfirmPasscode or ValidateLink\n  If reasonCode is empty or unrecognised, read application logs before proceeding.\n\nPREREQUISITES\n  - Set 'jagan-cell' collection variable to a real 10-digit mobile number (no dashes).\n  - Set 'local-ips' to your local WebSphere host:port (default http://localhost:9080).\n  - WebSphere and Oracle must be running locally.\n  - The COA sponsor must be configured in REF_SPONSOR.\n  - RP_KBA_ATTEMPTS rows for the COA sponsor must exist with non-zero TOTAL_ATTEMPTS.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+
+  "variable": [
+    { "key": "local-ips",            "value": "http://localhost:9080", "type": "string",
+      "description": "WebSphere host and port. Change to match your local environment." },
+    { "key": "jagan-cell",           "value": "",   "type": "string",
+      "description": "REQUIRED. Your 10-digit mobile number (numeric, no dashes). Receives OTP or SMFA link." },
+    { "key": "customerUniqueID",     "value": "",   "type": "string",
+      "description": "Auto-generated per flow in CheckDevice pre-request. Do NOT set manually." },
+    { "key": "firstName",            "value": "Linda",            "type": "string" },
+    { "key": "lastName",             "value": "DavisUAT",         "type": "string" },
+    { "key": "birthDate",            "value": "01011980",         "type": "string",
+      "description": "Required by VerifyPhone. Format MMddyyyy." },
+    { "key": "emailAddress",         "value": "medium_confidence@usps.gov", "type": "string" },
+    { "key": "streetAddress1",       "value": "42981 Bonnieblue Ct", "type": "string" },
+    { "key": "city",                 "value": "Ashburn",          "type": "string" },
+    { "key": "state",                "value": "VA",               "type": "string" },
+    { "key": "zipCode",              "value": "20147",            "type": "string" },
+    { "key": "passcode",             "value": "",                 "type": "string",
+      "description": "Enter the OTP received on jagan-cell before running ConfirmPasscode." },
+    { "key": "transactionID",        "value": "",                 "type": "string",
+      "description": "Captured from VerifyPhone response. Used for debugging only." },
+    { "key": "selectedSupplierPath", "value": "",                 "type": "string",
+      "description": "Derived from reasonCode in VerifyPhone response. Drives next-step guidance." },
+    { "key": "verifyPhoneReasonCode","value": "",                 "type": "string",
+      "description": "Raw reasonCode from VerifyPhone response. Captured for log correlation." }
+  ],
+
+  "item": [
+
+    {
+      "name": "01 - Runner Safe - Supplier Selection Validation",
+      "description": "USE THIS FOLDER WITH COLLECTION RUNNER.\n\nRun 20, 50, or 100 iterations. Each iteration:\n  1. Generates a fresh numeric customerUniqueID in CheckDevice pre-request.\n  2. Calls CheckDevice (device reputation).\n  3. Calls VerifyPhone (triggers WeightedSupplierSelector).\n  4. Logs customerUniqueID, reasonCode, and detected supplier path to the Postman console.\n\nThis folder does NOT call ConfirmPasscode or ValidateLink, so it is safe to run\nrepeatedly without hitting OTP send limits.\n\nAFTER RUNNING: validate supplier distribution via application logs and SQL.\nSee collection description for the SQL query and expected results.",
+      "item": [
+
+        {
+          "name": "01.1 - CheckDevice - Generate Customer ID",
+          "description": "Generates a unique numeric customerUniqueID for this iteration.\nCalls CheckDevice to establish a device reputation record for the user.\ncustomerUniqueID is set here and must NOT be regenerated in subsequent requests.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─────────────────────────────────────────────────────────",
+                  "// Generate customerUniqueID ONCE per COA flow.",
+                  "// Rules: numeric-only, no underscores or special characters.",
+                  "// Format: 7 trailing digits of epoch ms + 3 random digits = 10 digits.",
+                  "// This runs at the START of every iteration in Collection Runner.",
+                  "// ─────────────────────────────────────────────────────────",
+                  "const timePart   = Date.now().toString().slice(-7);",
+                  "const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');",
+                  "const id = timePart + randomPart;",
+                  "",
+                  "pm.collectionVariables.set('customerUniqueID',     id);",
+                  "pm.collectionVariables.set('selectedSupplierPath', '');",
+                  "pm.collectionVariables.set('verifyPhoneReasonCode','');",
+                  "pm.collectionVariables.set('transactionID',        '');",
+                  "",
+                  "console.log('────────────────────────────────────────────');",
+                  "console.log('[COA FLOW START] customerUniqueID=' + id);",
+                  "console.log('────────────────────────────────────────────');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CheckDevice: status is 200 or 202', function () {",
+                  "    pm.expect([200, 202]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test('customerUniqueID is numeric-only', function () {",
+                  "    const id = pm.collectionVariables.get('customerUniqueID');",
+                  "    pm.expect(id).to.match(/^\\d+$/, 'customerUniqueID must be digits only, got: ' + id);",
+                  "});",
+                  "",
+                  "console.log('[CheckDevice] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[CheckDevice] HTTP ' + pm.response.code);",
+                  "console.log('[CheckDevice] response=' + pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"emailAddress\": \"{{emailAddress}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"profilingSessionID\": \"8236EA586816-19c77d19-e778-442c-bcfa\",\n  \"webSessionID\": \"rDDJL5AUy2eTmXjm3L_sb-Z\",\n  \"trueIPAddress\": \"127.0.0.1\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/CheckDevice",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "CheckDevice"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "01.2 - VerifyPhone - Trigger Supplier Selection",
+          "description": "Calls VerifyPhone using the customerUniqueID generated in 01.1.\nDo NOT modify this request body to change customerUniqueID.\n\nThis request triggers WeightedSupplierSelector.select() in the application.\nThe supplier chosen is visible in the WebSphere application log:\n  'RefOtpSupplier determineVerificationMethod selectedSupplier: <name>'\n\nThe post-test script reads reasonCode from the response to detect the supplier path.\nSince RemoteResponse does not return a supplierId field, reasonCode is the\nmost reliable signal available without reading application logs.\n\nDB VALIDATION after running 50+ iterations:\n  SELECT KBA_SUPPLIER_ID, ATTEMPTS, TOTAL_ATTEMPTS\n  FROM RP_KBA_ATTEMPTS\n  WHERE SPONSOR_ID = (SELECT SPONSOR_ID FROM REF_SPONSOR\n                      WHERE SPONSOR_NAME = 'Change of Address')\n  ORDER BY KBA_SUPPLIER_ID;\n  EXPECTED: ATTEMPTS must NOT change. If it does, callingOTP() is still being invoked.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─────────────────────────────────────────────────────────",
+                  "// GUARD: customerUniqueID must have been set by CheckDevice.",
+                  "// Do NOT regenerate it here. If it is empty, the flow was",
+                  "// started incorrectly — abort and run CheckDevice first.",
+                  "// ─────────────────────────────────────────────────────────",
+                  "const id = pm.collectionVariables.get('customerUniqueID');",
+                  "if (!id || id.trim() === '') {",
+                  "    throw new Error('[VerifyPhone] customerUniqueID is empty. Run CheckDevice first to generate it.');",
+                  "}",
+                  "if (!/^\\d+$/.test(id)) {",
+                  "    throw new Error('[VerifyPhone] customerUniqueID is not numeric-only: ' + id);",
+                  "}",
+                  "console.log('[VerifyPhone] Reusing customerUniqueID=' + id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('VerifyPhone: status is not a server error (5xx)', function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});",
+                  "",
+                  "const responseText = pm.response.text();",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) {",
+                  "    console.warn('[VerifyPhone] Response body is not JSON: ' + responseText);",
+                  "}",
+                  "",
+                  "// ─────────────────────────────────────────────────────────────────",
+                  "// SUPPLIER PATH DETECTION via reasonCode.",
+                  "//",
+                  "// RemoteResponse does NOT include a supplierId field in its JSON.",
+                  "// The reasonCode is the most reliable programmatic signal available:",
+                  "//",
+                  "//   'SuccessfulSMFADelivery'    -> Equifax DIT SMFA was selected.",
+                  "//                                  Next step: run ValidateLink.",
+                  "//   'SuccessfulOTPDelivery'     -> LexisNexis OTP or Equifax IDFS OTP selected.",
+                  "//                                  Next step: run ConfirmPasscode.",
+                  "//   'ApprovedPhoneVerification' -> Phone verified without OTP (all-trust path).",
+                  "//                                  Next step: flow is complete, no further calls needed.",
+                  "//   'FailedPhoneVerification'   -> Verification failed.",
+                  "//                                  Next step: do not run ConfirmPasscode or ValidateLink.",
+                  "//   'FailedPhoneVelocity'       -> Velocity limit hit.",
+                  "//   Any other value             -> Read application logs to determine path.",
+                  "//",
+                  "// To determine the EXACT supplier (LexisNexis vs Equifax IDFS on the OTP path),",
+                  "// search WebSphere logs for:",
+                  "//   'RefOtpSupplier determineVerificationMethod selectedSupplier: <name>'",
+                  "// ─────────────────────────────────────────────────────────────────",
+                  "const reasonCode    = responseJson.reasonCode    || '';",
+                  "const transactionID = responseJson.transactionID || '';",
+                  "const verified      = responseJson.verified      || false;",
+                  "const passcodeSent  = responseJson.passcodeSent  || false;",
+                  "",
+                  "pm.collectionVariables.set('verifyPhoneReasonCode', reasonCode);",
+                  "pm.collectionVariables.set('transactionID',         transactionID);",
+                  "",
+                  "let path = 'UNKNOWN';",
+                  "const rc = reasonCode.toLowerCase();",
+                  "if (rc === 'successfulsmfadelivery') {",
+                  "    path = 'EQUIFAX_SMFA';",
+                  "} else if (rc === 'successfulotpdelivery') {",
+                  "    path = 'OTP_LEXIS_OR_EQUIFAX_IDFS';",
+                  "} else if (rc === 'approvedphoneverification') {",
+                  "    path = 'APPROVED_NO_OTP';",
+                  "} else if (rc.startsWith('failed')) {",
+                  "    path = 'FAILED_' + reasonCode.toUpperCase();",
+                  "}",
+                  "pm.collectionVariables.set('selectedSupplierPath', path);",
+                  "",
+                  "console.log('────────────────────────────────────────────────────────');",
+                  "console.log('[VerifyPhone] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[VerifyPhone] HTTP ' + pm.response.code);",
+                  "console.log('[VerifyPhone] reasonCode=' + reasonCode);",
+                  "console.log('[VerifyPhone] transactionID=' + transactionID);",
+                  "console.log('[VerifyPhone] verified=' + verified + ', passcodeSent=' + passcodeSent);",
+                  "console.log('[VerifyPhone] DETECTED PATH=' + path);",
+                  "if (path === 'EQUIFAX_SMFA') {",
+                  "    console.log('[VerifyPhone] --> Equifax SMFA path. Run ValidateLink next. Check jagan-cell for the secure link.');",
+                  "} else if (path === 'OTP_LEXIS_OR_EQUIFAX_IDFS') {",
+                  "    console.log('[VerifyPhone] --> OTP path. Run ConfirmPasscode next. Check jagan-cell for the OTP code.');",
+                  "    console.log('[VerifyPhone] --> To confirm whether LexisNexis or Equifax IDFS was used, search app log for: selectedSupplier:');",
+                  "} else if (path === 'APPROVED_NO_OTP') {",
+                  "    console.log('[VerifyPhone] --> Phone approved without OTP. Flow is complete.');",
+                  "} else if (path.startsWith('FAILED')) {",
+                  "    console.log('[VerifyPhone] --> Verification failed. Do NOT run ConfirmPasscode or ValidateLink.');",
+                  "} else {",
+                  "    console.warn('[VerifyPhone] --> Path UNKNOWN. Read application logs before next step.');",
+                  "}",
+                  "console.log('[VerifyPhone] response=' + responseText);",
+                  "console.log('────────────────────────────────────────────────────────');",
+                  "",
+                  "pm.test('customerUniqueID was NOT regenerated by VerifyPhone', function () {",
+                  "    const id = pm.collectionVariables.get('customerUniqueID');",
+                  "    pm.expect(id).to.match(/^\\d+$/, 'customerUniqueID must remain numeric and unchanged');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"birthDate\": \"{{birthDate}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/VerifyPhone",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "VerifyPhone"]
+            }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "02 - Manual Full Flow - One Request at a Time",
+      "description": "USE THIS FOLDER FOR MANUAL, STEP-BY-STEP TESTING.\n\nDo NOT use Collection Runner on this folder.\nRun each request one at a time and read the Postman console before continuing.\n\nFLOW:\n  Step 1: Run 02.1 CheckDevice   -> generates customerUniqueID\n  Step 2: Run 02.2 VerifyPhone   -> read console to determine path\n  Step 3a: If EQUIFAX_SMFA:      -> tap the link on jagan-cell, then run 02.3 ValidateLink\n  Step 3b: If OTP path:          -> enter OTP from jagan-cell into 'passcode' variable, then run 02.4 ConfirmPasscode\n  Step 3c: If APPROVED_NO_OTP:   -> flow is complete, do nothing\n  Step 3d: If FAILED:            -> do not run 02.3 or 02.4\n\nDO NOT run both ValidateLink AND ConfirmPasscode for the same flow.\nDO NOT modify customerUniqueID after it is generated in 02.1.\n\nDB VALIDATION:\n  After any full flow, check:\n    SELECT KBA_SUPPLIER_ID, ATTEMPTS, TOTAL_ATTEMPTS\n    FROM RP_KBA_ATTEMPTS\n    WHERE SPONSOR_ID = (SELECT SPONSOR_ID FROM REF_SPONSOR\n                        WHERE SPONSOR_NAME = 'Change of Address')\n    ORDER BY KBA_SUPPLIER_ID;\n  EXPECTED: ATTEMPTS must NOT have incremented. If it did, the fix is not active.",
+      "item": [
+
+        {
+          "name": "02.1 - CheckDevice - Start Flow",
+          "description": "Generates customerUniqueID for this manual flow.\nResets all flow-tracking variables.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a fresh customerUniqueID for this manual flow.",
+                  "// Numeric-only. 10 digits: 7 from epoch + 3 random.",
+                  "const timePart   = Date.now().toString().slice(-7);",
+                  "const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');",
+                  "const id = timePart + randomPart;",
+                  "",
+                  "pm.collectionVariables.set('customerUniqueID',      id);",
+                  "pm.collectionVariables.set('selectedSupplierPath',  '');",
+                  "pm.collectionVariables.set('verifyPhoneReasonCode', '');",
+                  "pm.collectionVariables.set('transactionID',         '');",
+                  "pm.collectionVariables.set('passcode',              '');",
+                  "",
+                  "console.log('════════════════════════════════════════════════════════');",
+                  "console.log('[MANUAL FLOW START] customerUniqueID=' + id);",
+                  "console.log('════════════════════════════════════════════════════════');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CheckDevice: status is 200 or 202', function () {",
+                  "    pm.expect([200, 202]).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('customerUniqueID is numeric-only', function () {",
+                  "    pm.expect(pm.collectionVariables.get('customerUniqueID')).to.match(/^\\d+$/);",
+                  "});",
+                  "console.log('[02.1 CheckDevice] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[02.1 CheckDevice] HTTP ' + pm.response.code);",
+                  "console.log('[02.1 CheckDevice] response=' + pm.response.text());",
+                  "console.log('[02.1 CheckDevice] --> Next step: run 02.2 VerifyPhone.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"emailAddress\": \"{{emailAddress}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"profilingSessionID\": \"8236EA586816-19c77d19-e778-442c-bcfa\",\n  \"webSessionID\": \"rDDJL5AUy2eTmXjm3L_sb-Z\",\n  \"trueIPAddress\": \"127.0.0.1\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/CheckDevice",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "CheckDevice"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "02.2 - VerifyPhone - Triggers Supplier Selection",
+          "description": "Uses the customerUniqueID from 02.1. Do NOT regenerate it.\nRead the console output before deciding whether to run ValidateLink or ConfirmPasscode.\nbirtDate is required by RemoteProofingValidation (format MMddyyyy).",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// GUARD: customerUniqueID must already exist from 02.1 CheckDevice.",
+                  "const id = pm.collectionVariables.get('customerUniqueID');",
+                  "if (!id || id.trim() === '') {",
+                  "    throw new Error('[02.2 VerifyPhone] customerUniqueID is empty. Run 02.1 CheckDevice first.');",
+                  "}",
+                  "if (!/^\\d+$/.test(id)) {",
+                  "    throw new Error('[02.2 VerifyPhone] customerUniqueID contains non-numeric characters: ' + id);",
+                  "}",
+                  "console.log('[02.2 VerifyPhone] Reusing customerUniqueID=' + id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('VerifyPhone: status is not a server error', function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});",
+                  "",
+                  "const responseText = pm.response.text();",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) {",
+                  "    console.warn('[02.2 VerifyPhone] Response is not JSON: ' + responseText);",
+                  "}",
+                  "",
+                  "const reasonCode    = responseJson.reasonCode    || '';",
+                  "const transactionID = responseJson.transactionID || '';",
+                  "const verified      = responseJson.verified      || false;",
+                  "const passcodeSent  = responseJson.passcodeSent  || false;",
+                  "",
+                  "pm.collectionVariables.set('verifyPhoneReasonCode', reasonCode);",
+                  "pm.collectionVariables.set('transactionID',         transactionID);",
+                  "",
+                  "// Path detection via reasonCode (see collection description for full mapping).",
+                  "let path = 'UNKNOWN';",
+                  "const rc = reasonCode.toLowerCase();",
+                  "if (rc === 'successfulsmfadelivery') {",
+                  "    path = 'EQUIFAX_SMFA';",
+                  "} else if (rc === 'successfulotpdelivery') {",
+                  "    path = 'OTP_LEXIS_OR_EQUIFAX_IDFS';",
+                  "} else if (rc === 'approvedphoneverification') {",
+                  "    path = 'APPROVED_NO_OTP';",
+                  "} else if (rc.startsWith('failed')) {",
+                  "    path = 'FAILED_' + reasonCode.toUpperCase();",
+                  "}",
+                  "pm.collectionVariables.set('selectedSupplierPath', path);",
+                  "",
+                  "console.log('════════════════════════════════════════════════════════');",
+                  "console.log('[02.2 VerifyPhone] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[02.2 VerifyPhone] HTTP ' + pm.response.code);",
+                  "console.log('[02.2 VerifyPhone] reasonCode=' + reasonCode);",
+                  "console.log('[02.2 VerifyPhone] transactionID=' + transactionID);",
+                  "console.log('[02.2 VerifyPhone] verified=' + verified + ', passcodeSent=' + passcodeSent);",
+                  "console.log('[02.2 VerifyPhone] DETECTED PATH=' + path);",
+                  "console.log('---');",
+                  "if (path === 'EQUIFAX_SMFA') {",
+                  "    console.log('NEXT STEP: Check jagan-cell for the Equifax secure link. Tap the link on your phone.');",
+                  "    console.log('           Then run 02.3 ValidateLink.');",
+                  "    console.log('           Do NOT run 02.4 ConfirmPasscode.');",
+                  "} else if (path === 'OTP_LEXIS_OR_EQUIFAX_IDFS') {",
+                  "    console.log('NEXT STEP: Check jagan-cell for the OTP SMS code.');",
+                  "    console.log('           Set the passcode collection variable to that code.');",
+                  "    console.log('           Then run 02.4 ConfirmPasscode.');",
+                  "    console.log('           Do NOT run 02.3 ValidateLink.');",
+                  "    console.log('           To confirm which supplier (LexisNexis vs Equifax IDFS), check app log for:');",
+                  "    console.log('             selectedSupplier: LexisNexis RDP OTP');",
+                  "    console.log('             OR');",
+                  "    console.log('             selectedSupplier: Equifax IDFS OTP');",
+                  "} else if (path === 'APPROVED_NO_OTP') {",
+                  "    console.log('NEXT STEP: Phone approved without OTP. Flow is complete. No further requests needed.');",
+                  "} else if (path.startsWith('FAILED')) {",
+                  "    console.log('NEXT STEP: Verification failed. Do NOT run ValidateLink or ConfirmPasscode.');",
+                  "    console.log('           Check application logs for the failure reason.');",
+                  "} else {",
+                  "    console.warn('NEXT STEP: Path is UNKNOWN. Read application logs before proceeding.');",
+                  "    console.warn('           Search logs for: selectedSupplier:');",
+                  "}",
+                  "console.log('════════════════════════════════════════════════════════');",
+                  "console.log('[02.2 VerifyPhone] response=' + responseText);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"birthDate\": \"{{birthDate}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/VerifyPhone",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "VerifyPhone"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "02.3 - ValidateLink - Equifax SMFA Path Only",
+          "description": "Run ONLY if 02.2 VerifyPhone detected EQUIFAX_SMFA path (reasonCode=SuccessfulSMFADelivery).\nDo NOT run for OTP/LexisNexis path.\nThe pre-request script aborts the request if selectedSupplierPath is not EQUIFAX_SMFA.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─────────────────────────────────────────────────────────",
+                  "// GUARD: ValidateLink is ONLY for Equifax SMFA path.",
+                  "// If the detected path is anything else, stop the request.",
+                  "// ─────────────────────────────────────────────────────────",
+                  "const path = pm.collectionVariables.get('selectedSupplierPath');",
+                  "const id   = pm.collectionVariables.get('customerUniqueID');",
+                  "",
+                  "if (!id || id.trim() === '') {",
+                  "    throw new Error('[02.3 ValidateLink] customerUniqueID is empty. Run 02.1 CheckDevice first.');",
+                  "}",
+                  "",
+                  "if (path !== 'EQUIFAX_SMFA') {",
+                  "    const msg = '[02.3 ValidateLink] BLOCKED. selectedSupplierPath=\"' + path + '\".' +",
+                  "                ' ValidateLink is only valid for path=EQUIFAX_SMFA.' +",
+                  "                ' If you intended to run this, check VerifyPhone response first.';",
+                  "    console.error(msg);",
+                  "    throw new Error(msg);",
+                  "}",
+                  "",
+                  "console.log('[02.3 ValidateLink] Path confirmed as EQUIFAX_SMFA. Proceeding.');",
+                  "console.log('[02.3 ValidateLink] customerUniqueID=' + id);",
+                  "console.log('[02.3 ValidateLink] Make sure you have already tapped the secure link on jagan-cell.');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ValidateLink: status is not a server error', function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});",
+                  "",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) {}",
+                  "const reasonCode = responseJson.reasonCode || '';",
+                  "const verified   = responseJson.verified   || false;",
+                  "",
+                  "console.log('[02.3 ValidateLink] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[02.3 ValidateLink] HTTP ' + pm.response.code);",
+                  "console.log('[02.3 ValidateLink] reasonCode=' + reasonCode + ', verified=' + verified);",
+                  "console.log('[02.3 ValidateLink] response=' + pm.response.text());",
+                  "",
+                  "if (reasonCode.toLowerCase() === 'passedsmfavalidation' || verified === true || verified === 'true') {",
+                  "    console.log('[02.3 ValidateLink] SMFA validated successfully. Flow complete.');",
+                  "} else {",
+                  "    console.warn('[02.3 ValidateLink] SMFA not yet validated. Link may still be pending. Check jagan-cell and retry if needed.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/ValidateLink",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "ValidateLink"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "02.4 - ConfirmPasscode - OTP Path Only",
+          "description": "Run ONLY if 02.2 VerifyPhone detected OTP_LEXIS_OR_EQUIFAX_IDFS path (reasonCode=SuccessfulOTPDelivery).\nDo NOT run for Equifax SMFA path.\nSet the 'passcode' collection variable to the OTP you received on jagan-cell before running this.\nThe pre-request script aborts if selectedSupplierPath is EQUIFAX_SMFA.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// ─────────────────────────────────────────────────────────",
+                  "// GUARD: ConfirmPasscode is NOT for Equifax SMFA path.",
+                  "// ─────────────────────────────────────────────────────────",
+                  "const path     = pm.collectionVariables.get('selectedSupplierPath');",
+                  "const id       = pm.collectionVariables.get('customerUniqueID');",
+                  "const passcode = pm.collectionVariables.get('passcode');",
+                  "",
+                  "if (!id || id.trim() === '') {",
+                  "    throw new Error('[02.4 ConfirmPasscode] customerUniqueID is empty. Run 02.1 CheckDevice first.');",
+                  "}",
+                  "",
+                  "if (path === 'EQUIFAX_SMFA') {",
+                  "    const msg = '[02.4 ConfirmPasscode] BLOCKED. selectedSupplierPath=EQUIFAX_SMFA.' +",
+                  "                ' ConfirmPasscode is not valid for the SMFA path. Run 02.3 ValidateLink instead.';",
+                  "    console.error(msg);",
+                  "    throw new Error(msg);",
+                  "}",
+                  "",
+                  "if (!passcode || passcode.trim() === '') {",
+                  "    console.warn('[02.4 ConfirmPasscode] passcode collection variable is empty.');",
+                  "    console.warn('Set it to the OTP from jagan-cell before running this request.');",
+                  "}",
+                  "",
+                  "if (path === 'APPROVED_NO_OTP') {",
+                  "    console.warn('[02.4 ConfirmPasscode] WARNING: path=APPROVED_NO_OTP. Phone was already approved. ConfirmPasscode is likely unnecessary.');",
+                  "} else if (path.startsWith('FAILED')) {",
+                  "    console.warn('[02.4 ConfirmPasscode] WARNING: path=' + path + '. VerifyPhone failed. ConfirmPasscode will likely also fail.');",
+                  "}",
+                  "",
+                  "console.log('[02.4 ConfirmPasscode] customerUniqueID=' + id);",
+                  "console.log('[02.4 ConfirmPasscode] passcode=' + passcode);",
+                  "console.log('[02.4 ConfirmPasscode] selectedSupplierPath=' + path);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ConfirmPasscode: status is not a server error', function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});",
+                  "",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) {}",
+                  "const reasonCode    = responseJson.reasonCode    || '';",
+                  "const verified      = responseJson.verified      || false;",
+                  "const attempts      = responseJson.confirmationAttemptsForPasscode || '';",
+                  "const limitReached  = responseJson.confirmationLimitReached || false;",
+                  "",
+                  "console.log('[02.4 ConfirmPasscode] customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('[02.4 ConfirmPasscode] HTTP ' + pm.response.code);",
+                  "console.log('[02.4 ConfirmPasscode] reasonCode=' + reasonCode);",
+                  "console.log('[02.4 ConfirmPasscode] verified=' + verified);",
+                  "console.log('[02.4 ConfirmPasscode] confirmationAttempts=' + attempts + ', limitReached=' + limitReached);",
+                  "console.log('[02.4 ConfirmPasscode] response=' + pm.response.text());",
+                  "",
+                  "if (reasonCode.toLowerCase() === 'passedotpconfirmation' || verified === true || verified === 'true') {",
+                  "    console.log('[02.4 ConfirmPasscode] OTP confirmed successfully. LOA achieved. Flow complete.');",
+                  "} else if (reasonCode.toLowerCase() === 'failedotpconfirmation') {",
+                  "    console.warn('[02.4 ConfirmPasscode] Wrong passcode. Attempts=' + attempts + '. Retry with correct OTP if limit not reached.');",
+                  "} else if (reasonCode.toLowerCase() === 'failedotpvelocity' || limitReached) {",
+                  "    console.error('[02.4 ConfirmPasscode] OTP attempt limit reached. Flow is locked.');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"passcode\": \"{{passcode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/ConfirmPasscode",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "ConfirmPasscode"]
+            }
+          },
+          "response": []
+        }
+
+      ]
+    }
+
+  ]
+}
