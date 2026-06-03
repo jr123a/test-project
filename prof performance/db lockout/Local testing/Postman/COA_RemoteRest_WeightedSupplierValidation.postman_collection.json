@@ -1,0 +1,300 @@
+{
+  "info": {
+    "_postman_id": "9c2a8e45-6e47-4a6d-9b40-coaweighted001",
+    "name": "COA RemoteRest - Weighted Supplier Validation",
+    "description": "Postman collection to validate USPS IVS RemoteRest COA supplier selection changes. Folder 1 is runner-safe for repeated weighted supplier selection validation. Folder 2 is for manual full-flow validation with OTP vs Equifax SMFA branching. customerUniqueID is numeric-only and generated once per flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "local-ips", "value": "http://localhost:9080", "type": "string" },
+    { "key": "jagan-cell", "value": "", "type": "string" },
+    { "key": "customerUniqueID", "value": "", "type": "string" },
+    { "key": "firstName", "value": "Linda", "type": "string" },
+    { "key": "lastName", "value": "DavisUAT", "type": "string" },
+    { "key": "emailAddress", "value": "medium_confidence@usps.gov", "type": "string" },
+    { "key": "streetAddress1", "value": "42981 Bonnieblue Ct", "type": "string" },
+    { "key": "city", "value": "Ashburn", "type": "string" },
+    { "key": "state", "value": "VA", "type": "string" },
+    { "key": "zipCode", "value": "20147", "type": "string" },
+    { "key": "passcode", "value": "1111", "type": "string" },
+    { "key": "selectedSupplierId", "value": "", "type": "string" },
+    { "key": "selectedSupplierName", "value": "", "type": "string" },
+    { "key": "supplierPath", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 - Runner Safe - Supplier Selection Only",
+      "description": "Use this folder with Collection Runner for 20/50/100 iterations. It runs CheckDevice and VerifyPhone only. This is the safest way to validate weighted supplier selection from logs and confirm RP_KBA_ATTEMPTS.ATTEMPTS is not updated. It does not attempt ConfirmPasscode or ValidateLink because those are supplier-path-specific.",
+      "item": [
+        {
+          "name": "COA - CheckDevice - Generate Numeric Customer ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generate a numeric-only customerUniqueID once at the start of each flow.",
+                  "// No underscores or special characters.",
+                  "const timePart = Date.now().toString().slice(-7);",
+                  "const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');",
+                  "const id = timePart + randomPart;",
+                  "pm.collectionVariables.set('customerUniqueID', id);",
+                  "pm.collectionVariables.set('selectedSupplierId', '');",
+                  "pm.collectionVariables.set('selectedSupplierName', '');",
+                  "pm.collectionVariables.set('supplierPath', '');",
+                  "console.log('Starting COA flow. customerUniqueID=' + id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CheckDevice status is 200 or 202', function () {",
+                  "    pm.expect([200, 202]).to.include(pm.response.code);",
+                  "});",
+                  "console.log('CheckDevice customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('CheckDevice response=' + pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"emailAddress\": \"{{emailAddress}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"profilingSessionID\": \"8236EA586816-19c77d19-e778-442c-bcfa\",\n  \"webSessionID\": \"rDDJL5AUy2eTmXjm3L_sb-Z\",\n  \"trueIPAddress\": \"127.0.0.1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/CheckDevice",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "CheckDevice"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "COA - VerifyPhone - Supplier Selection Trigger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('VerifyPhone status is not server error', function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});",
+                  "const responseText = pm.response.text();",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) { responseJson = {}; }",
+                  "function firstPresent(obj, keys) {",
+                  "    for (const key of keys) {",
+                  "        if (obj && obj[key] !== undefined && obj[key] !== null) return obj[key];",
+                  "    }",
+                  "    return '';",
+                  "}",
+                  "const supplierId = firstPresent(responseJson, ['supplierId','kbaSupplierId','otpSupplierId','phoneVerificationSupplierId','selectedSupplierId']);",
+                  "const supplierName = firstPresent(responseJson, ['supplierName','kbaSupplierName','otpSupplierName','phoneVerificationSupplierName','selectedSupplierName','verificationMethod']);",
+                  "const lower = responseText.toLowerCase();",
+                  "let path = 'UNKNOWN';",
+                  "if (String(supplierId) === '5' || lower.includes('equifax dit') || lower.includes('smfa') || lower.includes('validate') || lower.includes('smsurl') || lower.includes('targeturl')) {",
+                  "    path = 'EQUIFAX_SMFA';",
+                  "} else if (String(supplierId) === '4' || lower.includes('lexis') || lower.includes('otp') || lower.includes('passcode')) {",
+                  "    path = 'OTP_OR_LEXIS';",
+                  "} else if (String(supplierId) === '6' || lower.includes('experian')) {",
+                  "    path = 'EXPERIAN';",
+                  "}",
+                  "pm.collectionVariables.set('selectedSupplierId', String(supplierId || ''));",
+                  "pm.collectionVariables.set('selectedSupplierName', String(supplierName || ''));",
+                  "pm.collectionVariables.set('supplierPath', path);",
+                  "console.log('VerifyPhone customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                  "console.log('Detected supplierId=' + supplierId + ', supplierName=' + supplierName + ', path=' + path);",
+                  "console.log('VerifyPhone response=' + responseText);",
+                  "pm.test('customerUniqueID remained numeric-only', function () {",
+                  "    pm.expect(pm.collectionVariables.get('customerUniqueID')).to.match(/^\\d+$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{local-ips}}/RemoteRest/resources/remote/VerifyPhone",
+              "host": ["{{local-ips}}"],
+              "path": ["RemoteRest", "resources", "remote", "VerifyPhone"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Manual Full Flow - Use After Reviewing Supplier Path",
+      "description": "Use this folder for one-off debugging. Run CheckDevice and VerifyPhone first. Then run ValidateLink only if logs/response indicate Equifax DIT SMFA. Run ConfirmPasscode for OTP/Lexis-style path. Do not run both unless you are intentionally testing failure handling.",
+      "item": [
+        {
+          "name": "COA - CheckDevice - Manual Full Flow",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const timePart = Date.now().toString().slice(-7);",
+                  "const randomPart = Math.floor(Math.random() * 1000).toString().padStart(3, '0');",
+                  "const id = timePart + randomPart;",
+                  "pm.collectionVariables.set('customerUniqueID', id);",
+                  "pm.collectionVariables.set('selectedSupplierId', '');",
+                  "pm.collectionVariables.set('selectedSupplierName', '');",
+                  "pm.collectionVariables.set('supplierPath', '');",
+                  "console.log('Starting manual COA flow. customerUniqueID=' + id);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CheckDevice status is 200 or 202', function () { pm.expect([200,202]).to.include(pm.response.code); });",
+                  "console.log('CheckDevice response=' + pm.response.text());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"emailAddress\": \"{{emailAddress}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"profilingSessionID\": \"8236EA586816-19c77d19-e778-442c-bcfa\",\n  \"webSessionID\": \"rDDJL5AUy2eTmXjm3L_sb-Z\",\n  \"trueIPAddress\": \"127.0.0.1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{local-ips}}/RemoteRest/resources/remote/CheckDevice", "host": ["{{local-ips}}"], "path": ["RemoteRest", "resources", "remote", "CheckDevice"] }
+          },
+          "response": []
+        },
+        {
+          "name": "COA - VerifyPhone - Manual Full Flow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const responseText = pm.response.text();",
+                  "let responseJson = {};",
+                  "try { responseJson = pm.response.json(); } catch (e) { responseJson = {}; }",
+                  "function firstPresent(obj, keys) { for (const key of keys) { if (obj && obj[key] !== undefined && obj[key] !== null) return obj[key]; } return ''; }",
+                  "const supplierId = firstPresent(responseJson, ['supplierId','kbaSupplierId','otpSupplierId','phoneVerificationSupplierId','selectedSupplierId']);",
+                  "const supplierName = firstPresent(responseJson, ['supplierName','kbaSupplierName','otpSupplierName','phoneVerificationSupplierName','selectedSupplierName','verificationMethod']);",
+                  "const lower = responseText.toLowerCase();",
+                  "let path = 'UNKNOWN';",
+                  "if (String(supplierId) === '5' || lower.includes('equifax dit') || lower.includes('smfa') || lower.includes('validate') || lower.includes('smsurl') || lower.includes('targeturl')) { path = 'EQUIFAX_SMFA'; }",
+                  "else if (String(supplierId) === '4' || lower.includes('lexis') || lower.includes('otp') || lower.includes('passcode')) { path = 'OTP_OR_LEXIS'; }",
+                  "else if (String(supplierId) === '6' || lower.includes('experian')) { path = 'EXPERIAN'; }",
+                  "pm.collectionVariables.set('selectedSupplierId', String(supplierId || ''));",
+                  "pm.collectionVariables.set('selectedSupplierName', String(supplierName || ''));",
+                  "pm.collectionVariables.set('supplierPath', path);",
+                  "console.log('Manual VerifyPhone detected path=' + path + ', supplierId=' + supplierId + ', supplierName=' + supplierName);",
+                  "console.log('If path=EQUIFAX_SMFA, run ValidateLink. If path=OTP_OR_LEXIS, run ConfirmPasscode. If UNKNOWN/EXPERIAN, check app logs before next step.');",
+                  "console.log('VerifyPhone response=' + responseText);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"firstName\": \"{{firstName}}\",\n  \"lastName\": \"{{lastName}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\",\n  \"streetAddress1\": \"{{streetAddress1}}\",\n  \"city\": \"{{city}}\",\n  \"state\": \"{{state}}\",\n  \"zipCode\": \"{{zipCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{local-ips}}/RemoteRest/resources/remote/VerifyPhone", "host": ["{{local-ips}}"], "path": ["RemoteRest", "resources", "remote", "VerifyPhone"] }
+          },
+          "response": []
+        },
+        {
+          "name": "COA - ValidateLink - Equifax SMFA Only",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "type": "text/javascript", "exec": [
+                "const path = pm.collectionVariables.get('supplierPath');",
+                "if (path !== 'EQUIFAX_SMFA') {",
+                "    console.warn('ValidateLink should only be run for Equifax SMFA. Current detected path=' + path + '. If this is not intended, stop this request manually.');",
+                "}"
+              ] }
+            },
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "console.log('ValidateLink customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                "console.log('ValidateLink response=' + pm.response.text());"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"mobilePhone\": \"{{jagan-cell}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{local-ips}}/RemoteRest/resources/remote/ValidateLink", "host": ["{{local-ips}}"], "path": ["RemoteRest", "resources", "remote", "ValidateLink"] }
+          },
+          "response": []
+        },
+        {
+          "name": "COA - ConfirmPasscode - OTP Path Only",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "type": "text/javascript", "exec": [
+                "const path = pm.collectionVariables.get('supplierPath');",
+                "if (path === 'EQUIFAX_SMFA') {",
+                "    console.warn('ConfirmPasscode is usually not for Equifax SMFA. Current path=' + path + '. If this is not intended, stop this request manually.');",
+                "}"
+              ] }
+            },
+            {
+              "listen": "test",
+              "script": { "type": "text/javascript", "exec": [
+                "console.log('ConfirmPasscode customerUniqueID=' + pm.collectionVariables.get('customerUniqueID'));",
+                "console.log('ConfirmPasscode response=' + pm.response.text());"
+              ] }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorCode\": \"coa\",\n  \"customerUniqueID\": \"{{customerUniqueID}}\",\n  \"passcode\": \"{{passcode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{local-ips}}/RemoteRest/resources/remote/ConfirmPasscode", "host": ["{{local-ips}}"], "path": ["RemoteRest", "resources", "remote", "ConfirmPasscode"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
