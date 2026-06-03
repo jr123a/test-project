@@ -1,0 +1,63 @@
+Let me read the uploaded Postman collection first before generating anything.
+
+Good. I have the full file. Let me note everything before writing the replacement:
+
+Now I have the complete picture of what exists and what’s missing. Let me document every gap and then write the final corrected collection.
+
+Issues found in the uploaded file:
+
+	1.	Folder 02 exists in JSON (lines 146-298) but was NOT visible in the structure walk initially — it IS there but contains bugs
+	2.	VerifyPhone in Folder 01 has no prerequest script — no guard against regenerating ID
+	3.	birthDate field is missing from VerifyPhone body (required by RemoteProofingValidation)
+	4.	mobilePhone missing from VerifyPhone body in Folder 02
+	5.	Supplier path detection logic will always return UNKNOWN for LexisNexis OTP because reasonCode values (SuccessfulOTPDelivery, SuccessfulSMFADelivery) are the real signals, not a supplierId field
+	6.	The ReasonCode → supplier path mapping is incomplete — the real RemoteResponse returns reasonCode not supplierId
+	7.	ValidateLink guard warns but still runs — it should abort with postman.setNextRequest(null) in Collection Runner
+	8.	Missing collection-level description explaining the DB validation queries
+	9.	birthDate hardcoded value missing
+	10.	transactionID not extracted and stored for debugging
+
+Here’s a full account of what was found, what was fixed, and how to use it.
+
+What was wrong in the uploaded file
+
+
+
+|# |Problem                                                                         |Location              |Fix                                                                                                                                                                                            |
+|--|--------------------------------------------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|1 |`birthDate` missing from all `VerifyPhone` bodies                               |Both folders          |Added `"birthDate": "{{birthDate}}"` — required by `RemoteProofingValidation`                                                                                                                  |
+|2 |`VerifyPhone` (Folder 01) had no `prerequest` script                            |Folder 01, item 2     |Added guard that throws if `customerUniqueID` is empty or non-numeric                                                                                                                          |
+|3 |Supplier path detection used `supplierId` / `kbaSupplierId` fields              |Both VerifyPhone tests|**`RemoteResponse` does not return a supplierId field.** Replaced with `reasonCode`-based detection (`SuccessfulSMFADelivery`, `SuccessfulOTPDelivery`, `ApprovedPhoneVerification`, `Failed*`)|
+|4 |`ValidateLink` guard warned but **still ran**                                   |Folder 02             |Now uses `throw new Error(...)` to fully abort the request, not just a `console.warn`                                                                                                          |
+|5 |`ConfirmPasscode` guard warned but still ran for SMFA path                      |Folder 02             |Now throws and aborts if `selectedSupplierPath === 'EQUIFAX_SMFA'`                                                                                                                             |
+|6 |No guard on `customerUniqueID` emptiness in `ValidateLink`/`ConfirmPasscode`    |Folder 02             |Added explicit empty-check with abort in both pre-request scripts                                                                                                                              |
+|7 |`selectedSupplierId` / `selectedSupplierName` variables never reliably populated|Collection vars       |Replaced with `selectedSupplierPath`, `verifyPhoneReasonCode`, `transactionID` — all set from real response fields                                                                             |
+|8 |No `passcode` empty-check before `ConfirmPasscode`                              |Folder 02             |Added `console.warn` if passcode is blank before sending                                                                                                                                       |
+|9 |Missing DB validation SQL in descriptions                                       |Everywhere            |Added the exact Oracle query in folder descriptions and collection description                                                                                                                 |
+|10|Collection description incomplete on supplier detection limits                  |Top level             |Full explanation of how `reasonCode` maps to paths and where to look in app logs for exact supplier name                                                                                       |
+
+How to use it
+
+Import: In Postman → Import → Upload _v2.postman_collection.json
+
+Set variables before anything runs:
+
+	•	jagan-cell → your 10-digit mobile number (digits only, no dashes)
+	•	local-ips → http://localhost:9080 (or your port)
+	•	birthDate → default is 01011980 (MMddyyyy); change to match your test user if needed
+	•	passcode → leave blank; fill it in only before running 02.4 ConfirmPasscode
+
+Folder 01 — Supplier distribution validation:
+
+	1.	Click the folder → Run → set 50 or 100 iterations → Run
+	2.	After it completes, query Oracle: SELECT KBA_SUPPLIER_ID, ATTEMPTS, TOTAL_ATTEMPTS FROM RP_KBA_ATTEMPTS WHERE SPONSOR_ID = (SELECT SPONSOR_ID FROM REF_SPONSOR WHERE SPONSOR_NAME = 'Change of Address') ORDER BY KBA_SUPPLIER_ID
+	3.	ATTEMPTS must not have changed. If it did, callingOTP() is still being invoked
+	4.	Count supplier selections from the WebSphere log: search for selectedSupplier: — the distribution should match your configured TOTAL_ATTEMPTS weights
+
+Folder 02 — Full flow manual testing:
+
+	1.	Run 02.1 → read console → confirms ID generated
+	2.	Run 02.2 → read console → tells you exactly which request to run next
+	3.	If EQUIFAX_SMFA: tap the link on your phone first, then run 02.3
+	4.	If OTP_LEXIS_OR_EQUIFAX_IDFS: check SMS, set passcode variable, then run 02.4
+	5.	Never run both 02.3 and 02.4 for the same flow
