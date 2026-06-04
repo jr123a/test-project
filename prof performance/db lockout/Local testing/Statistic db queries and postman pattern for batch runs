@@ -1,0 +1,179 @@
+Use a test-run marker, not just today’s date. Best marker is the Postman customerUniqueID prefix.
+
+For example, before each Postman batch, generate IDs like:
+
+20260603 01 0001
+20260603 01 0002
+
+No spaces in actual ID:
+
+20260603010001
+20260603010002
+
+Where:
+
+20260603 = date
+01       = run number
+0001     = iteration
+
+Then your DB query can isolate one batch cleanly.
+
+1. Event statistics by supplier for one Postman run
+
+Assuming your run prefix is 2026060301:
+
+SELECT
+    e.KBA_SUPPLIER_ID,
+    sup.KBA_SUPPLIER_NAME,
+    COUNT(*) AS EVENT_COUNT,
+    ROUND(
+        COUNT(*) * 100 / SUM(COUNT(*)) OVER (),
+        2
+    ) AS PERCENT_OF_TOTAL
+FROM IPS_OWN.RP_EVENT e
+JOIN IPS_OWN.PERSON p
+    ON p.PERSON_ID = e.PERSON_ID
+LEFT JOIN IPS_OWN.REF_KBA_SUPPLIER sup
+    ON sup.KBA_SUPPLIER_ID = e.KBA_SUPPLIER_ID
+WHERE p.SPONSOR_ID = 23
+  AND p.SPONSOR_USER_ID LIKE '2026060301%'
+  AND e.KBA_SUPPLIER_ID IN (4, 5, 6)
+GROUP BY
+    e.KBA_SUPPLIER_ID,
+    sup.KBA_SUPPLIER_NAME
+ORDER BY
+    e.KBA_SUPPLIER_ID;
+
+This gives:
+
+Lexis count
+Equifax count
+Experian count
+percentage split
+
+2. Detailed rows for the same run
+
+SELECT
+    e.EVENT_ID,
+    e.PERSON_ID,
+    p.SPONSOR_USER_ID,
+    p.SPONSOR_ID,
+    rs.SPONSOR_NAME,
+    e.KBA_SUPPLIER_ID,
+    sup.KBA_SUPPLIER_NAME,
+    e.CREATE_DATE,
+    e.UPDATE_DATE
+FROM IPS_OWN.RP_EVENT e
+JOIN IPS_OWN.PERSON p
+    ON p.PERSON_ID = e.PERSON_ID
+LEFT JOIN IPS_OWN.REF_SPONSOR rs
+    ON rs.SPONSOR_ID = p.SPONSOR_ID
+LEFT JOIN IPS_OWN.REF_KBA_SUPPLIER sup
+    ON sup.KBA_SUPPLIER_ID = e.KBA_SUPPLIER_ID
+WHERE p.SPONSOR_ID = 23
+  AND p.SPONSOR_USER_ID LIKE '2026060301%'
+ORDER BY e.CREATE_DATE DESC;
+
+3. Count only supplier-selection events
+
+If you see duplicate events per person, use this to count one supplier event per person:
+
+SELECT
+    supplier_id,
+    supplier_name,
+    COUNT(*) AS PERSON_COUNT,
+    ROUND(
+        COUNT(*) * 100 / SUM(COUNT(*)) OVER (),
+        2
+    ) AS PERCENT_OF_TOTAL
+FROM (
+    SELECT
+        p.PERSON_ID,
+        MAX(e.KBA_SUPPLIER_ID) KEEP (DENSE_RANK LAST ORDER BY e.CREATE_DATE) AS supplier_id,
+        MAX(sup.KBA_SUPPLIER_NAME) KEEP (DENSE_RANK LAST ORDER BY e.CREATE_DATE) AS supplier_name
+    FROM IPS_OWN.PERSON p
+    JOIN IPS_OWN.RP_EVENT e
+        ON e.PERSON_ID = p.PERSON_ID
+    LEFT JOIN IPS_OWN.REF_KBA_SUPPLIER sup
+        ON sup.KBA_SUPPLIER_ID = e.KBA_SUPPLIER_ID
+    WHERE p.SPONSOR_ID = 23
+      AND p.SPONSOR_USER_ID LIKE '2026060301%'
+      AND e.KBA_SUPPLIER_ID IN (4, 5, 6)
+    GROUP BY p.PERSON_ID
+)
+GROUP BY supplier_id, supplier_name
+ORDER BY supplier_id;
+
+Use this one if each transaction creates multiple event rows.
+
+4. Postman customerUniqueID generation strategy
+
+In CheckDevice pre-request script, use numeric-only ID:
+
+const runId = pm.environment.get("runId") || "2026060301";
+const iteration = String(pm.info.iteration + 1).padStart(4, "0");
+const customerUniqueID = runId + iteration;
+pm.environment.set("customerUniqueID", customerUniqueID);
+console.log("Run ID:", runId);
+console.log("Iteration:", pm.info.iteration + 1);
+console.log("customerUniqueID:", customerUniqueID);
+
+Before each batch, set:
+
+runId = 2026060301
+
+Next batch:
+
+runId = 2026060302
+
+Now your DB query can isolate each run perfectly.
+
+5. ATTEMPTS no-change validation
+
+Run before and after:
+
+SELECT
+    a.SPONSOR_ID,
+    r.SPONSOR_NAME,
+    a.PROOFING_LEVEL,
+    a.KBA_SUPPLIER_ID,
+    sup.KBA_SUPPLIER_NAME,
+    a.TOTAL_ATTEMPTS,
+    a.ATTEMPTS,
+    a.UPDATE_DATE
+FROM IPS_OWN.RP_KBA_ATTEMPTS a
+JOIN IPS_OWN.REF_SPONSOR r
+    ON r.SPONSOR_ID = a.SPONSOR_ID
+JOIN IPS_OWN.REF_KBA_SUPPLIER sup
+    ON sup.KBA_SUPPLIER_ID = a.KBA_SUPPLIER_ID
+WHERE a.SPONSOR_ID = 23
+  AND a.PROOFING_LEVEL = 1
+ORDER BY a.KBA_SUPPLIER_ID;
+
+Expected:
+
+ATTEMPTS does not change.
+
+Log monitoring ideas
+
+Since you already have BareTail:
+
+Search/filter for your log marker:
+
+Weighted supplier selected
+
+Also include runId and customerUniqueID in the log if possible.
+
+Best log format:
+
+Weighted supplier selected: runId=2026060301, sponsorUserId=20260603010001, sponsorId=23, supplierId=4, supplierName=Lexis Nexis OTP, totalWeight=100, randomValue=87, weights=[4:90,5:10]
+
+Then BareTail filter:
+
+2026060301
+
+or:
+
+Weighted supplier selected
+
+If your log statement does not have runId directly, sponsorUserId prefix is enough.
