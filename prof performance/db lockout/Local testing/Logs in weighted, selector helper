@@ -1,0 +1,73 @@
+10 iterations is too small to judge 90/10. A 50/50 result in 10 runs is not proof the logic is wrong. With random routing, small samples can look weird.
+
+For your next test, use a more obvious split first:
+
+Lexis Nexis OTP = 95
+Equifax DIT SMFA = 5
+Experian CrossCore = 0
+
+Then run at least:
+
+100 iterations minimum
+200 better
+
+Expected:
+
+* 100 iterations: roughly 90-100 Lexis, 0-10 Equifax
+* 200 iterations: roughly 180-200 Lexis, 0-20 Equifax
+
+If that still shows 50/50 after 100+ runs, then something is wrong.
+
+After that, test the real target split:
+
+Lexis Nexis OTP = 90
+Equifax DIT SMFA = 10
+Experian CrossCore = 0
+
+Run:
+
+200 iterations
+
+Expected around:
+
+Lexis: ~180
+Equifax: ~20
+
+Allow a reasonable band:
+
+Lexis 85%-95%
+Equifax 5%-15%
+
+Before rerunning, verify these three things:
+
+1. COA sponsor ID is correct in this DB.
+   In your latest screenshot, COA looked like SPONSOR_ID = 23, not 32.
+2. Only Lexis and Equifax have TOTAL_ATTEMPTS > 0.
+   Experian must be 0 if you want only Lexis/Equifax.
+3. Your log statement is inside the actual runtime selection method, not only in a helper that might not be called.
+
+Run this config query before the test:
+
+SELECT
+    a.SPONSOR_ID,
+    r.SPONSOR_NAME,
+    a.PROOFING_LEVEL,
+    a.KBA_SUPPLIER_ID,
+    s.KBA_SUPPLIER_NAME,
+    a.TOTAL_ATTEMPTS,
+    a.ATTEMPTS,
+    a.UPDATE_DATE
+FROM IPS_OWN.RP_KBA_ATTEMPTS a
+JOIN IPS_OWN.REF_SPONSOR r
+    ON r.SPONSOR_ID = a.SPONSOR_ID
+JOIN IPS_OWN.REF_KBA_SUPPLIER s
+    ON s.KBA_SUPPLIER_ID = a.KBA_SUPPLIER_ID
+WHERE a.SPONSOR_ID = 23
+  AND a.PROOFING_LEVEL = 1
+ORDER BY a.KBA_SUPPLIER_ID;
+
+For the strongest debug log, log the random value and cumulative range:
+
+Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=87, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, weights=[4:95,5:5]
+
+That will immediately tell you whether the selector is calculating the ranges correctly.
