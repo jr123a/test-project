@@ -1,0 +1,207 @@
+Yes — don’t just log after selection from VerificationProviderServiceImpl. Put the debug detail inside WeightedSupplierSelector, because that is where you know:
+
+* total weight
+* random value
+* selected supplier
+* configured weights/ranges
+
+Use this updated selector.
+
+package com.ips.proofing;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import org.springframework.stereotype.Component;
+import com.ips.common.common.CustomLogger;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RpOtpAttemptConfig;
+@Component
+public class WeightedSupplierSelector {
+    public RpOtpAttemptConfig select(long sponsorId, List<RpOtpAttemptConfig> configs) {
+        if (configs == null || configs.isEmpty()) {
+            CustomLogger.info(this.getClass(),
+                "Weighted supplier selection: sponsorId=" + sponsorId
+                + ", no eligible supplier configs found.");
+            return null;
+        }
+        List<RpOtpAttemptConfig> candidates = new ArrayList<RpOtpAttemptConfig>();
+        for (RpOtpAttemptConfig config : configs) {
+            if (config != null && config.getTotalAttempts() > 0) {
+                candidates.add(config);
+            }
+        }
+        if (candidates.isEmpty()) {
+            CustomLogger.info(this.getClass(),
+                "Weighted supplier selection: sponsorId=" + sponsorId
+                + ", no suppliers with TOTAL_ATTEMPTS > 0.");
+            return null;
+        }
+        int totalWeight = 0;
+        for (RpOtpAttemptConfig candidate : candidates) {
+            totalWeight += candidate.getTotalAttempts();
+        }
+        int randomValue = ThreadLocalRandom.current().nextInt(totalWeight);
+        int cumulative = 0;
+        RpOtpAttemptConfig selected = null;
+        for (RpOtpAttemptConfig candidate : candidates) {
+            cumulative += candidate.getTotalAttempts();
+            if (randomValue < cumulative) {
+                selected = candidate;
+                break;
+            }
+        }
+        if (selected == null) {
+            selected = candidates.get(candidates.size() - 1);
+        }
+        logSelection(sponsorId, totalWeight, randomValue, selected, candidates);
+        return selected;
+    }
+    private void logSelection(long sponsorId,
+                              int totalWeight,
+                              int randomValue,
+                              RpOtpAttemptConfig selected,
+                              List<RpOtpAttemptConfig> candidates) {
+        RefOtpSupplier supplier = selected.getRefOtpSupplier();
+        long selectedSupplierId = supplier != null ? supplier.getOtpSupplierId() : -1L;
+        String selectedSupplierName = supplier != null ? supplier.getOtpSupplierName() : "UNKNOWN";
+        CustomLogger.info(this.getClass(),
+            "Weighted supplier selection: sponsorId=" + sponsorId
+            + ", totalWeight=" + totalWeight
+            + ", randomValue=" + randomValue
+            + ", selectedSupplierId=" + selectedSupplierId
+            + ", selectedSupplierName=" + selectedSupplierName
+            + ", weights=" + buildWeightsString(candidates));
+    }
+    private String buildWeightsString(List<RpOtpAttemptConfig> candidates) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < candidates.size(); i++) {
+            RpOtpAttemptConfig config = candidates.get(i);
+            RefOtpSupplier supplier = config.getRefOtpSupplier();
+            long supplierId = supplier != null ? supplier.getOtpSupplierId() : -1L;
+            sb.append(supplierId)
+              .append(":")
+              .append(config.getTotalAttempts());
+            if (i < candidates.size() - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+}
+
+Then update your service call from:
+
+RpOtpAttemptConfig chosen = weightedSupplierSelector.select(list);
+
+to:
+
+RpOtpAttemptConfig chosen = weightedSupplierSelector.select(personVo.getSponsorId(), list);
+
+JUnit 5 test class
+
+This test prints clear output and validates the split statistically.
+
+package com.ips.proofing;
+import static org.junit.jupiter.api.Assertions.*;
+import java.util.Arrays;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import com.ips.entity.RefOtpSupplier;
+import com.ips.entity.RpOtpAttemptConfig;
+class WeightedSupplierSelectorTest {
+    private final WeightedSupplierSelector selector = new WeightedSupplierSelector();
+    @Test
+    void select_shouldPrintClearLogAndHonorNinetyFiveFiveSplit() {
+        long sponsorId = 23L;
+        RpOtpAttemptConfig lexis = config(4L, "Lexis Nexis OTP", 95);
+        RpOtpAttemptConfig equifax = config(5L, "Equifax DIT SMFA", 5);
+        List<RpOtpAttemptConfig> configs = Arrays.asList(lexis, equifax);
+        int lexisCount = 0;
+        int equifaxCount = 0;
+        int iterations = 1000;
+        for (int i = 0; i < iterations; i++) {
+            RpOtpAttemptConfig selected = selector.select(sponsorId, configs);
+            assertNotNull(selected);
+            long selectedSupplierId = selected.getRefOtpSupplier().getOtpSupplierId();
+            if (selectedSupplierId == 4L) {
+                lexisCount++;
+            } else if (selectedSupplierId == 5L) {
+                equifaxCount++;
+            } else {
+                fail("Unexpected supplier selected: " + selectedSupplierId);
+            }
+        }
+        double lexisPercent = lexisCount * 100.0 / iterations;
+        double equifaxPercent = equifaxCount * 100.0 / iterations;
+        System.out.println("Weighted supplier selection summary:");
+        System.out.println("SponsorId=" + sponsorId);
+        System.out.println("Lexis Nexis OTP count=" + lexisCount + ", percent=" + lexisPercent);
+        System.out.println("Equifax DIT SMFA count=" + equifaxCount + ", percent=" + equifaxPercent);
+        assertTrue(lexisPercent >= 90.0 && lexisPercent <= 99.0,
+            "Lexis percent was " + lexisPercent);
+        assertTrue(equifaxPercent >= 1.0 && equifaxPercent <= 10.0,
+            "Equifax percent was " + equifaxPercent);
+    }
+    @Test
+    void select_shouldNotUseAttemptsColumn() {
+        long sponsorId = 23L;
+        RpOtpAttemptConfig lexis = config(4L, "Lexis Nexis OTP", 95);
+        lexis.setAttempts(999);
+        RpOtpAttemptConfig equifax = config(5L, "Equifax DIT SMFA", 5);
+        equifax.setAttempts(0);
+        for (int i = 0; i < 100; i++) {
+            RpOtpAttemptConfig selected = selector.select(sponsorId, Arrays.asList(lexis, equifax));
+            assertNotNull(selected);
+        }
+        assertEquals(999, lexis.getAttempts());
+        assertEquals(0, equifax.getAttempts());
+    }
+    @Test
+    void select_shouldNeverSelectZeroWeightSupplier() {
+        long sponsorId = 23L;
+        RpOtpAttemptConfig lexis = config(4L, "Lexis Nexis OTP", 100);
+        RpOtpAttemptConfig equifax = config(5L, "Equifax DIT SMFA", 0);
+        for (int i = 0; i < 1000; i++) {
+            RpOtpAttemptConfig selected = selector.select(sponsorId, Arrays.asList(lexis, equifax));
+            assertNotNull(selected);
+            assertEquals(4L, selected.getRefOtpSupplier().getOtpSupplierId());
+        }
+    }
+    private RpOtpAttemptConfig config(long supplierId, String supplierName, int totalAttempts) {
+        RefOtpSupplier supplier = new RefOtpSupplier();
+        supplier.setOtpSupplierId(supplierId);
+        supplier.setOtpSupplierName(supplierName);
+        RpOtpAttemptConfig config = new RpOtpAttemptConfig();
+        config.setRefOtpSupplier(supplier);
+        config.setTotalAttempts(totalAttempts);
+        config.setAttempts(0);
+        return config;
+    }
+}
+
+What you should see in logs
+
+For each selection:
+
+Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=87, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, weights=[4:95,5:5]
+
+For quick validation, configure:
+
+Lexis Nexis OTP = 95
+Equifax DIT SMFA = 5
+Experian CrossCore = 0
+
+Run 100-200 Postman iterations.
+
+Expected:
+
+* mostly Lexis
+* a few Equifax
+* no Experian
+* RP_KBA_ATTEMPTS.ATTEMPTS unchanged
+
+If your logs still show 50/50 with weights=[4:95,5:5], then the bug is inside selector logic.
+If logs show weights=[4:50,5:50], then the app is reading the wrong DB config or wrong sponsor ID.
+
