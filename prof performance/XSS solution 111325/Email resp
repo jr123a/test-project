@@ -1,0 +1,23 @@
+Keep it simple and factual. Something like:
+
+The filter does not rewrite or append .xhtml to resource URLs. It only performs query-string validation and then either allows the request to continue or blocks it.
+
+The log already shows WebSphere attempting to process requests such as:
+/IPSWeb/rfRes/buttonBackgroundImage.png.xhtml
+/IPSWeb/includes/rmin-step-3-lg.png
+
+These paths are being generated upstream (JSF/RichFaces/page rendering), not by the IPSCustRegSessionFilter. The filter never modifies request URIs or resource names.
+
+If we believe the filter is involved, please provide a log entry showing:
+
+Security filter blocked request
+
+or
+
+Potential XSS attack detected
+
+at the same timestamp. Otherwise, the evidence points to resource resolution/rendering rather than the XSS filter.
+
+Even shorter:
+
+The IPSCustRegSessionFilter does not modify URLs or append .xhtml to resources. It only validates query parameters. The .png.xhtml and similar URLs are already present when WebSphere processes the request, so they are being generated upstream by the page/framework, not by the filter. If there is a filter issue, please provide a corresponding Security filter blocked request log entry at the same timestamp.
