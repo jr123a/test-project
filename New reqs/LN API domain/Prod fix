@@ -1,0 +1,43 @@
+This is not a certificate issue.
+
+Root cause is here:
+
+Unable to tunnel through proxy. Proxy returns "HTTP/1.1 403 Forbidden"
+
+Your app reached the proxy, but the proxy refused CONNECT to:
+
+https://ws.idms.lexisnexisrisk.com
+
+So production proxy/firewall allowlist is missing the new production domain.
+
+The later errors:
+
+RdpDeviceAssessmentResponse block missing
+Request Id cannot be found for Person Id
+
+are downstream symptoms because the LexisNexis/RDP call never completed.
+
+What to do now:
+
+1. Ask network/security to allowlist:
+
+ws.idms.lexisnexisrisk.com:443
+*.lexisnexisrisk.com:443
+
+2. Confirm old prod URL is still allowed:
+
+ws.idms.lexisnexis.com:443
+
+3. From prod app server, test:
+
+curl -v -x <proxy-host>:<proxy-port> https://ws.idms.lexisnexisrisk.com/restws/identity/v3/accounts/27223/workflows/usps.change.address.wf/conversations
+
+4. If proxy returns 200, 401, 403 from LexisNexis, or any app-level response, connectivity is working.
+5. If it still says:
+
+Unable to tunnel through proxy
+Proxy returns 403
+
+then network/proxy rule is still blocking it.
+
+Bottom line: certs are not the blocker. The new LexisNexisRisk production domain is blocked by USPS proxy/firewall.
