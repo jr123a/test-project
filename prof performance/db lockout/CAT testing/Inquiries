@@ -1,0 +1,13 @@
+The main thing to correct is her assumption.
+
+She’s describing the old deterministic ATTEMPTS-based algorithm (“3 OTP then 7 SMFA”). Your implementation is weighted random, so that behavior is no longer expected.
+
+I’d reply with something like this:
+
+The new implementation behaves a little differently from the previous ATTEMPTS-based approach. Instead of selecting suppliers in a fixed sequence (e.g., exactly 3 OTP followed by 7 SMFA for a 30/70 split), each transaction independently performs a weighted random selection based on the configured percentages.
+
+For load testing, the test data does not need to follow a specific order. Any valid test transactions can be used. Over a sufficiently large number of transactions, the distribution should converge to the configured allocation (e.g., ~30/70, ~50/50, ~60/40, ~80/20), rather than alternating in a deterministic pattern.
+
+We’ll validate the distribution by reviewing the supplier selection statistics after the load test rather than expecting a fixed transaction sequence.
+
+That explains the behavior without getting into implementation details, and it sets the correct expectation for QA and the business.
