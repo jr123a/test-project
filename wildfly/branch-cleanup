@@ -1,0 +1,47 @@
+Good, a full Gradle 8.9 distribution is available locally. Let's use it directly, offline.
+
+That broad search is still running in the background — I'll move on to preparing the bundle while it finishes. Let's create it now.
+
+## Build result: blocked by environment, not by our changes
+
+Compilation confirmed exactly what I suspected earlier:
+
+```
+Cannot find a Java installation on your machine matching this tasks requirements: 
+{languageVersion=21, vendor=any, implementation=vendor-specific} for WINDOWS on x86_64.
+No locally installed toolchains match and toolchain download repositories have not been configured.
+```
+
+`build.gradle` requires Java 21 via toolchain (`JavaLanguageVersion.of(21)`), but this machine only has JDK 8 and JDK 17 installed, and Gradle can't auto-download a JDK 21 while offline. I also had to pass placeholder `-PREPO_USER`/`-PREPO_PWD` values just to get the script to evaluate (the real ones are presumably in `b.bat`/CI, not local `gradle.properties`).
+
+**This isn't a failure caused by our changes** — it's a pre-existing environment gap (no JDK 21 + no network here). I couldn't get further than dependency/toolchain resolution on this machine. Real compilation needs to happen on the other machine, which presumably has JDK 21 and network access to your internal artifact repo.
+
+## The bundle
+
+Sent above: `wildfly-emer-cleanup.bundle` (~14.9MB — the size is mostly the two Jakarta jars carried in history). It contains both `wildfly-emer-cleanup` and `backup/wildfly-before-emer-cleanup`, verified intact.
+
+## Applying it on the other machine
+
+Copy the `.bundle` file over (USB, network share, etc.), then in your existing clone of the `IVSPersistence` repo on that machine:
+
+```bash
+git bundle verify /path/to/wildfly-emer-cleanup.bundle
+```
+
+```bash
+git fetch /path/to/wildfly-emer-cleanup.bundle wildfly-emer-cleanup:wildfly-emer-cleanup backup/wildfly-before-emer-cleanup:backup/wildfly-before-emer-cleanup
+```
+
+```bash
+git checkout wildfly-emer-cleanup
+```
+
+Then build it there where JDK 21 and network access actually exist:
+
+```bash
+./gradlew build test
+```
+
+(or `gradle build test` if you use a system install, same as I did here). If it needs real `REPO_USER`/`REPO_PWD`, those are already in your normal dev setup on that machine (or in `b.bat`, though I'd recommend rotating that password given it's sitting in plaintext in git history — that's still an open item from earlier).
+
+Once it builds and you've smoke-tested the OTP flow, that branch is ready to push (`git push origin wildfly-emer-cleanup`) and open for team review before it replaces anything on shared `wildfly`.
