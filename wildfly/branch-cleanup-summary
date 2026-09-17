@@ -1,0 +1,36 @@
+Here's a draft you can copy directly into an email or message to Shaun. I kept the weighted-supplier-selector section factual rather than asserting motive — the git history proves two independent implementations exist and gives a clear timeline, but it can't prove *why*, so I'd let Shaun draw that conclusion from the facts rather than us stating it as fact.
+
+---
+
+**Subject: WildFly migration branch cleanup — findings on commits mixing unrelated changes**
+
+**Summary**
+
+While investigating an OTP testing blocker on the `wildfly` branch, I traced the phone-verification lockout bug to hardcoded test values in code committed by Emer under "WildFly migration" commit messages. Pulling that thread led to a full audit of his commits across both `IVSPersistence` and `RemoteServices`. Six commits (three per repo, all dated August 12–31) mix legitimate WildFly/Jakarta infrastructure work with unrelated feature changes, debugging leftovers, and personal machine configuration — none of which was disclosed in the commit messages. I've since produced cleaned-up branches for both repos that separate the real migration work from everything else.
+
+**What was actually in his commits**
+
+*Legitimate migration work (kept):* Java 21/Spring 6 dependency updates, Jakarta-namespaced libraries, build.gradle/persistence.xml restructuring. This substantially overlapped with Elizabeth's parallel migration commits on the same files, without visible coordination between them.
+
+*Unrelated changes bundled in (removed):*
+- A commit tagged "WF migration" contains login-URL changes explicitly labeled in his own comment as `(ID-Enrollment Redesign)` — a separate, named initiative with no connection to WildFly.
+- Hardcoded values tagged `//Test Only` in production code paths: `pvAttemptCount = 100`, `attemptsAllowed = 100`, `stillLockedOut = false`. These force every phone-verification attempt to hit the 3-attempt lockout cap regardless of actual usage — this is what was blocking OTP testing.
+- Heavy ad hoc `[TROUBLESHOOT]`-tagged logging left in `LexisNexisServiceImpl`, plus a global log level bump to DEBUG.
+- In `RemoteServices`, an entire reporting module (`ReportUtilityService`, Excel/business report generation, ~450 lines) was deleted with no explanation in the commit message. It turned out to be unused elsewhere, so no functional harm, but that safety was never verified or communicated at the time.
+- `b.bat` was updated with his personal machine's Java path, and in the same line, a repository password was rotated and left in plaintext in git history. Worth a credential rotation independent of this cleanup.
+
+**On the weighted-supplier-selector specifically**
+
+The Oracle row-lock contention fix (moving supplier selection off the row-locking `ATTEMPTS` column to a stateless weighted-random approach) exists in two completely independent implementations with no shared code between them:
+- The version actually running in production (`Split_Assessment`), authored by me, implementing the approach the team agreed on for the row-lock contention issue.
+- A separate, differently-written version Emer added inside his August 12 "WF migration" commit, with no reference to or reuse of the existing fix.
+
+When I removed Emer's business-logic changes from the migration branch (since they were entangled with the issues above), his version of the selector went with it — I've since ported the actual production version back in so the branch doesn't regress on that fix. I can't tell from git history alone whether this was independent parallel work or done with awareness of the existing solution — flagging it here since it's a natural question given the overlap, but wanted to be clear about what the evidence does and doesn't show.
+
+**Current status**
+
+Both repos now have a `wildfly-emer-cleanup` branch with Emer's business-logic changes reverted, the legitimate migration infrastructure retained, and the production supplier-selection fix restored. A backup of the original `wildfly` state exists on both repos in case anything needs to be cross-checked. These branches still need a real compile/test pass on a machine with JDK 21 before they can replace anything on the shared `wildfly` branch.
+
+---
+
+Want me to adjust tone, add/remove any section, or include the specific commit hashes for each item so Shaun (or Emer, if this goes to him too) can verify independently?
