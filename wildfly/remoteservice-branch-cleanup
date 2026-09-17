@@ -1,0 +1,70 @@
+This confirms it — exactly 3 August commits (`cf6beb7` 8/16, `3a4aac7` 8/21, `4fc7c11` 8/31), landing on the same days as two of IVSPersistence's Emer commits, with 53 other Emer commits going back to 2022 that are clearly unrelated legitimate work. Let me examine these 3 in detail.
+
+This uncommitted `build.gradle` edit is important — you've already switched `IVSPersistence` from a published artifact to a local project dependency, which is exactly why the two repos are now coupled. Let me check the full picture before touching anything.
+
+Now switching to RemoteServices to do the actual revert work. First, let me stash your local build.gradle experiment so it doesn't collide with the revert, then set up the branches the same way as before.
+
+Now reverting the newest commit first, `4fc7c11`.
+
+Now `3a4aac7`.
+
+Now the largest one — `cf6beb7`, which deletes `ReportUtilityService`/`Impl` and guts `RemoteUtilityServiceImpl`.
+
+This build.gradle change is entirely legitimate infra (Spring 6.1.6→6.2.3, Jakarta jar swap, Jakarta EE API deps) — no business logic mixed in. Let's restore it and the 2 jars, same pattern as before.
+
+Good — jars no longer show as deleted (they're back). Let's commit this.
+
+Now let's check for cross-repo API breaks — where RemoteServices calls IVSPersistence APIs that our cleanup changed.
+
+That earlier `getJsonLong` concern was based on a stale mid-revert snapshot — it's actually fine. Let me verify the full interface systematically instead of chasing individual methods.
+
+Good — that `getRestClient(true)` was a stale memory from an intermediate step; the final `a40e6f2` revert correctly landed on `createRestClient()`, which exists. Now let's actually try the real compile against `wildfly-emer-cleanup` IVSPersistence, which is the real test the user wants. Let me set up the local-project linkage properly first.
+
+Now update `settings.gradle` to include only `IVSPersistence` as a local sibling project.
+
+Compilation is blocked by the exact same root cause as before — `IVSPersistence`'s JDK 21 toolchain requirement, now surfacing transitively through the local project link:
+
+```
+Could not resolve project :IVSPersistence.
+> Failed to calculate the value of task ':IVSPersistence:compileJava' property 'javaCompiler'.
+   > Cannot find a Java installation on your machine matching this tasks requirements: {languageVersion=21, ...}
+```
+
+This isn't a logic problem in our changes — it's the same missing-JDK-21 environment gap. I already did an exhaustive search of this machine earlier and found no JDK 21 anywhere, so there's no local fix available here.
+
+## What this means practically
+
+- The 3 RemoteServices commits are reverted the same way as IVSPersistence — cleanly, with **zero conflicts** (much more isolated than IVSPersistence's mess, since nothing else in this repo built on top of Emer's specific changes).
+- I set up a **local, uncommitted** `build.gradle`/`settings.gradle` tweak so RemoteServices links to `IVSPersistence` as a sibling project instead of the stale published `26.3.2-SNAPSHOT` artifact — this is the correct way to test the two repos together, but I'm **not committing it** to `wildfly-emer-cleanup`, since real builds should keep using published artifacts. I'll leave it in your working tree here in case you want it, or you can discard it (`git checkout -- build.gradle settings.gradle`).
+- Real compilation of both repos together needs to happen on a machine with JDK 21 installed.
+
+Let me undo that local build.gradle experiment for the bundle (keep it clean) and package this up the same way as before.
+
+## Summary of the RemoteServices work
+
+Confirmed exactly 3 Emer commits from August, all clean reverts with no conflicts:
+
+| Commit | Date | What it did |
+|---|---|---|
+| `cf6beb7` | 8/16 | "WildFly migration" — deletes `ReportUtilityService`/`Impl`, guts `RemoteUtilityServiceImpl` (425 of ~450 lines), touches `RemoteRestResource`/`RemoteProofingServiceImpl`/`RemoteSupportServiceImpl`, plus legit `build.gradle` infra (Spring 6.1.6→6.2.3, Jakarta jar swap) |
+| `3a4aac7` | 8/21 | "fix build errors" — small follow-up patch |
+| `4fc7c11` | 8/31 | "fix null Supplier issue" — another follow-up patch |
+
+I confirmed `ReportUtilityService` is referenced nowhere else on current `wildfly` (git grep came back empty), so restoring it via the revert is a safe no-op, not a functional risk.
+
+`wildfly-emer-cleanup` here now has 4 commits: 3 reverts + 1 config restore (build.gradle + 2 Jakarta jars), same pattern as IVSPersistence.
+
+## Applying it on the other machine
+
+Same process as before:
+```bash
+git bundle verify /path/to/remoteservices-emer-cleanup.bundle
+git fetch /path/to/remoteservices-emer-cleanup.bundle wildfly-emer-cleanup:wildfly-emer-cleanup backup/wildfly-before-emer-cleanup:backup/wildfly-before-emer-cleanup
+git checkout wildfly-emer-cleanup
+```
+
+To actually compile against your cleaned `IVSPersistence` (assuming that machine has both repos checked out as siblings, same as here), replicate the local-testing linkage I set up — in `RemoteServices`:
+- `settings.gradle`: uncomment/add `includeFlat('IVSPersistence')`
+- `build.gradle`: comment out the published `IVSPersistence` artifact line, uncomment `implementation project(':IVSPersistence')`
+
+Then `./b` (or `gradle clean jar -PREPO_USER=... -PREPO_PWD=...`) should actually get past dependency resolution this time, assuming that machine has JDK 21 available for `IVSPersistence`'s toolchain. Don't commit that `settings.gradle`/`build.gradle` tweak — it's just for local testing against the sibling checkout; production builds should keep pulling the published artifact once `wildfly-emer-cleanup` is merged and re-published.
