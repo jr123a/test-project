@@ -4,3 +4,64 @@
 2026-09-17 12:52:19,730 INFO  [] (default task-7) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  passPhoneVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"3","attemptsAllowed":"100","attemptWindowHours":"72","repeatPhoneAssessmentCount":"2","lockoutFlag":"N"}
 2026-09-17 12:52:19,736 INFO  [] (default task-7) com.ips.proofing.ProofingServiceImpl->  phoneVelocityCheck-> ProofingServiceImpl.phoneVelocityCheck(.) :: Phone verification exceedLimitOrLockedOut:true, phoneAttemptLimitReached:true, phoneVelocity.isLockoutStillInEffect():false for SponsorUserId:2023050801, pvSupplierId:4
 2026-09-17 12:52:19,836 INFO  [] (default task-7) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  buildRemoteResponseJSON-> Customer  is locked out.
+
+
+solution:
+
+Found it — and it's not a per-user lockout at all, it's a hardcoded line in the source code. Let me pull the full method to confirm.
+
+This is the actual root cause — and it's not a per-user lockout at all. Let me check git blame on that line for context.
+
+Found it. This is **not a per-user lockout** — it's a hardcoded debug line left in the source that locks out *every* user, every time.
+
+## Root cause
+
+[ProofingServiceImpl.java:365-369](IVSPersistence/src/main/java/com/ips/proofing/ProofingServiceImpl.java:365):
+```java
+long pvAttemptCount = personVo.getPvAttemptCount();
+//Test Only
+pvAttemptCount = 100;
+
+boolean phoneAttemptLimitReached = pvAttemptCount >= 3;
+```
+
+That `pvAttemptCount = 100;` unconditionally overwrites the real attempt count with `100` for **every call, every user**. Since `100 >= 3`, `phoneAttemptLimitReached` is *always* `true`, which trips this at line 375:
+```java
+if (exceedLimitOrLockedOut || phoneAttemptLimitReached) {
+    ...
+    manageEventService.updateEventLockOutDecision(personVo, rpEvent);
+}
+```
+→ which is what produces "Customer is locked out."
+
+## Why your log confirms this exactly
+
+Your log shows the *real* numbers were all fine:
+- `phoneEventCount:3`, `attemptsAllowed:100` → `exceededPhoneVerificationLimit:false`
+- `lockoutStillInEffect:false` (no real `kba_lockout_info` row blocking the user)
+- So `exceedLimitOrLockedOut` = false
+
+But `phoneAttemptLimitReached:true` fired anyway — the only way that happens is the hardcoded `pvAttemptCount = 100` on line 367, since the real event count (3) would give `3 >= 3` → also true actually... wait, let me be precise: even the *real* count of 3 would hit `>= 3`. But that's a separate, legitimate 3-attempt cap by design (see `RemoteProofingServiceImpl.java:467`, same `>= 3` check elsewhere). The hardcoded `100` just makes it unconditional and impossible to reset by waiting out a window or clearing a normal counter — it's dead/test code, not real business logic.
+
+## Git blame — when this was introduced
+
+```
+commit a40e6f2 "EC: Committed changes in IVSPersistence for WF migration."
+-        long phoneVerificationAttemptCount = personVo.getPhoneVerificationAttemptCount();
+-        boolean phoneAttemptLimitReached = phoneVerificationAttemptCount >= 3;
++        long pvAttemptCount = personVo.getPvAttemptCount();
++        //Test Only
++        pvAttemptCount = 100;
++        boolean phoneAttemptLimitReached = pvAttemptCount >= 3;
+```
+
+This was swapped in during the WildFly migration commit — looks like debug/test code that got committed by mistake alongside the real refactor (the variable rename from `getPhoneVerificationAttemptCount()` to `getPvAttemptCount()` was likely the intended change; the `= 100` override was not).
+
+## What to do
+
+There's no DB record to "unlock" — there's no user-specific lockout row causing this (confirmed by `lockoutStillInEffect:false` in your own log). To test the OTP flow you (or whoever owns this file) need to **remove lines 366-367**:
+```java
+//Test Only
+pvAttemptCount = 100;
+```
+so it reverts to using the real `personVo.getPvAttemptCount()` value, then redeploy. This is blocking OTP testing for **every** user in this environment right now, not just `sponsorUserId 2023050801` / `personId 6215` — worth flagging to Emer/Shaun since it'll affect anyone else testing this flow too, given [[emer-phone-verification-npe]] context from prior work in this area.
