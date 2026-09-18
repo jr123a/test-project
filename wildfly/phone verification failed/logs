@@ -1,0 +1,38 @@
+13:19:42,014 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  selectSupplier-> Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=2, selectedSupplierId=6, selectedSupplierName=Experian CrossCore, weights=[6:100]
+13:19:42,025 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  logSelectedSupplier-> Weighted supplier selected for sponsorId=23, proofingLevel=1, selectedSupplierId=6, selectedSupplierName=Experian CrossCore, configuredWeights=[5:0,6:100,4:0], excludedSupplierId=0
+13:19:42,120 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  passPhoneVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"1","attemptsAllowed":"3","attemptWindowHours":"72","repeatPhoneAssessmentCount":"0","lockoutFlag":"N"}
+13:19:42,157 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: isLowerEnvironment():true
+13:19:42,166 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: velocityTimerInSec:900
+13:19:42,351 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  failedVerifyPhoneResponse-> Phone verification failed for customer 202107265062
+13:20:06,140 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  selectSupplier-> Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=0, selectedSupplierId=6, selectedSupplierName=Experian CrossCore, weights=[6:100]
+13:20:06,150 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  logSelectedSupplier-> Weighted supplier selected for sponsorId=23, proofingLevel=1, selectedSupplierId=6, selectedSupplierName=Experian CrossCore, configuredWeights=[5:0,6:100,4:0], excludedSupplierId=0
+13:20:06,244 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  passPhoneVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"0","attemptsAllowed":"3","attemptWindowHours":"72","repeatPhoneAssessmentCount":"0","lockoutFlag":"N"}
+13:20:06,278 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: isLowerEnvironment():true
+13:20:06,289 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: velocityTimerInSec:900
+13:20:13,308 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  failedVerifyPhoneResponse-> Phone verification failed for customer 2023052201
+
+
+curl --location 'https://localhost:8443/RemoteRest/resources/remote/VerifyPhone' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sponsorCode": "coa",
+  "customerUniqueID": "2023052201",
+  "firstName": "Emer",
+  "lastName": "Credo",
+  "mobilePhone": "5712911536",
+  "streetAddress1": "42981 Bonnieblue Ct",
+  "city": "Ashburn",
+  "state": "VA",
+  "zipCode": "20147"
+}
+
+{
+    "transactionID": null,
+    "phoneVerified": "false",
+    "identityVerified": "false",
+    "phoneVerificationDecision": "FAIL",
+    "passcodeSent": "false",
+    "phoneAttemptsIn72Hours": 1,
+    "phoneAttemptLimitReached": "false",
+    "responseMessage": "Phone: 5712911536 is a landline and was not verified for customer 2023052201"
+}
