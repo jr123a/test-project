@@ -34,3 +34,48 @@ Both repos now have a `wildfly-emer-cleanup` branch with Emer's business-logic c
 ---
 
 Want me to adjust tone, add/remove any section, or include the specific commit hashes for each item so Shaun (or Emer, if this goes to him too) can verify independently?
+
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Here's the updated summary with that comparison folded in as supporting evidence:
+
+---
+
+**Subject: WildFly migration branch cleanup — findings on commits mixing unrelated changes**
+
+**Summary**
+
+While investigating an OTP testing blocker on the `wildfly` branch, I traced the phone-verification lockout bug to hardcoded test values in code committed by Emer under "WildFly migration" commit messages. Pulling that thread led to a full audit of his commits across both `IVSPersistence` and `RemoteServices`. Six commits (three per repo, all dated August 12–31) mix legitimate WildFly/Jakarta infrastructure work with unrelated feature changes, debugging leftovers, and personal machine configuration — none of which was disclosed in the commit messages. I've since produced cleaned-up branches for both repos that separate the real migration work from everything else.
+
+**What was actually in his commits**
+
+*Legitimate migration work (kept):* Java 21/Spring 6 dependency updates, Jakarta-namespaced libraries, build.gradle/persistence.xml restructuring. This substantially overlapped with Elizabeth's parallel migration commits on the same files, without visible coordination between them.
+
+*Unrelated changes bundled in (removed):*
+- A commit tagged "WF migration" contains login-URL changes explicitly labeled in his own comment as `(ID-Enrollment Redesign)` — a separate, named initiative with no connection to WildFly.
+- Hardcoded values tagged `//Test Only` in production code paths: `pvAttemptCount = 100`, `attemptsAllowed = 100`, `stillLockedOut = false`. These force every phone-verification attempt to hit the 3-attempt lockout cap regardless of actual usage — this is what was blocking OTP testing.
+- Heavy ad hoc `[TROUBLESHOOT]`-tagged logging left in `LexisNexisServiceImpl`, plus a global log level bump to DEBUG.
+- In `RemoteServices`, an entire reporting module (`ReportUtilityService`, Excel/business report generation, ~450 lines) was deleted with no explanation in the commit message. It turned out to be unused elsewhere, so no functional harm, but that safety was never verified or communicated at the time.
+- `b.bat` was updated with his personal machine's Java path, and in the same line, a repository password was rotated and left in plaintext in git history. Worth a credential rotation independent of this cleanup.
+
+**On the weighted-supplier-selector specifically**
+
+The Oracle row-lock contention fix (moving supplier selection off the row-locking `ATTEMPTS` column to a stateless weighted-random approach) exists in two implementations with no shared git history between them — but they're similar enough that "independent invention" doesn't hold up well:
+
+- **Mine (production, `Split_Assessment`)**: keeps the original method name and return type, selects a weighted-random config, returns the entity (or `null` if none).
+- **Emer's (inside his August 12 "WF migration" commit)**: same filtering logic, same cumulative-weight-sum algorithm, same `ThreadLocalRandom` approach — and several of his log messages and one inline comment (`//no updatePvAttempts() call`) match mine word-for-word, not just in concept. That level of exact phrasing match is hard to explain as two people independently arriving at the same solution.
+
+Where his version does differ: he renamed the method (`selectSupplier` → `selectSupplierId`) and changed its return type from the entity to a raw `long`, using `0L` as the "nothing selected" sentinel instead of `null`. That's a riskier pattern (`0L` can be mistaken for a real ID), and it's likely why he needed a follow-up commit nine days later titled "fix null Supplier issue" — my version, which didn't need that rename, hasn't had that problem.
+
+I can't prove intent from git history alone, but wanted to lay out exactly what the evidence shows rather than just an impression.
+
+When I removed Emer's business-logic changes from the migration branch (since they were entangled with the issues above), his version of the selector went with it — I've since ported the actual production version back in so the branch doesn't regress on that fix.
+
+**Current status**
+
+Both repos now have a `wildfly-emer-cleanup` branch with Emer's business-logic changes reverted, the legitimate migration infrastructure retained, and the production supplier-selection fix restored. A backup of the original `wildfly` state exists on both repos in case anything needs to be cross-checked. These branches still need a real compile/test pass on a machine with JDK 21 before they can replace anything on the shared `wildfly` branch.
+
+---
+
+Let me know if you want any commit hashes added inline for each bullet so Shaun or Emer can pull up the exact diffs themselves.
