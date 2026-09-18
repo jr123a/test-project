@@ -1,0 +1,44 @@
+13:23:50,827 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  selectSupplier-> Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=8, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, weights=[4:100]
+13:23:50,840 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  logSelectedSupplier-> Weighted supplier selected for sponsorId=23, proofingLevel=1, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, configuredWeights=[5:0,6:0,4:100], excludedSupplierId=0
+13:23:50,911 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  passPhoneVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"1","attemptsAllowed":"3","attemptWindowHours":"72","repeatPhoneAssessmentCount":"0","lockoutFlag":"N"}
+13:23:50,936 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: isLowerEnvironment():true
+13:23:50,947 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: velocityTimerInSec:900
+13:23:51,023 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  verifyPhone->  getPhoneVerificationResponse-> LexisNexisServiceImpl> verifyPhone:: hasPreviousPhoneVerificationDecision:true
+13:23:51,677 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  failedVerifyPhoneResponse-> Phone verification failed for customer 2023050501
+13:24:01,106 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  selectSupplier-> Weighted supplier selection: sponsorId=23, totalWeight=100, randomValue=70, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, weights=[4:100]
+13:24:01,117 INFO  [] (default task-2) com.ips.proofing.VerificationProviderServiceImpl->  determineVerificationMethod->  logSelectedSupplier-> Weighted supplier selected for sponsorId=23, proofingLevel=1, selectedSupplierId=4, selectedSupplierName=Lexis Nexis OTP, configuredWeights=[5:0,6:0,4:100], excludedSupplierId=0
+13:24:01,225 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  passPhoneVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"2","attemptsAllowed":"3","attemptWindowHours":"72","repeatPhoneAssessmentCount":"0","lockoutFlag":"N"}
+13:24:01,255 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: isLowerEnvironment():true
+13:24:01,263 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  hasPreviousPhoneVerificationDecision-> PhoneVerificationServiceImpl> hasPreviousPhoneVerificationDecision:: velocityTimerInSec:900
+13:24:01,346 INFO  [] (default task-2) com.ips.proofing.PhoneVerificationServiceImpl->  verifyPhone->  getPhoneVerificationResponse-> LexisNexisServiceImpl> verifyPhone:: hasPreviousPhoneVerificationDecision:true
+13:24:01,806 INFO  [] (default task-2) com.ips.service.RemoteProofingServiceImpl->  verifyPhone->  checkOtpLinkVelocity-> PhoneVelocityCheckServiceImpl> checkPhoneVelocity:: logInfoMapStr:{"lockoutStillInEffect":"false","exceededPhoneVerificationLimit":"false","phoneEventCount":"1","attemptsAllowed":"3","attemptWindowHours":"72","repeatPhoneAssessmentCount":"2","lockoutFlag":"N"}
+
+
+curl --location 'https://localhost:8443/RemoteRest/resources/remote/VerifyPhone' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sponsorCode": "coa",
+  "customerUniqueID": "202107265062",
+  "firstName": "Testuser",
+  "lastName": "Phonepass",
+  "mobilePhone": "2246226617",
+  "streetAddress1": "42981 Bonnieblue Ct",
+  "city": "Ashburn",
+  "state": "VA",
+  "zipCode": "20147"
+}
+'
+
+{
+    "transactionID": "50001370219255",
+    "phoneVerified": "true",
+    "identityVerified": "false",
+    "phoneVerificationDecision": "PASS",
+    "passcodeSent": "true",
+    "phoneAttemptsIn72Hours": 1,
+    "passcodeAttemptsIn180Hours": 1,
+    "passcodeAttemptsAfterLastRequest": 0,
+    "phoneAttemptLimitReached": "false",
+    "passcodeAttemptLimitReached": "false",
+    "responseMessage": "Passcode was successfully sent to phone: 2246226617."
+}
