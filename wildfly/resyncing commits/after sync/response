@@ -1,0 +1,66 @@
+Bundle verified — both branches present with the tips matching the screenshots (`wildfly` at `f72c25f`, `wildfly-emer-cleanup` at `a31e798`). Let's fetch them in.
+
+Both fast-forward cleanly. Let me fast-forward my local branches, then check what Emer's own fix actually touches before attempting the rebase.
+
+Confirmed — Emer's fix removes exactly the same 4 hardcoded overrides we independently found and reverted (`pvAttemptCount = 100`, `attemptsAllowed = 100`, `repeatPhoneAssessmentLimit = 100`, `stillLockedOut = false`). Good news that it's fixed at the source now. This means our revert of `a40e6f2` and his fix converge on the same lines — worth watching for during the rebase. Let's do it.
+
+That file-change note is expected — we're mid-rebase at step 1/6, so `WeightedSupplierSelector.java` still shows Emer's original version until the later revert/port steps replay. Let's resolve the current conflict.
+
+This surfaces something critical — `IppEvent.setPerson()` (which f572a3b added) is actively called by `ProofingServiceImpl.java` on real `wildfly`. Let me check whether our in-progress revert of `ProofingServiceImpl.java` (which auto-merged without conflict) handled this consistently.
+
+Good — the caller side (`ProofingServiceImpl.java`) already consistently reverted to `setPersonId(...)`, and the raw `personId` field is already restored (auto-merged cleanly). I just need to resolve the fetch-type conflict: keep BS's legitimate LAZY change, but restore the `insertable=false, updatable=false` that Emer's commit dropped (since the raw field now controls the column again — leaving both unguarded risks a dual-mapping conflict).
+
+Clean — no other callers. Let's stage and continue the rebase.
+
+This confirms it — the TRUE original (before Emer touched anything) had no raw `personId` field, no `insertable/updatable` guard, and a writable `setPerson()`. Emer's `a40e6f2` added the guarded pattern; his own later `f572a3b` reversed it again. Since we're reverting all three of his commits back to the true original, this hunk should go back to the unguarded form — keeping only BS's legitimate LAZY change on top.
+
+`IppEvent.java` is now fully consistent (back to `setPerson`, no raw field). Now let's check `ProofingServiceImpl.java`'s conflict — it needs to match by calling `setPerson()` again.
+
+This confirms it decisively — `PersonVo.java`'s revert already removed `getPvAttemptCount()` entirely (only `getPhoneVerificationAttemptCount()` remains), so I must take "theirs" here for the code to even compile.
+
+Given how tangled this got, let me just replace this entire method with the clean, verified original from `a40e6f2^` rather than resolving hunk-by-hunk.
+
+The rest of the file already matches the clean original exactly — just these two small conflict-marker artifacts remain. Let me clean them up directly.
+
+Just a trivial trailing blank-line difference — no functional impact. Good, this file is effectively fully reverted. Let's stage it and move to the remaining conflicts.
+
+This is BS's separate, large fetch=LAZY performance commit spanning 28 entity files — colliding with our revert on the exact same fields Emer had touched. Same resolution pattern applies: keep BS's LAZY, drop Emer's insertable/updatable addition.
+
+Clean. Now `Person.java`.
+
+Clean. Now `RpEvent.java`.
+
+Clean. Last one — `RpExperianDecisionResult.java`.
+
+All clean across the whole tree. Continuing the rebase.
+
+Rebase completed successfully — all 6 commits applied, only 3 conflict clusters needed resolution. Let's verify the final state thoroughly.
+
+Both of the user's fixes look legitimate — let me just confirm the `em` field actually exists on the base class before calling this done.
+
+That's a discrepancy worth flagging — `GenericJPADAO.em` is annotated `@PersistenceContext(unitName = "IPSPUN")`, but current `persistence.xml` only declares a unit named `IPSWebPUN"` (from the persistence.xml restructuring we kept as-is). That's in the separate `Common` repo, out of scope for this IVSPersistence-only sync, but worth verifying it actually resolves at deployment — if `IPSPUN` doesn't exist anywhere, `IppPreValidationDaoImpl` would fail at runtime despite compiling fine. Everything else checks out. Let me finalize and bundle this back to you.
+
+## Sync complete — here's what happened
+
+**Rebased `wildfly-emer-cleanup` onto the new `wildfly` tip** (all 4 new commits, including Emer's own fix). 3 files needed real conflict resolution, all now verified clean:
+
+**1. Emer's own fix converged with our revert, as expected.** His `f72c25fc` removes the exact same 4 hardcoded overrides our `a40e6f2` revert also removes — confirmed both paths agree, and the hardcode is gone from the final result (double-checked with a grep sweep).
+
+**2. BS's `c6a2ce6a "Changed fetch to LAZY"` is a separate, large 28-file performance commit** (EAGER→LAZY across most entity relationships) that happened to touch 5 of the exact same fields Emer's `a40e6f2` had modified (`IppEvent.person`, `OtpLockoutInfo.refLoaLevel`, `Person.refSponsor`, `RpEvent.refOtpSupplier`, `RpExperianDecisionResult.rpEvent`). For each, I checked BS's actual diff in isolation and kept his LAZY-fetch change while dropping the `insertable=false, updatable=false` guards Emer had added — restoring the true pre-Emer mapping. Also caught and reverted a deeper one: Emer's `a40e6f2` had added a raw `personId` field to `IppEvent` (with a corresponding `setPersonId()`), which his own later `f572a3b` then removed again in favor of restoring the original `setPerson()` setter — fully unwinding both commits gets back to that original, and I verified `ProofingServiceImpl.java`'s calls line up consistently with whichever pattern survives.
+
+**3. `PhoneVelocityCheckServiceImpl.checkPhoneVelocity`** had gotten confusing mid-rebase (a stray orphaned `*/` from a 3-way merge artifact), so I diffed the whole file byte-for-byte against the pre-Emer original to confirm — it's now identical except for a single cosmetic blank-line difference.
+
+**Your own commit** (`29369b75`, née `a31e7989`) carried through cleanly — both fixes in it look correct: pointing `IppPreValidationDaoImpl` at the inherited `em` field instead of a dead `@PersistenceContext(unitName = "IPPRestPUN")` (that unit no longer exists since persistence.xml was collapsed to one unit), and cleaning up duplicate setter methods in `OtpLockoutInfo` that a merge conflict had left behind.
+
+**One thing worth checking independently**: `Common`'s `GenericJPADAO.em` is annotated `@PersistenceContext(unitName = "IPSPUN")`, but current `persistence.xml` only declares `IPSWebPUN`. That's in the `Common` repo, outside what I touched here — compiles fine either way, but worth confirming it actually resolves at deployment, since a mismatched unit name is a runtime-only failure.
+
+## Applying the bundle
+
+Same as before — this one has all 3 branches (`wildfly`, `wildfly-emer-cleanup`, backup):
+
+```bash
+git bundle verify /path/to/ivspersistence-emer-cleanup-resynced.bundle
+git fetch /path/to/ivspersistence-emer-cleanup-resynced.bundle wildfly:wildfly wildfly-emer-cleanup:wildfly-emer-cleanup backup/wildfly-before-emer-cleanup:backup/wildfly-before-emer-cleanup
+```
+
+Since your `wildfly-emer-cleanup` there was rewritten by rebase (not fast-forward from what you have), that fetch will likely refuse — check out something else first, `git branch -D wildfly-emer-cleanup`, then re-run the fetch to recreate it.
