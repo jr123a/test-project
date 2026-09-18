@@ -1,0 +1,31 @@
+That's the machine's global git config, which is why every commit picked it up. Two things to fix — the config itself (so this doesn't keep happening) and the 6 existing commits' history.
+
+## 1. Fix the git config (do this first, before making any more commits)
+
+```bash
+git config --global user.name "Jagan Kandada"
+git config --global user.email "jagan.m.kandada@usps.gov"
+```
+
+(Use `--local` instead of `--global` if you only want this repo affected, not every repo on the machine.)
+
+## 2. Rewrite the 6 existing commits
+
+Since all 6 need the exact same fix uniformly, this is more efficient than stepping through each one with `rebase -i`. Use `git rebase` with `--exec` to amend author+committer on every commit in the range in one shot:
+
+```bash
+git rebase wildfly wildfly-emer-cleanup --exec 'git commit --amend --no-edit --author="Jagan Kandada <jagan.m.kandada@usps.gov>" --reset-author'
+```
+
+- `--author="..."` sets the author field
+- `--reset-author` also updates the committer field to match (otherwise the committer stays as whatever your config was at commit time)
+- `--no-edit` keeps the existing commit messages untouched — combine this with the reword workflow from before if you want to change wording too (just don't use `--no-edit` on the ones you're also rewording; run `git commit --amend --author="..." --reset-author -m "new message"` for those instead)
+
+After it finishes, verify:
+```bash
+git log --format='%h | %an <%ae>' wildfly..wildfly-emer-cleanup
+```
+
+Every line should show `Jagan Kandada <jagan.m.kandada@usps.gov>` (or whatever you picked). Same force-push caution as before applies — this rewrites all 6 commit hashes again.
+
+If you'd rather use a generic, non-email-tied identity instead of the real USPS address, just swap the `--author` value, e.g. `--author="Jagan Kandada <jagan@example.com>"` — any string in `"Name <email>"` form works.
