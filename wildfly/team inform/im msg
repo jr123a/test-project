@@ -1,0 +1,25 @@
+Here's a draft, ready to copy into Teams:
+
+---
+
+Hey team — wanted to flag that the `wildfly-emer-cleanup` branch (both IVSPersistence and RemoteServices) is ready for a look.
+
+Getting here was a genuinely painstaking, multi-day separation process. Six commits across the two repos — all under generic "WildFly migration" messages — had real Jakarta/Spring 6 migration work tightly interwoven with unrelated business logic changes, debug-only overrides, and personal environment config. There was no clean way to just revert them wholesale; it took a full line-by-line audit of every touched file, cross-checking each hunk against what's still actually relied on elsewhere in the codebase before deciding what to keep vs. drop.
+
+**What's on the branch now:**
+- All legitimate Jakarta/Spring 6/build infra retained
+- The hardcoded test-only overrides that were causing the phone-verification lockout bug — removed
+- The production weighted-supplier-selector fix (the one already live on Split_Assessment) — restored, since it had gotten swapped out along the way
+- Resynced against current `wildfly` — picked up the recent fetch-to-LAZY and dependency updates cleanly
+
+**Still need:**
+- A real compile + test pass on a machine with JDK 21 (couldn't get that far myself)
+- A second set of eyes on some of the trickier conflict resolutions before this goes anywhere near replacing shared `wildfly`
+
+Branch name is the same on both repos: `wildfly-emer-cleanup`. There's also a `backup/wildfly-before-emer-cleanup` on each if anyone wants to diff against the pre-cleanup state.
+
+Appreciate anyone who has time to help verify this.
+
+---
+
+Want me to adjust the tone (more/less detail), shorten it further for a quicker Teams read, or tailor it if this is going to a specific sub-group (e.g., just Elizabeth/Binay vs. the whole team)?
