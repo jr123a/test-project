@@ -1,0 +1,32 @@
+This is a real, pre-existing break — not something our revert caused. Let me trace exactly what happened to these methods.
+
+Found it — this is purely a casing mismatch, not something our revert caused. The Gson migration renamed these methods (`...JSONObject` → `...JsonObject`) but `ReportUtilityServiceImpl.java` was never updated to match — meaning it's been broken since before Emer touched anything, and his deletion was likely a real (if undocumented) compile fix, not pure scope creep. Let me correct this properly instead of just deleting the functionality again.
+
+Let's check if the same stale casing issue exists anywhere else in RemoteServices before declaring this done.
+
+Clean everywhere. Let's commit this fix.
+
+Bundle needs updating with this fix. Let me regenerate and resend it.
+
+## Root cause and fix
+
+Those 81 errors weren't caused by our cleanup — they're a **pre-existing bug** that predates Emer entirely. `IVSPersistence`'s Gson migration (`be1a991` EAM "remove IBM JSON", `d4c4901` BS "Changes to JsonObject") renamed the getter methods on `ReportIndividualDataVo`/`ReportBusinessDataVo` from `get*DataJSONObject` (old, IBM-JSON-era casing) to `get*DataJsonObject` (Gson casing) — but `ReportUtilityServiceImpl.java` was never updated to match. It's been uncompilable since that rename, well before Emer touched anything.
+
+This actually reframes something from my earlier summary: **his deletion of `ReportUtilityService`/`Impl` was very likely a real, if undocumented, compile fix** — not pure unrelated scope creep like I characterized it. He probably hit this exact break while trying to get the WildFly branch to compile and deleted the dead-looking file rather than fixing the casing. I'd correct that point if you're sending the summary to Shaun — it's a fairer read of what happened.
+
+**The fix**: I did a pure case-only rename of all 81 call sites (`...JSONObject(` → `...JsonObject(`) — confirmed identical parameter signatures on the VO side, so this is zero behavior change, just restoring the reporting/Excel-export functionality that his deletion would have thrown away. Verified no other file in the repo has the same stale casing, and no leftover IBM-JSON/Apache-Wink imports anywhere.
+
+I also checked `RemoteUtilityServiceImpl.java` (the other file his `cf6beb7` gutted) — your compile output didn't report any errors from it, and a repo-wide grep confirms nothing there references stale names either, so that one's likely fine as restored.
+
+## Updated bundle sent
+
+`wildfly-emer-cleanup` now has 5 commits (3 reverts + config restore + this casing fix). Same process as before on the other machine:
+
+```bash
+git bundle verify /path/to/remoteservices-emer-cleanup.bundle
+git fetch /path/to/remoteservices-emer-cleanup.bundle wildfly-emer-cleanup:wildfly-emer-cleanup
+```
+
+Since your local `wildfly-emer-cleanup` branch already exists there, a plain `git fetch ... wildfly-emer-cleanup:wildfly-emer-cleanup` will refuse if it's not a fast-forward from what you already have (it should be, since we only added a commit on top) — if it complains, check out something else first (`git checkout backup/wildfly-before-emer-cleanup`), delete the old local branch (`git branch -D wildfly-emer-cleanup`), then re-fetch to recreate it fresh.
+
+Re-run `./b` after that and let me know what comes back.
