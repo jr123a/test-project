@@ -1,0 +1,26 @@
+Good progress — I can see from the screenshots that `wildfly` picked up 4 new commits while we were working (including one very notable one: `f72c25fc` **"EC: Removed 'Test Only' lines of code" — authored by Emer himself, today**, which sounds like it may target the exact hardcoded overrides we found), plus your own new commit `a31e7989` "Fixing all merge issues and successful response from remote services" directly on `wildfly-emer-cleanup`.
+
+I don't have any of that here — this machine still has no network path to `origin`, and neither of those commits exists in my local clone. To reconcile, I need the actual commit data, not just what's visible in the screenshots.
+
+## What I need from you
+
+On the **other machine**, in the `IVSPersistence` repo, run:
+
+```bash
+git bundle create ivspersistence-sync.bundle wildfly wildfly-emer-cleanup
+```
+
+This captures both branches' *current* full state — `wildfly` with its 4 new commits, and `wildfly-emer-cleanup` with your new commit on top of what I gave you.
+
+Then just **attach that `.bundle` file directly in this chat** (same way you attached the two screenshots) — that puts it on this machine's filesystem where I can read it.
+
+## What I'll do once I have it
+
+1. Fetch both branches from your bundle into my local clone here.
+2. Check whether `f72c25fc` (Emer's "Removed Test Only lines" commit) actually touches the same `pvAttemptCount = 100` / `attemptsAllowed = 100` lines we already reverted — if so, I need to make sure our fix and his don't collide or duplicate when reconciled.
+3. Rebase (or merge, whichever turns out cleaner) `wildfly-emer-cleanup` onto the new `wildfly` tip, so it picks up the 4 legitimate new commits (`resteasy-core` dependency, `BS`'s fetch-to-LAZY change, EAM's log-level reduction, and Emer's fix) without losing any of our revert/restore work.
+4. Verify your `a31e7989` commit's changes are preserved and still make sense against the rebased result.
+5. Re-verify no conflict markers or dangling references, same rigor as before.
+6. Bundle the reconciled `wildfly-emer-cleanup` back to you.
+
+Just the one bundle (both branches in it) is enough — send it over whenever it's ready.
