@@ -1,0 +1,424 @@
+* What went wrong:
+Execution failed for task ':RemoteServices:compileJava'.
+> Compilation failed; see the compiler output below.
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:47: error: cannot find symbol
+                highRiskAdddrReviewJson.add("ApiResult", reportDataVo.getHighRiskAddrDataJSONObject("highRiskAddrReview", appIdStr));
+                                                                     ^
+    symbol:   method getHighRiskAddrDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:48: error: cannot find symbol
+                highRiskAdddrReviewJson.add("Error", reportDataVo.getHighRiskAddrDataJSONObject("highRiskAddrError", appIdStr));
+                                                                 ^
+    symbol:   method getHighRiskAddrDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:49: error: cannot find symbol
+                highRiskAdddrReviewJson.add("TotalReview", reportDataVo.getHighRiskAddrDataJSONObject("highRiskAddrTotalReview", appIdStr));
+                                                                       ^
+    symbol:   method getHighRiskAddrDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:51: error: cannot find symbol
+                highRiskAddrFailJson.add("Fail", reportDataVo.getHighRiskAddrDataJSONObject("highRiskAddrFail", appIdStr));
+                                                             ^
+    symbol:   method getHighRiskAddrDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:55: error: cannot find symbol
+                highRiskAddrJson.add("Total", reportDataVo.getHighRiskAddrDataJSONObject("highRiskAddrTotal", appIdStr));
+                                                          ^
+    symbol:   method getHighRiskAddrDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:58: error: cannot find symbol
+                tmxDevRepPassJson.add("APIResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepInitPass", appIdStr));
+                                                               ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:59: error: cannot find symbol
+                tmxDevRepPassJson.add("PreviousResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepRepeatPass", appIdStr));
+                                                                    ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:60: error: cannot find symbol
+                tmxDevRepPassJson.add("TotalPass", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepTotalPass", appIdStr));
+                                                               ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:63: error: cannot find symbol
+                tmxDevRepReviewJson.add("APIResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepInitReview", appIdStr));
+                                                                 ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:64: error: cannot find symbol
+                tmxDevRepReviewJson.add("PreviousResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepRepeatReview", appIdStr));
+                                                                      ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:65: error: cannot find symbol
+                tmxDevRepReviewJson.add("IndNotFound", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepIndNotFound", appIdStr));
+                                                                   ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:66: error: cannot find symbol
+                tmxDevRepReviewJson.add("ProfilingDisabled", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepProfilingDisabled", appIdStr));
+                                                                         ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:67: error: cannot find symbol
+                tmxDevRepReviewJson.add("Error", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepError", appIdStr));
+                                                             ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:68: error: cannot find symbol
+                tmxDevRepReviewJson.add("TotalReview", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepTotalReview", appIdStr));
+                                                                   ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:71: error: cannot find symbol
+                tmxDevRepFailJson.add("APIResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepInitFail", appIdStr));
+                                                               ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:72: error: cannot find symbol
+                tmxDevRepFailJson.add("PreviousResult", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepRepeatFail", appIdStr));
+                                                                    ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:73: error: cannot find symbol
+                tmxDevRepFailJson.add("TotalFail", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepTotalFail", appIdStr));
+                                                               ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:79: error: cannot find symbol
+                tmxDevRepJson.add("Total", reportDataVo.getTmxDevRepDataJSONObject("tmxDevRepTotal", appIdStr));
+                                                       ^
+    symbol:   method getTmxDevRepDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:83: error: cannot find symbol
+                pvLexisNexisReviewJson.add("APIResult", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisInitReview", appIdStr));
+                                                                    ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:84: error: cannot find symbol
+                pvLexisNexisReviewJson.add("PreviousResult", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisRepeatReview", appIdStr));
+                                                                         ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:85: error: cannot find symbol
+                pvLexisNexisReviewJson.add("TotalReview", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisTotalReview", appIdStr));
+                                                                      ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:88: error: cannot find symbol
+                pvLexisNexisFailJson.add("APIResult", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisInitFail", appIdStr));
+                                                                  ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:89: error: cannot find symbol
+                pvLexisNexisFailJson.add("PreviousResult", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisRepeatFail", appIdStr));
+                                                                       ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:90: error: cannot find symbol
+                pvLexisNexisFailJson.add("Abandoned", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisAbandoned", appIdStr));
+                                                                  ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:91: error: cannot find symbol
+                pvLexisNexisFailJson.add("Error", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisError", appIdStr));
+                                                              ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:92: error: cannot find symbol
+                pvLexisNexisFailJson.add("TotalFail", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisTotalFail", appIdStr));
+                                                                  ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:97: error: cannot find symbol
+                pvLexisNexisJson.add("Total", reportDataVo.getPvLexisNexisDataJSONObject("pvLexisNexisTotal", appIdStr));
+                                                          ^
+    symbol:   method getPvLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:101: error: cannot find symbol
+                pvExperianPassJson.add("APIResult", reportDataVo.getPvExperianDataJSONObject("pvExperianInitPass", appIdStr));
+                                                                ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:102: error: cannot find symbol
+                pvExperianPassJson.add("PreviousResult", reportDataVo.getPvExperianDataJSONObject("pvExperianRepeatPass", appIdStr));
+                                                                     ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:103: error: cannot find symbol
+                pvExperianPassJson.add("TotalPass", reportDataVo.getPvExperianDataJSONObject("pvExperianTotalPass", appIdStr));
+                                                                ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:106: error: cannot find symbol
+                pvExperianReviewJson.add("APIResult", reportDataVo.getPvExperianDataJSONObject("pvExperianInitReview", appIdStr));
+                                                                  ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:107: error: cannot find symbol
+                pvExperianReviewJson.add("PreviousResult", reportDataVo.getPvExperianDataJSONObject("pvExperianRepeatReview", appIdStr));
+                                                                       ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:108: error: cannot find symbol
+                pvExperianReviewJson.add("TotalReview", reportDataVo.getPvExperianDataJSONObject("pvExperianTotalReview", appIdStr));
+                                                                    ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:111: error: cannot find symbol
+                pvExperianFailJson.add("APIResult", reportDataVo.getPvExperianDataJSONObject("pvExperianInitFail", appIdStr));
+                                                                ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:112: error: cannot find symbol
+                pvExperianFailJson.add("PreviousResult", reportDataVo.getPvExperianDataJSONObject("pvExperianRepeatFail", appIdStr));
+                                                                     ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:113: error: cannot find symbol
+                pvExperianFailJson.add("Abandoned", reportDataVo.getPvExperianDataJSONObject("pvExperianAbandoned", appIdStr));
+                                                                ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:114: error: cannot find symbol
+                pvExperianFailJson.add("Error", reportDataVo.getPvExperianDataJSONObject("pvExperianError", appIdStr));
+                                                            ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:115: error: cannot find symbol
+                pvExperianFailJson.add("TotalFail", reportDataVo.getPvExperianDataJSONObject("pvExperianTotalFail", appIdStr));
+                                                                ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:121: error: cannot find symbol
+                pvExperianJson.add("Total", reportDataVo.getPvExperianDataJSONObject("pvExperianTotal", appIdStr));
+                                                        ^
+    symbol:   method getPvExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:125: error: cannot find symbol
+                pvEquifaxDitPassJson.add("APIResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitInitPass", appIdStr));
+                                                                  ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:126: error: cannot find symbol
+                pvEquifaxDitPassJson.add("PreviousResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitRepeatPass", appIdStr));
+                                                                       ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:127: error: cannot find symbol
+                pvEquifaxDitPassJson.add("TotalPass", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitTotalPass", appIdStr));
+                                                                  ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:130: error: cannot find symbol
+                pvEquifaxDitReviewJson.add("APIResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitInitReview", appIdStr));
+                                                                    ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:131: error: cannot find symbol
+                pvEquifaxDitReviewJson.add("PreviousResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitRepeatReview", appIdStr));
+                                                                         ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:132: error: cannot find symbol
+                pvEquifaxDitReviewJson.add("TotalReview", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitTotalReview", appIdStr));
+                                                                      ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:135: error: cannot find symbol
+                pvEquifaxDitFailJson.add("APIResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitInitFail", appIdStr));
+                                                                  ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:136: error: cannot find symbol
+                pvEquifaxDitFailJson.add("PreviousResult", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitRepeatFail", appIdStr));
+                                                                       ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:137: error: cannot find symbol
+                pvEquifaxDitFailJson.add("Abandoned", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitAbandoned", appIdStr));
+                                                                  ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:138: error: cannot find symbol
+                pvEquifaxDitFailJson.add("Error", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitError", appIdStr));
+                                                              ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:139: error: cannot find symbol
+                pvEquifaxDitFailJson.add("TotalFail", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitTotalFail", appIdStr));
+                                                                  ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:145: error: cannot find symbol
+                pvEquifaxDitJson.add("Total", reportDataVo.getPvEquifaxDitDataJSONObject("pvEquifaxDitTotal", appIdStr));
+                                                          ^
+    symbol:   method getPvEquifaxDitDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:149: error: cannot find symbol
+                otpLexisNexisPassJson.add("APIResult", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisPass", appIdStr));
+                                                                   ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:152: error: cannot find symbol
+                otpLexisNexisFailJson.add("APIResult", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisFail", appIdStr));
+                                                                   ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:153: error: cannot find symbol
+                otpLexisNexisFailJson.add("Abandoned", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisAbandoned", appIdStr));
+                                                                   ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:154: error: cannot find symbol
+                otpLexisNexisFailJson.add("Error", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisError", appIdStr));
+                                                               ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:155: error: cannot find symbol
+                otpLexisNexisFailJson.add("TotalFail", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisTotalFail", appIdStr));
+                                                                   ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:160: error: cannot find symbol
+                otpLexisNexisJson.add("Total", reportDataVo.getOtpLexisNexisDataJSONObject("otpLexisNexisTotal", appIdStr));
+                                                           ^
+    symbol:   method getOtpLexisNexisDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:164: error: cannot find symbol
+                otpExperianPassJson.add("APIResult", reportDataVo.getOtpExperianDataJSONObject("otpExperianPass", appIdStr));
+                                                                 ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:167: error: cannot find symbol
+                otpExperianFailJson.add("APIResult", reportDataVo.getOtpExperianDataJSONObject("otpExperianFail", appIdStr));
+                                                                 ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:168: error: cannot find symbol
+                otpExperianFailJson.add("Abandoned", reportDataVo.getOtpExperianDataJSONObject("otpExperianAbandoned", appIdStr));
+                                                                 ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:169: error: cannot find symbol
+                otpExperianFailJson.add("Error", reportDataVo.getOtpExperianDataJSONObject("otpExperianError", appIdStr));
+                                                             ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:170: error: cannot find symbol
+                otpExperianFailJson.add("TotalFail", reportDataVo.getOtpExperianDataJSONObject("otpExperianTotalFail", appIdStr));
+                                                                 ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:175: error: cannot find symbol
+                otpExperianJson.add("Total", reportDataVo.getOtpExperianDataJSONObject("otpExperianTotal", appIdStr));
+                                                         ^
+    symbol:   method getOtpExperianDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:179: error: cannot find symbol
+                mfaEquifaxPassJson.add("APIResult", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxPass", appIdStr));
+                                                                ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:182: error: cannot find symbol
+                mfaEquifaxFailJson.add("APIResult", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxFail", appIdStr));
+                                                                ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:183: error: cannot find symbol
+                mfaEquifaxFailJson.add("Abandoned", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxAbandoned", appIdStr));
+                                                                ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:184: error: cannot find symbol
+                mfaEquifaxFailJson.add("Error", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxError", appIdStr));
+                                                            ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:185: error: cannot find symbol
+                mfaEquifaxFailJson.add("TotalFail", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxTotalFail", appIdStr));
+                                                                ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:190: error: cannot find symbol
+                mfaEquifaxJson.add("Total", reportDataVo.getMfaEquifaxDataJSONObject("mfaEquifaxTotal", appIdStr));
+                                                        ^
+    symbol:   method getMfaEquifaxDataJSONObject(String,String)
+    location: variable reportDataVo of type ReportIndividualDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:224: error: cannot find symbol
+                deviceEmailRiskJson.add("Pass", reportDataVo.getDeviceEmailRiskDataJSONObject("deviceEmailRiskPass"));
+                                                            ^
+    symbol:   method getDeviceEmailRiskDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:225: error: cannot find symbol
+                deviceEmailRiskJson.add("Fail", reportDataVo.getDeviceEmailRiskDataJSONObject("deviceEmailRiskFail"));
+                                                            ^
+    symbol:   method getDeviceEmailRiskDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:226: error: cannot find symbol
+                deviceEmailRiskJson.add("Error", reportDataVo.getDeviceEmailRiskDataJSONObject("deviceEmailRiskError"));
+                                                             ^
+    symbol:   method getDeviceEmailRiskDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:227: error: cannot find symbol
+                deviceEmailRiskJson.add("Total", reportDataVo.getDeviceEmailRiskDataJSONObject("deviceEmailRiskTotal"));
+                                                             ^
+    symbol:   method getDeviceEmailRiskDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:231: error: cannot find symbol
+                amsAddressCheckJson.add("Pass", reportDataVo.getAmsAddressCheckDataJSONObject("amsAddressCheckPass"));
+                                                            ^
+    symbol:   method getAmsAddressCheckDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:232: error: cannot find symbol
+                amsAddressCheckJson.add("Fail", reportDataVo.getAmsAddressCheckDataJSONObject("amsAddressCheckFail"));
+                                                            ^
+    symbol:   method getAmsAddressCheckDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:233: error: cannot find symbol
+                amsAddressCheckJson.add("Error", reportDataVo.getAmsAddressCheckDataJSONObject("amsAddressCheckError"));
+                                                             ^
+    symbol:   method getAmsAddressCheckDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:234: error: cannot find symbol
+                amsAddressCheckJson.add("Total", reportDataVo.getAmsAddressCheckDataJSONObject("amsAddressCheckTotal"));
+                                                             ^
+    symbol:   method getAmsAddressCheckDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:238: error: cannot find symbol
+                businessInstantIdJson.add("Pass", reportDataVo.getBusinessInstantIdDataJSONObject("businessInstantIdPass"));
+                                                              ^
+    symbol:   method getBusinessInstantIdDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:239: error: cannot find symbol
+                businessInstantIdJson.add("Fail", reportDataVo.getBusinessInstantIdDataJSONObject("businessInstantIdFail"));
+                                                              ^
+    symbol:   method getBusinessInstantIdDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:240: error: cannot find symbol
+                businessInstantIdJson.add("Error", reportDataVo.getBusinessInstantIdDataJSONObject("businessInstantIdError"));
+                                                               ^
+    symbol:   method getBusinessInstantIdDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  F:\Workspace\WildFly\RemoteProofing\RemoteServices\src\main\java\com\ips\service\ReportUtilityServiceImpl.java:241: error: cannot find symbol
+                businessInstantIdJson.add("Total", reportDataVo.getBusinessInstantIdDataJSONObject("businessInstantIdTotal"));
+                                                               ^
+    symbol:   method getBusinessInstantIdDataJSONObject(String)
+    location: variable reportDataVo of type ReportBusinessDataVo
+  81 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 51s
+23 actionable tasks: 22 executed, 1 up-to-date
+PS F:\Workspace\WildFly\RemoteProofing\RemoteRest> 
+
